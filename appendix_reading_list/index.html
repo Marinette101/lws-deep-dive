@@ -1,0 +1,1395 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/appendix_reading_list/">
+      
+      
+        <link rel="prev" href="../appendix_pr_opportunities/">
+      
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/appendix_reading_list/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Appendix C - Primary Source Reading List - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#appendix-c-primary-source-reading-list" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Appendix C - Primary Source Reading List
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/appendix_reading_list/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-source-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The Source of Truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-lws-kep-corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The LWS KEP Corpus
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-upstream-kubernetes-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Upstream Kubernetes Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-sibling-and-adjacent-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Sibling and Adjacent Projects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-inference-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Inference Engines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-talks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Talks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-companion-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: Companion Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-how-to-verify-a-claim-in-these-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: How to Verify a Claim in These Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-source-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The Source of Truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-lws-kep-corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The LWS KEP Corpus
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-upstream-kubernetes-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Upstream Kubernetes Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-sibling-and-adjacent-projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Sibling and Adjacent Projects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-inference-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Inference Engines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-talks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Talks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-companion-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: Companion Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-how-to-verify-a-claim-in-these-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: How to Verify a Claim in These Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="appendix-c-primary-source-reading-list">Appendix C: Primary Source Reading List<a class="headerlink" href="#appendix-c-primary-source-reading-list" title="Permanent link">&para;</a></h1>
+<p>Annotated sources so that any claim in these notes can be re-verified independently. Entries are ordered by how useful they are to someone preparing an upstream PR, not alphabetically.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Links current as of 2026-08. LWS references point at <code>kubernetes-sigs/lws</code> commit <code>32a9c37</code> (2026-08-06), release v0.9.0.</p>
+</div>
+<hr />
+<h2 id="part-1-the-source-of-truth">Part 1: The Source of Truth<a class="headerlink" href="#part-1-the-source-of-truth" title="Permanent link">&para;</a></h2>
+<p>The repository is the only authoritative source, and these notes exist to make it readable — not to replace it.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Source</th>
+<th style="text-align: left;">Why read it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/kubernetes-sigs/lws"><code>kubernetes-sigs/lws</code></a></td>
+<td style="text-align: left;">The repository. Pin a commit when citing it; <code>main</code> moves weekly</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>api/leaderworkerset/v1/leaderworkerset_types.go</code></td>
+<td style="text-align: left;">459 lines that define the entire core API, plus every label and annotation constant. <strong>Read this first.</strong> <a href="../02_api_surface_anatomy/">Module 2</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pkg/controllers/leaderworkerset_controller.go</code></td>
+<td style="text-align: left;">The twelve-step reconcile and the rolling-update arithmetic. The densest file in the project. <a href="../04_lws_reconciler_internals/">Modules 4</a> and <a href="../06_rollout_and_revisions/">6</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;">Group creation, restart policy, topology pinning. <a href="../03_group_lifecycle_and_identity/">Modules 3</a> and <a href="../05_pod_controller_and_failure_handling/">5</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/planner.go</code></td>
+<td style="text-align: left;">A pure, client-free implementation of the N-dimensional rollout. The best-documented algorithm in the project. <a href="../08_disaggregatedset/">Module 8</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>pkg/webhooks/pod_webhook.go</code></td>
+<td style="text-align: left;">Identity injection: env vars, group keys, subgroup math, affinity, TPU. <a href="../03_group_lifecycle_and_identity/">Module 3</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://lws.sigs.k8s.io/docs/">Documentation site</a></td>
+<td style="text-align: left;">The user-facing docs. Accurate on the whole, with the specific exceptions catalogued in <a href="../appendix_pr_opportunities/">Appendix B</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/kubernetes-sigs/lws/releases">Releases</a></td>
+<td style="text-align: left;"><code>manifests.yaml</code> and the packaged Helm chart per version</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-2-the-lws-kep-corpus">Part 2: The LWS KEP Corpus<a class="headerlink" href="#part-2-the-lws-kep-corpus" title="Permanent link">&para;</a></h2>
+<p>All under <code>keps/</code> in the repository. Ordered by how much they explain.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">KEP</th>
+<th style="text-align: left;">Status</th>
+<th style="text-align: left;">Why it is worth reading</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>766 — DisaggregatedSet</strong></td>
+<td style="text-align: left;">Alpha, implemented</td>
+<td style="text-align: left;">The best-argued KEP in the corpus. Its <strong>Alternatives</strong> section — specifically Alternative 4 on why <code>partition</code> was rejected — explains the existence of the entire planner. Read this even if you never touch DisaggregatedSet</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>849 — DisaggregatedSet HPA</strong></td>
+<td style="text-align: left;">Alpha, implemented</td>
+<td style="text-align: left;">A pitfalls list where every item is a real bug someone hit, with mitigation and reasoning. The CEL-versus-defaulting trap is a broadly applicable Kubernetes API lesson</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>820 — Fail-Fast Restart Budget</strong></td>
+<td style="text-align: left;"><strong>Provisional, NOT implemented</strong></td>
+<td style="text-align: left;">Its "Why No <code>Failed</code> Before" section is unusually good historical context. Note the stale <code>publishNotReadyAddresses</code> premise (<a href="../appendix_pr_opportunities/">Appendix B</a>, K5)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>238 — ControllerRevision</strong></td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">Why LWS needs revision history at all, and what a revision contains</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>407 — Gang Scheduling</strong></td>
+<td style="text-align: left;">Alpha</td>
+<td style="text-align: left;">Read it <strong>alongside the code</strong> — the divergence is large (<a href="../07_scheduling_placement_and_networking/">Module 7</a>, §3.1)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>511 — Partition Update</strong></td>
+<td style="text-align: left;">Implementable</td>
+<td style="text-align: left;">The condition-semantics and truncation changes are the subtle part, and the KEP spells them out with before/after code</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>846 — Slices</strong></td>
+<td style="text-align: left;">Alpha</td>
+<td style="text-align: left;">"A slice cycles through revisions, not the reverse" is the sentence that makes the naming scheme obvious</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>848 — Placement Policy</strong></td>
+<td style="text-align: left;">Alpha</td>
+<td style="text-align: left;">The <code>NotIn</code>-matches-missing-keys subtlety, and an honest Risks section about hard-only placement</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>115 / 257 — Subgroups</strong></td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">Short. 257 explains why <code>LeaderExcluded</code> exists</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>135 — Startup Policy</strong></td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">Short. Why <code>LeaderReady</code> exists and what it costs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>173 — Headless Service Per Group</strong></td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">The DNS-scale argument for <code>UniquePerReplica</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>552 — Resizable Workers</strong></td>
+<td style="text-align: left;">Implementable</td>
+<td style="text-align: left;">Read the Implementation History, not the body — the body describes an API that was never built</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>622 — VolumeClaimTemplates</strong></td>
+<td style="text-align: left;">Implementable</td>
+<td style="text-align: left;">Short; the shared-template design decision is the whole content</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>NNNN — Template</strong></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">The required sections and the <code>kep.yaml</code> schema. Read before writing one</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-3-upstream-kubernetes-dependencies">Part 3: Upstream Kubernetes Dependencies<a class="headerlink" href="#part-3-upstream-kubernetes-dependencies" title="Permanent link">&para;</a></h2>
+<p>LWS's behaviour is partly inherited. These are the upstream features it depends on.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Relevance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#start-ordinal">StatefulSet ordinals (<code>StatefulSetStartOrdinal</code>)</a></td>
+<td style="text-align: left;">Worker StatefulSets set <code>ordinals.start = 1</code>. Without it, LWS recurses infinitely — the hard 1.26 minimum (<a href="../03_group_lifecycle_and_identity/">Module 3</a>, §1.3)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#maximum-unavailable-pods"><code>maxUnavailable</code> for StatefulSet</a></td>
+<td style="text-align: left;">Beta and default-on since 1.35. Without it, <code>maxUnavailable &gt; 1</code> silently behaves as 1 (<a href="../06_rollout_and_revisions/">Module 6</a>, §9)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://kubernetes.io/docs/reference/using-api/server-side-apply/">Server-Side Apply</a></td>
+<td style="text-align: left;">Field managers and conflict resolution. Explains why manual StatefulSet edits revert (<a href="../04_lws_reconciler_internals/">Module 4</a>, §4)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity">Pod affinity and anti-affinity</a></td>
+<td style="text-align: left;">Especially that <code>NotIn</code> <strong>also matches objects missing the key</strong> — the source of two subtle guards in LWS and DisaggregatedSet</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/">HorizontalPodAutoscaler</a></td>
+<td style="text-align: left;">The per-pod-metric averaging formula is why the selector must match one pod per group (<a href="../02_api_surface_anatomy/">Module 2</a>, §4)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#validation-rules">CRD structural schemas and CEL validation</a></td>
+<td style="text-align: left;">Defaulting runs <strong>before</strong> CEL — the KEP-849 trap</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/kubernetes/kubernetes/issues/64023"><code>kubernetes/kubernetes#64023</code></a></td>
+<td style="text-align: left;">The 57-character StatefulSet name limit behind the LWS name-length failure</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/kubernetes/kubernetes/issues/135017"><code>kubernetes/kubernetes#135017</code></a></td>
+<td style="text-align: left;">Serialization drift; cited by <code>SetMatchesRevision</code> (<a href="../04_lws_reconciler_internals/">Module 4</a>, §5.3)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md">API conventions</a></td>
+<td style="text-align: left;">What KAL enforces mechanically and what reviewers enforce by hand</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-4-sibling-and-adjacent-projects">Part 4: Sibling and Adjacent Projects<a class="headerlink" href="#part-4-sibling-and-adjacent-projects" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Project</th>
+<th style="text-align: left;">Why it matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/kubernetes-sigs/jobset">JobSet</a></td>
+<td style="text-align: left;">The training counterpart. Shared design DNA; comparing the two clarifies which LWS decisions are serving-specific</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://kueue.sigs.k8s.io/">Kueue</a></td>
+<td style="text-align: left;">Quota and admission. LWS integrates by wearing labels — no LWS code involved</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://kueue.sigs.k8s.io/docs/concepts/topology_aware_scheduling/">Kueue Topology Aware Scheduling</a></td>
+<td style="text-align: left;">The <code>podset-required-topology</code> and <code>podset-group-name</code> annotations from <a href="../07_scheduling_placement_and_networking/">Module 7</a>, §4</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://volcano.sh/">Volcano</a></td>
+<td style="text-align: left;">The <code>PodGroup</code> API and its <code>minMember</code> / <code>minResources</code> semantics — the two fields that make gang scheduling work correctly under <code>LeaderReady</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/llm-d/llm-d">llm-d</a></td>
+<td style="text-align: left;">The CNCF sandbox reference consumer both APIs are co-designed with. Several KEPs cite its requirements</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://gateway-api-inference-extension.sigs.k8s.io/">Gateway API Inference Extension</a></td>
+<td style="text-align: left;">Model-aware routing. Consumes LWS pods; revision-aware routing for DisaggregatedSet is its problem to solve</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/kubernetes-sigs/controller-runtime">controller-runtime</a></td>
+<td style="text-align: left;">Manager wiring, watches, predicates, the client cache. Its docs explain half of <code>cmd/main.go</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/kubernetes-sigs/kube-api-linter">kube-api-linter</a></td>
+<td style="text-align: left;">The rules that block API PRs, and the rationale for each</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-5-inference-engines">Part 5: Inference Engines<a class="headerlink" href="#part-5-inference-engines" title="Permanent link">&para;</a></h2>
+<p>Engine flags change fast. <strong>Always check current documentation before copying a command</strong> — several upstream LWS examples pin versions that are well behind.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Engine</th>
+<th style="text-align: left;">Read for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://docs.vllm.ai/en/latest/serving/distributed_serving.html">vLLM distributed serving</a></td>
+<td style="text-align: left;">The Ray head/worker model, and the TP-within-pod / PP-across-pods choice</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://docs.vllm.ai/en/latest/features/disagg_prefill.html">vLLM disaggregated prefilling</a></td>
+<td style="text-align: left;">What DisaggregatedSet is orchestrating, from the engine's side</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://docs.sglang.ai/">SGLang multi-node</a></td>
+<td style="text-align: left;"><code>--dist-init-addr</code>, <code>--nnodes</code>, <code>--node-rank</code> — the cleanest mapping onto the <code>LWS_*</code> contract</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://nvidia.github.io/TensorRT-LLM/">TensorRT-LLM</a></td>
+<td style="text-align: left;">The MPI launcher model and why the leader must poll worker readiness</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://github.com/ggml-org/llama.cpp">llama.cpp RPC</a></td>
+<td style="text-align: left;">The only CPU-only, kind-runnable example; the clearest illustration of LWS's two-Service model</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://docs.ray.io/">Ray</a></td>
+<td style="text-align: left;">The head/worker rendezvous vLLM depends on</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://docs.nvidia.com/nim/">NVIDIA NIM multi-node</a></td>
+<td style="text-align: left;">A production deployment that recommends LWS</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-6-talks">Part 6: Talks<a class="headerlink" href="#part-6-talks" title="Permanent link">&para;</a></h2>
+<p>From the upstream adoption page. Useful for design intent that never made it into a KEP.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Talk</th>
+<th style="text-align: left;">Speakers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">KubeCon NA 2024 — "Distributed Multi-Node Model Inference Using the LeaderWorkerSet API"</td>
+<td style="text-align: left;">@ahg-g, @liurupeng</td>
+</tr>
+<tr>
+<td style="text-align: left;">KubeCon EU 2025 — in-memory data caching for distributed training</td>
+<td style="text-align: left;">@akshaychitneni, @bigsur0</td>
+</tr>
+<tr>
+<td style="text-align: left;">KubeCon EU 2025 — lightning talk</td>
+<td style="text-align: left;">@kerthcet</td>
+</tr>
+<tr>
+<td style="text-align: left;">KubeCon HK 2025 — "More Than Model Sharding" (in Chinese)</td>
+<td style="text-align: left;">@panpan0000, @nicole-lihui</td>
+</tr>
+<tr>
+<td style="text-align: left;">KubeCon HK 2025</td>
+<td style="text-align: left;">@kerthcet</td>
+</tr>
+<tr>
+<td style="text-align: left;">KubeCon JP 2025</td>
+<td style="text-align: left;">@yankay</td>
+</tr>
+</tbody>
+</table>
+<p>The 2024 KubeCon NA talk is the original design presentation and the best available statement of why the API looks the way it does.</p>
+<hr />
+<h2 id="part-7-companion-notes">Part 7: Companion Notes<a class="headerlink" href="#part-7-companion-notes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Source</th>
+<th style="text-align: left;">Relationship</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://marinette101.github.io/llm-cc-in-k8s/">Confidential Computing for LLM Serving on GKE</a></td>
+<td style="text-align: left;">The sibling notes to these. Its Module 6 uses LWS as the orchestration layer inside a confidential trust boundary — hardware TEEs, GPU attestation, and attested weight delivery, with LWS handling the multi-host group unchanged. See <a href="../09_inference_engine_integration/">Module 9</a>, §5.4</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-8-how-to-verify-a-claim-in-these-notes">Part 8: How to Verify a Claim in These Notes<a class="headerlink" href="#part-8-how-to-verify-a-claim-in-these-notes" title="Permanent link">&para;</a></h2>
+<p>Every mechanism claim here is traceable. The workflow:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/kubernetes-sigs/lws<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>lws
+git<span class="w"> </span>checkout<span class="w"> </span>32a9c37<span class="w">          </span><span class="c1"># the commit these notes describe</span>
+</code></pre></div>
+<p>Then, depending on what you are checking:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Claim type</th>
+<th style="text-align: left;">How to verify</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">An API field or constant</td>
+<td style="text-align: left;"><code>grep -n "&lt;name&gt;" api/leaderworkerset/v1/leaderworkerset_types.go</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">A validation rule</td>
+<td style="text-align: left;">Read <code>pkg/webhooks/leaderworkerset_webhook.go</code>, then try to violate it on a live cluster</td>
+</tr>
+<tr>
+<td style="text-align: left;">Rollout arithmetic</td>
+<td style="text-align: left;">Read <code>rollingUpdateParameters</code> and <code>rollingUpdatePartition</code>, then trace the <a href="../06_rollout_and_revisions/">Module 6</a>, §6 worked example</td>
+</tr>
+<tr>
+<td style="text-align: left;">A DisaggregatedSet claim</td>
+<td style="text-align: left;">The planner is a pure function — read <code>planner.go</code> and its 38 KB of table tests</td>
+</tr>
+<tr>
+<td style="text-align: left;">"X is not implemented"</td>
+<td style="text-align: left;"><code>grep -rn "&lt;identifier&gt;" api/ pkg/ config/ charts/</code>. Absence in all four is the evidence</td>
+</tr>
+<tr>
+<td style="text-align: left;">A documentation defect</td>
+<td style="text-align: left;">Compare <code>site/content/en/docs/...</code> against the code path it describes</td>
+</tr>
+</tbody>
+</table>
+<p>If a claim in these notes does not survive that check, the notes are wrong — the code is not. Please open an issue against these notes, and consider whether the discrepancy is also a PR opportunity upstream.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

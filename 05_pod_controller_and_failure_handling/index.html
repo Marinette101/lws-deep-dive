@@ -1,0 +1,1949 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/05_pod_controller_and_failure_handling/">
+      
+      
+        <link rel="prev" href="../04_lws_reconciler_internals/">
+      
+      
+        <link rel="next" href="../06_rollout_and_revisions/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/05_pod_controller_and_failure_handling/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 5 - Pod Controller and Failure Handling - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-5-pod-controller-and-failure-handling" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 5 - Pod Controller and Failure Handling
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/05_pod_controller_and_failure_handling/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-two-controller-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The Two-Controller Split
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: The Two-Controller Split">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-watches-and-the-event-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Watches and the event filter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-pod-reconcile-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Pod Reconcile, Step by Step
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-constructing-the-worker-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Constructing the Worker StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-restart-policies-and-group-recreation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Restart Policies and Group Recreation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: Restart Policies and Group Recreation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The policies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-detecting-a-restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Detecting a restart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-resolving-the-leader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Resolving the leader
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-the-delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 The delete
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-pendingpodsingroup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 pendingPodsInGroup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-node-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Node Failure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-topology-pinning-worker-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Topology Pinning, Worker Side
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-kep-820-what-is-proposed-and-what-is-not-there" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: KEP-820 — What Is Proposed, and What Is Not There
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: KEP-820 — What Is Proposed, and What Is Not There">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-the-problem-it-identifies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 The problem it identifies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-the-proposed-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 The proposed API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-the-stale-second-half" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 The stale second half
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-break-a-group-on-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Break a Group on Purpose
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Break a Group on Purpose">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-establish-the-blast-radius-for-each-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Establish the blast radius for each policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-make-recreategroupafterstart-actually-differ" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Make RecreateGroupAfterStart actually differ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-prove-the-annotation-ignores-its-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Prove the annotation ignores its value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-watch-the-guards-fire" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Watch the guards fire
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-topology-pinning-and-its-failure-mode-2-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Topology pinning and its failure mode (2+ nodes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-node-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6 — Node failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-two-controller-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The Two-Controller Split
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: The Two-Controller Split">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-watches-and-the-event-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Watches and the event filter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-pod-reconcile-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Pod Reconcile, Step by Step
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-constructing-the-worker-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Constructing the Worker StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-restart-policies-and-group-recreation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Restart Policies and Group Recreation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: Restart Policies and Group Recreation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The policies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-detecting-a-restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Detecting a restart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-resolving-the-leader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Resolving the leader
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-the-delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 The delete
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-pendingpodsingroup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 pendingPodsInGroup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-node-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Node Failure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-topology-pinning-worker-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Topology Pinning, Worker Side
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-kep-820-what-is-proposed-and-what-is-not-there" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: KEP-820 — What Is Proposed, and What Is Not There
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: KEP-820 — What Is Proposed, and What Is Not There">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-the-problem-it-identifies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 The problem it identifies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-the-proposed-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 The proposed API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-the-stale-second-half" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 The stale second half
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-break-a-group-on-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Break a Group on Purpose
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Break a Group on Purpose">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-establish-the-blast-radius-for-each-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Establish the blast radius for each policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-make-recreategroupafterstart-actually-differ" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Make RecreateGroupAfterStart actually differ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-prove-the-annotation-ignores-its-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Prove the annotation ignores its value
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-watch-the-guards-fire" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Watch the guards fire
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-topology-pinning-and-its-failure-mode-2-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Topology pinning and its failure mode (2+ nodes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-node-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6 — Node failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-5-pod-controller-and-failure-handling">Module 5: Pod Controller and Failure Handling<a class="headerlink" href="#module-5-pod-controller-and-failure-handling" title="Permanent link">&para;</a></h1>
+<p>Two controllers, and the split between them is not arbitrary. The LWS reconciler (<a href="../04_lws_reconciler_internals/">Module 4</a>) owns exactly three things: the leader StatefulSet, the shared headless Service, and the ControllerRevisions. <strong>Everything per-group is owned by the leader Pod</strong>, and the pod controller is what creates it.</p>
+<p>The pod controller also owns the single most consequential runtime behaviour in LWS: deciding when one pod's failure should take down seven healthy ones. That decision has more guards around it than any other code path in the project, and every guard exists because of a specific bug.</p>
+<p>This module covers <strong>the two-controller split</strong>, <strong>the sixteen-step pod reconcile</strong>, <strong>worker StatefulSet construction</strong>, <strong>the restart policies and how a restart is detected</strong>, <strong>the guards against restart loops</strong>, <strong>node failure</strong>, <strong>worker-side topology pinning</strong>, and <strong>KEP-820</strong> — the proposed fail-fast restart budget that is not yet implemented.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06), release v0.9.0. Primary sources: <code>pkg/controllers/pod_controller.go</code>, <code>pkg/utils/pod/pod_utils.go</code>, <code>keps/820-distributed-preflight-check/README.md</code>.</p>
+</div>
+<hr />
+<h2 id="part-1-the-two-controller-split">Part 1: The Two-Controller Split<a class="headerlink" href="#part-1-the-two-controller-split" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    subgraph LWSR ["LWS Reconciler — cluster-scoped objects"]
+        A1["leader StatefulSet (SSA, field manager 'lws')"]
+        A2["shared headless Service"]
+        A3["ControllerRevisions"]
+    end
+    subgraph PODR ["Pod Reconciler — per-group objects, all owned by the leader Pod"]
+        B1["worker StatefulSet"]
+        B2["per-group headless Service (UniquePerReplica)"]
+        B3["Volcano PodGroup"]
+        B4["group restart decisions"]
+    end
+    LEADER["leader Pod&lt;br&gt;&lt;i&gt;the group's identity anchor&lt;/i&gt;"]
+    LWSR --&gt; LEADER
+    LEADER --&gt; PODR</code></pre>
+<p>The consequence of "everything per-group is owned by the leader Pod" is that <strong>group teardown is a single foreground delete</strong>. No finalizers, no cleanup loops, no orphan reconciliation. Delete the leader pod and the worker StatefulSet, its pods, the per-group Service, and the PodGroup all follow.</p>
+<p>The second consequence is a difference in write semantics that is easy to miss:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Object</th>
+<th style="text-align: left;">How it is written</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Leader StatefulSet</td>
+<td style="text-align: left;"><strong>Server-Side Apply</strong>, field manager <code>lws</code>, <code>Force: true</code> — continuously reconciled</td>
+</tr>
+<tr>
+<td style="text-align: left;">Worker StatefulSet</td>
+<td style="text-align: left;"><strong>Create-if-absent</strong> — never updated after creation</td>
+</tr>
+<tr>
+<td style="text-align: left;">Headless Services</td>
+<td style="text-align: left;"><strong>Create-if-absent</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Volcano PodGroup</td>
+<td style="text-align: left;"><strong>Create-if-absent</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Only the leader StatefulSet is continuously reconciled. Everything else is created once and replaced wholesale when the group is recreated. This is why a template change produces a new leader pod which owns a new worker StatefulSet, rather than an in-place update.</p>
+<h3 id="11-watches-and-the-event-filter">1.1 Watches and the event filter<a class="headerlink" href="#11-watches-and-the-event-filter" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">ctrl</span><span class="p">.</span><span class="nx">NewControllerManagedBy</span><span class="p">(</span><span class="nx">mgr</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">For</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">corev1</span><span class="p">.</span><span class="nx">Pod</span><span class="p">{}).</span>
+<span class="w">    </span><span class="nx">Owns</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">{}).</span>
+<span class="w">    </span><span class="nx">WithEventFilter</span><span class="p">(</span><span class="nx">predicate</span><span class="p">.</span><span class="nx">NewPredicateFuncs</span><span class="p">(</span><span class="cm">/* Pod or StatefulSet carrying the LWS name label */</span><span class="p">))</span>
+</code></pre></div>
+<p>The global event filter is load-bearing for cluster health. Without it, this controller would enqueue every pod event in the cluster. If you add a watch to this controller in a PR, make sure the filter still covers your object type.</p>
+<hr />
+<h2 id="part-2-the-pod-reconcile-step-by-step">Part 2: The Pod Reconcile, Step by Step<a class="headerlink" href="#part-2-the-pod-reconcile-step-by-step" title="Permanent link">&para;</a></h2>
+<p>Sixteen steps, and roughly half of them are early returns. The early returns <em>are</em> the logic.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">Step</th>
+<th style="text-align: left;">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"><code>Get</code> pod (<code>IgnoreNotFound</code>)</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">Require <code>name</code> and <code>worker-index</code> labels</td>
+<td style="text-align: left;">Hard error otherwise: <code>"leaderworkerset.sigs.k8s.io/name label is unexpected missing"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><code>Get</code> the LWS (<code>IgnoreNotFound</code>)</td>
+<td style="text-align: left;">A deleted LWS means the pods are being GC'd anyway</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;"><strong><code>handleRestartPolicy</code></strong></td>
+<td style="text-align: left;">If it deleted the leader, stop here</td>
+</tr>
+<tr>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;"><strong>Return if not a leader pod</strong></td>
+<td style="text-align: left;">Worker reconciliation exists <em>only</em> for step 4</td>
+</tr>
+<tr>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;"><strong>Anti-recursion guard</strong></td>
+<td style="text-align: left;">A leader-looking pod with a <code>leader-name</code> annotation → log, emit <code>FailedCreate</code>, return</td>
+</tr>
+<tr>
+<td style="text-align: left;">7</td>
+<td style="text-align: left;">Create per-group Service if <code>UniquePerReplica</code></td>
+<td style="text-align: left;">Owner is the leader pod</td>
+</tr>
+<tr>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;"><strong>Return if <code>pod.DeletionTimestamp != nil</code></strong></td>
+<td style="text-align: left;">Prevents recreating the worker STS under a terminating group</td>
+</tr>
+<tr>
+<td style="text-align: left;">9</td>
+<td style="text-align: left;"><code>CreatePodGroupIfNotExists</code> if a scheduler provider is set</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">10</td>
+<td style="text-align: left;"><strong>Return if <code>*Size == 1</code></strong></td>
+<td style="text-align: left;">No worker StatefulSet at all</td>
+</tr>
+<tr>
+<td style="text-align: left;">11</td>
+<td style="text-align: left;"><strong>StartupPolicy gate</strong></td>
+<td style="text-align: left;"><code>LeaderReady &amp;&amp; !IsPodReady(pod)</code> → return</td>
+</tr>
+<tr>
+<td style="text-align: left;">12</td>
+<td style="text-align: left;"><code>GetRevision</code> by the <strong>pod's</strong> revision key</td>
+<td style="text-align: left;"><code>nil</code> → requeue after 1s</td>
+</tr>
+<tr>
+<td style="text-align: left;">13</td>
+<td style="text-align: left;"><code>constructWorkerStatefulSetApplyConfiguration</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">14</td>
+<td style="text-align: left;">Exclusive topology: set the worker <code>nodeSelector</code></td>
+<td style="text-align: left;">Returns early if <code>pod.Spec.NodeName == ""</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">15</td>
+<td style="text-align: left;"><code>setControllerReferenceWithStatefulSet(&amp;pod, sts, scheme)</code></td>
+<td style="text-align: left;">Owner is the <strong>leader Pod</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">16</td>
+<td style="text-align: left;"><code>Get</code> the STS; <strong>create only on <code>NotFound</code></strong></td>
+<td style="text-align: left;"><code>client.IgnoreAlreadyExists</code></td>
+</tr>
+</tbody>
+</table>
+<p>Three of these repay close reading.</p>
+<p><strong>Step 5 is why worker pods are reconciled at all.</strong> A worker pod produces a reconcile request, <code>handleRestartPolicy</code> runs, and then the function returns. Nothing else about a worker is managed here — the worker StatefulSet manages the worker pods.</p>
+<p><strong>Step 12 reads the pod's revision, not the LWS spec.</strong> <code>revisionutils.GetRevision(ctx, r.Client, &amp;lws, revisionutils.GetRevisionKey(&amp;pod))</code>. This is what keeps a group internally consistent mid-rollout: an old-revision leader gets old-revision workers even though <code>lws.Spec</code> has moved on. If the revision has not appeared yet, the controller requeues after a second rather than falling back to the live spec — falling back would silently create a mixed-revision group.</p>
+<p><strong>Step 16 is create-only.</strong> There is a comment in <code>setNodeSelectorForWorkerPods</code> claiming "the following applying logic will automatically update it to match the leader pods". <strong>The current code does not do this.</strong> Do not rely on it, and consider the comment a documentation bug worth fixing.</p>
+<hr />
+<h2 id="part-3-constructing-the-worker-statefulset">Part 3: Constructing the Worker StatefulSet<a class="headerlink" href="#part-3-constructing-the-worker-statefulset" title="Permanent link">&para;</a></h2>
+<p><code>constructWorkerStatefulSetApplyConfiguration(leaderPod, lws, currentRevision)</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">currentLws</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">revisionutils</span><span class="p">.</span><span class="nx">ApplyRevision</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">lws</span><span class="p">,</span><span class="w"> </span><span class="nx">currentRevision</span><span class="p">)</span>
+<span class="nx">template</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">currentLws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">WorkerTemplate</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Aspect</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Name</td>
+<td style="text-align: left;"><code>leaderPod.Name</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Owner</td>
+<td style="text-align: left;">The leader <strong>Pod</strong>, <code>Controller: true</code>, <code>BlockOwnerDeletion: true</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Replicas</td>
+<td style="text-align: left;"><code>*lws.Spec.LeaderWorkerTemplate.Size - 1</code> — from the <strong>live</strong> spec</td>
+</tr>
+<tr>
+<td style="text-align: left;">Pod template</td>
+<td style="text-align: left;">From the <strong>revision-restored</strong> <code>currentLws</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>podManagementPolicy</code></td>
+<td style="text-align: left;"><code>Parallel</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ordinals.start</code></td>
+<td style="text-align: left;"><strong><code>1</code></strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>serviceName</code></td>
+<td style="text-align: left;"><code>leaderPod.Name</code>, or <code>lws.Name</code> when the policy is <code>Shared</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Selector labels</td>
+<td style="text-align: left;"><code>{group-index, name, group-key}</code> — deliberately <strong>without</strong> the revision hash</td>
+</tr>
+<tr>
+<td style="text-align: left;">Pod labels</td>
+<td style="text-align: left;">The selector labels plus <code>template-revision-hash</code> from the <strong>leader pod</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Pod annotations</td>
+<td style="text-align: left;"><code>size</code>, <code>leader-name</code>, <code>exclusive-topology</code>, and the subgroup trio; then <code>AddTPUAnnotations</code></td>
+</tr>
+</tbody>
+</table>
+<p>Two details worth internalising:</p>
+<p><strong>The selector omits the revision hash.</strong> A StatefulSet's selector is immutable, so including a per-revision label would make the object unpatchable across revisions. Since a new revision produces a whole new worker StatefulSet anyway, the stable selector costs nothing.</p>
+<p><strong>Replicas comes from the live spec, the template comes from the revision.</strong> This is a deliberate asymmetry. <code>size</code> changes (KEP-552) are picked up immediately, while template changes flow through the revision machinery. It also means the <code>size</code> annotation stamped on worker pods reflects the live value, which is what <code>LWS_GROUP_SIZE</code> and the TPU arithmetic consume.</p>
+<hr />
+<h2 id="part-4-restart-policies-and-group-recreation">Part 4: Restart Policies and Group Recreation<a class="headerlink" href="#part-4-restart-policies-and-group-recreation" title="Permanent link">&para;</a></h2>
+<p>This is the heart of the module. <code>handleRestartPolicy(ctx, pod, lws) (leaderDeleted bool, err error)</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">policy</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">RestartPolicy</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">policy</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">RecreateGroupOnPodRestart</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">policy</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">RecreateGroupAfterStart</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="w">                      </span><span class="c1">// None / Default: never a group restart</span>
+<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">podutils</span><span class="p">.</span><span class="nx">ContainerRestarted</span><span class="p">(</span><span class="nx">pod</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">!</span><span class="nx">podutils</span><span class="p">.</span><span class="nx">PodDeleted</span><span class="p">(</span><span class="nx">pod</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="w">                      </span><span class="c1">// nothing happened</span>
+<span class="p">}</span>
+<span class="nx">pendingPods</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">pendingPodsInGroup</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">pod</span><span class="p">,</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">Size</span><span class="p">))</span>
+<span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">hasRecreateGroupAfterStartAnnotation</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Annotations</span><span class="p">[</span><span class="nx">RecreateGroupAfterStartAnnotationKey</span><span class="p">]</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">pendingPods</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="nx">policy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">RecreateGroupAfterStart</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">hasRecreateGroupAfterStartAnnotation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="w">                      </span><span class="c1">// group is still starting up; don&#39;t churn</span>
+<span class="p">}</span>
+<span class="c1">// ... resolve the leader, run two guards, then delete it</span>
+</code></pre></div>
+<h3 id="41-the-policies">4.1 The policies<a class="headerlink" href="#41-the-policies" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Policy</th>
+<th style="text-align: left;">Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupOnPodRestart</code> (default)</td>
+<td style="text-align: left;">Any pod deletion or any container restart recreates the group, immediately</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupAfterStart</code></td>
+<td style="text-align: left;">Same, but suppressed while <strong>any pod in the group is Pending or the group is incomplete</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>None</code></td>
+<td style="text-align: left;">Short-circuits at line 1 — no group restart, ever</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Default</code></td>
+<td style="text-align: left;">Rewritten to <code>None</code> by the defaulting webhook</td>
+</tr>
+</tbody>
+</table>
+<p><code>RecreateGroupAfterStart</code> exists for a specific, very common failure: a 40 GB model image is being pulled, one pod finishes and its container crash-loops on a missing peer, and the group is destroyed — discarding the image pulls of every other pod, which then start pulling again. The result is a group that never converges. Gating on "no pod is Pending" lets the initial rollout complete before the aggressive restart semantics engage.</p>
+<div class="admonition warning">
+<p class="admonition-title">The experimental annotation ignores its value</p>
+<p><div class="highlight"><pre><span></span><code><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">hasRecreateGroupAfterStartAnnotation</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Annotations</span><span class="p">[</span><span class="nx">RecreateGroupAfterStartAnnotationKey</span><span class="p">]</span>
+</code></pre></div>
+This is a <strong>presence check</strong>. The annotation's value is never read. The upstream docs show <code>: true</code>, and the test wrapper <code>wrappers.RestartGroupAfterStartAnnotation()</code> sets <code>"enable"</code>, and both work — as would <code>"false"</code>, <code>"disabled"</code>, or the empty string. Anyone who tries to turn the feature <em>off</em> by setting <code>false</code> will be surprised.</p>
+<p>Given <code>RecreateGroupAfterStart</code> is now a first-class enum value in v0.9, the cleanest fix is probably to deprecate the annotation loudly rather than to start parsing its value. Either way it belongs in <a href="../appendix_pr_opportunities/">Appendix B</a>.</p>
+</div>
+<h3 id="42-detecting-a-restart">4.2 Detecting a restart<a class="headerlink" href="#42-detecting-a-restart" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">ContainerRestarted</span><span class="p">(</span><span class="nx">pod</span><span class="w"> </span><span class="nx">corev1</span><span class="p">.</span><span class="nx">Pod</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Phase</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">corev1</span><span class="p">.</span><span class="nx">PodRunning</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Phase</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">corev1</span><span class="p">.</span><span class="nx">PodPending</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="nx">j</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">InitContainerStatuses</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">InitContainerStatuses</span><span class="p">[</span><span class="nx">j</span><span class="p">].</span><span class="nx">RestartCount</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="nx">j</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ContainerStatuses</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ContainerStatuses</span><span class="p">[</span><span class="nx">j</span><span class="p">].</span><span class="nx">RestartCount</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Three properties follow from this being <code>RestartCount &gt; 0</code> rather than an edge-triggered comparison:</p>
+<ul>
+<li>It is <strong>level-triggered on a monotonic counter</strong>. Once any container has restarted once, the pod is permanently "restarted" until it is replaced. This is fine because the response is to delete the group, which replaces the pod — but it means the condition is sticky, and a group that somehow survives the delete would re-trigger on every reconcile.</li>
+<li><strong>Init container restarts count.</strong> This is exactly the case KEP-820 targets: an init-container preflight check (an NCCL bandwidth test, say) that fails and restarts will recreate the group, forever, with no budget.</li>
+<li><strong>Only while Running or Pending.</strong> A pod in <code>Succeeded</code> or <code>Failed</code> does not trigger on restart count, though <code>PodDeleted</code> (<code>DeletionTimestamp != nil</code>) covers deletion independently.</li>
+</ul>
+<h3 id="43-resolving-the-leader">4.3 Resolving the leader<a class="headerlink" href="#43-resolving-the-leader" title="Permanent link">&para;</a></h3>
+<p>If the triggering pod is a worker, the leader name comes from <code>GetParentNameAndOrdinal(pod.Name)</code> — strip the trailing <code>-&lt;n&gt;</code>. Then <strong>two guards</strong> run before anything is deleted.</p>
+<p><strong>Guard 1 — the stale-revision check:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">revisionutils</span><span class="p">.</span><span class="nx">GetRevisionKey</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">leader</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">revisionutils</span><span class="p">.</span><span class="nx">GetRevisionKey</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">pod</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A worker on an old revision during a rollout is about to be replaced anyway. Deleting its leader would be redundant work and would interfere with the orderly rollout.</p>
+<p><strong>Guard 2 — <code>workerPodBelongsToLeader</code>, the UID walk:</strong></p>
+<blockquote>
+<p>pod → controller ref → if the ref is a <code>StatefulSet</code>, <code>Get</code> it and require <code>workerSts.UID == owner.UID</code>; then require the StatefulSet's own controller to be a <code>Pod</code> matching the leader's <strong>name and UID</strong>.</p>
+</blockquote>
+<p>Names are reused across group recreations; UIDs are not. Without the UID comparison, the background deletion of a <em>previous</em> incarnation's worker StatefulSet could fire a reconcile that deletes the freshly-recreated leader — an unbounded restart loop that presents as "my group restarts every thirty seconds and I cannot see why."</p>
+<pre class="mermaid"><code>flowchart TD
+    T["worker pod event"] --&gt; P{"policy allows&lt;br&gt;group restart?"}
+    P --&gt;|"None / Default"| STOP1["return"]
+    P --&gt;|yes| R{"ContainerRestarted&lt;br&gt;or PodDeleted?"}
+    R --&gt;|no| STOP2["return"]
+    R --&gt;|yes| PEND{"any pod Pending&lt;br&gt;or group incomplete?"}
+    PEND --&gt;|"yes AND AfterStart semantics"| STOP3["return — still starting"]
+    PEND --&gt;|no| LEAD["resolve leader&lt;br&gt;GetParentNameAndOrdinal"]
+    LEAD --&gt; G1{"leader revision ==&lt;br&gt;pod revision?"}
+    G1 --&gt;|no| STOP4["return — stale revision"]
+    G1 --&gt;|yes| G2{"workerPodBelongsToLeader&lt;br&gt;UID chain matches?"}
+    G2 --&gt;|no| STOP5["return — previous incarnation"]
+    G2 --&gt;|yes| DT{"leader already&lt;br&gt;terminating?"}
+    DT --&gt;|yes| STOP6["return (true, nil)"]
+    DT --&gt;|no| DEL["&lt;b&gt;Delete leader&lt;br&gt;PropagationPolicy: Foreground&lt;/b&gt;&lt;br&gt;event: RecreateGroup"]</code></pre>
+<h3 id="44-the-delete">4.4 The delete<a class="headerlink" href="#44-the-delete" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">r</span><span class="p">.</span><span class="nx">Delete</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">leader</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">client</span><span class="p">.</span><span class="nx">DeleteOptions</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">PropagationPolicy</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">DeletePropagationForeground</span><span class="p">,</span>
+<span class="p">})</span>
+<span class="c1">// event: reason &quot;RecreateGroup&quot;, action Delete</span>
+<span class="c1">// &quot;Worker pod %s failed, deleted leader pod %s to recreate group %s&quot;</span>
+</code></pre></div>
+<p>Foreground propagation is required, not cosmetic. The leader pod's own StatefulSet will recreate it as soon as the object is gone. With background propagation, the new leader could appear while the <em>old</em> worker StatefulSet still existed — and since the worker StatefulSet is create-if-absent and named after the leader pod, the new leader would adopt the old group's workers. Foreground guarantees the worker StatefulSet is fully deleted first.</p>
+<h3 id="45-pendingpodsingroup">4.5 <code>pendingPodsInGroup</code><a class="headerlink" href="#45-pendingpodsingroup" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// lists by {name, group-index}</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">groupSize</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">podList</span><span class="p">.</span><span class="nx">Items</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">anyPodIsPending</span><span class="p">(</span><span class="nx">podList</span><span class="p">)</span>
+</code></pre></div>
+<p>Note it returns true for <strong>both</strong> "a pod is Pending" and "the group has the wrong number of pods". The second case covers the window during which the worker StatefulSet has not yet created all its pods — which is exactly when you least want an aggressive restart.</p>
+<hr />
+<h2 id="part-5-node-failure">Part 5: Node Failure<a class="headerlink" href="#part-5-node-failure" title="Permanent link">&para;</a></h2>
+<p>LWS does not implement node-failure handling. It inherits it, and the behaviour follows entirely from the restart policy.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Policy</th>
+<th style="text-align: left;">What happens when a node dies</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupOnPodRestart</code> (default)</td>
+<td style="text-align: left;">The node controller evicts the pods; a pod deletion triggers <code>PodDeleted</code>; the group is recreated on healthy nodes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupAfterStart</code></td>
+<td style="text-align: left;">The same, unless the group still has Pending pods</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>None</code></td>
+<td style="text-align: left;">Only the pods on the dead node are rescheduled; the rest keep running — usually leaving a broken collective</td>
+</tr>
+</tbody>
+</table>
+<p>The default is almost always what you want for a sharded model. <code>None</code> is defensible only for workloads where the pods in a group are genuinely independent, which for LWS's target use case is rare.</p>
+<p>Note the pod controller holds RBAC for <code>nodes</code> with <code>get;list;watch;update;patch</code>. The <code>get</code> is used by <code>topologyValueFromPod</code> (§6). The <code>update</code> and <code>patch</code> verbs are not exercised by any code path in the core control plane — an over-broad grant that would be a reasonable tightening PR.</p>
+<hr />
+<h2 id="part-6-topology-pinning-worker-side">Part 6: Topology Pinning, Worker Side<a class="headerlink" href="#part-6-topology-pinning-worker-side" title="Permanent link">&para;</a></h2>
+<p>Exclusive placement is implemented asymmetrically, and the asymmetry is the interesting part.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Leader pod</th>
+<th style="text-align: left;">Worker pods</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Mechanism</td>
+<td style="text-align: left;">Pod affinity + anti-affinity, injected by the <strong>mutating webhook</strong></td>
+<td style="text-align: left;">A plain <code>nodeSelector</code> on the worker StatefulSet's pod template, set by the <strong>pod controller</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Where</td>
+<td style="text-align: left;"><code>SetExclusiveAffinities</code> in <code>pod_webhook.go</code></td>
+<td style="text-align: left;"><code>setNodeSelectorForWorkerPods</code> in <code>pod_controller.go</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Timing</td>
+<td style="text-align: left;">At admission, before scheduling</td>
+<td style="text-align: left;">After the leader is scheduled</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="nx">topologyValue</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">topologyValueFromPod</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">pod</span><span class="p">,</span><span class="w"> </span><span class="nx">topologyKey</span><span class="p">)</span><span class="w">  </span><span class="c1">// reads node.Labels[topologyKey]</span>
+<span class="nx">sts</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Template</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">WithNodeSelector</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span><span class="nx">topologyKey</span><span class="p">:</span><span class="w"> </span><span class="nx">topologyValue</span><span class="p">})</span>
+</code></pre></div>
+<p>The leader is scheduled <em>first</em>, its affinity terms claim a topology domain, and then the workers are pinned to that specific domain by value. This is why step 14 returns early if <code>pod.Spec.NodeName == ""</code> — the topology value cannot be read until the leader has landed somewhere.</p>
+<p>The trade-off: the group's placement is decided by whichever node the <em>leader</em> happens to get, and the workers must then fit in that domain or stay Pending forever. This is a real failure mode on a fragmented cluster, and it is the reason gang scheduling (<a href="../07_scheduling_placement_and_networking/">Module 7</a>) matters for exclusive-topology workloads.</p>
+<div class="admonition bug">
+<p class="admonition-title">Two small defects in <code>topologyValueFromPod</code></p>
+<ol>
+<li>A missing Node is swallowed by <code>client.IgnoreNotFound</code>, returning <code>("", nil)</code> — which then sets an <strong>empty node selector value</strong>, matching nothing. An unschedulable worker StatefulSet with no clear error is the result.</li>
+<li>The error message for a node lacking the label interpolates the empty <code>topology</code> <em>value</em> rather than the topology <em>key</em>: <code>"node does not have topology label: %s"</code>. The message tells you nothing about which label was missing.</li>
+</ol>
+<p>Both are contained, testable fixes.</p>
+</div>
+<hr />
+<h2 id="part-7-kep-820-what-is-proposed-and-what-is-not-there">Part 7: KEP-820 — What Is Proposed, and What Is Not There<a class="headerlink" href="#part-7-kep-820-what-is-proposed-and-what-is-not-there" title="Permanent link">&para;</a></h2>
+<p>KEP-820, "Fail-Fast Restart Budget and Init-Phase DNS for LeaderWorkerSet," is the most actively interesting open proposal touching this module. It is important to be precise about its status.</p>
+<div class="admonition danger">
+<p class="admonition-title">KEP-820 is not implemented</p>
+<p><code>status: provisional</code>, and grep confirms it:</p>
+<ul>
+<li><code>maxGroupRestarts</code> appears <strong>only</strong> inside <code>keps/820-distributed-preflight-check/README.md</code>. Zero hits in <code>api/</code>, <code>pkg/</code>, <code>config/</code>, <code>charts/</code>.</li>
+<li><code>group-restart-count</code> / <code>GroupRestartCount</code> — no matches in any <code>.go</code> file.</li>
+<li><code>LeaderWorkerSetFailed</code> — no matches. <strong>The <code>Failed</code> condition type does not exist.</strong></li>
+</ul>
+<p>If you are planning work here, you are implementing a proposal, not extending an implementation.</p>
+</div>
+<h3 id="71-the-problem-it-identifies">7.1 The problem it identifies<a class="headerlink" href="#71-the-problem-it-identifies" title="Permanent link">&para;</a></h3>
+<p>§4.2 established that init-container restarts count toward <code>ContainerRestarted</code>. A distributed preflight check — an NCCL all-reduce bandwidth test in an init container, which is a genuinely good practice — that fails on a bad NIC will recreate the group, forever, with no budget and no terminal state. The group never becomes <code>Failed</code>, because LWS has no <code>Failed</code> condition; it sits in <code>Progressing</code> indefinitely while burning accelerator hours.</p>
+<h3 id="72-the-proposed-api">7.2 The proposed API<a class="headerlink" href="#72-the-proposed-api" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">LeaderWorkerTemplate</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// +optional</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:validation:Minimum=0</span>
+<span class="w">    </span><span class="nx">MaxGroupRestarts</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="s">`json:&quot;maxGroupRestarts,omitempty&quot;`</span>
+<span class="p">}</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">LeaderWorkerSetFailed</span><span class="w"> </span><span class="nx">LeaderWorkerSetConditionType</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;Failed&quot;</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">GroupRestartCountAnnotationKey</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;leaderworkerset.sigs.k8s.io/group-restart-count&quot;</span>
+</code></pre></div>
+<p>Design decisions worth understanding, because they are the parts a reviewer will push on:</p>
+<ul>
+<li>The counter is persisted as an <strong>annotation</strong>, so it survives a controller restart. The KEP acknowledges that increment-and-delete are not atomic and accepts a best-effort bound.</li>
+<li>The budget is <strong>group-level</strong>, so <em>any</em> path into <code>RecreateGroupOnPodRestart</code> spends it — not only init-container failures.</li>
+<li>The validating webhook would reject <code>maxGroupRestarts</code> unless <code>restartPolicy: RecreateGroupOnPodRestart</code>.</li>
+<li><code>maxGroupRestarts: 0</code> makes the first failure terminal.</li>
+<li>Failed replicas are excluded from ready/available accounting, and their pods are <strong>retained</strong> for debugging.</li>
+</ul>
+<p>The KEP's "Why No <code>Failed</code> Before" section is unusually good context for a new contributor: LWS was designed on a "keep reconciling" model, and its three conditions describe availability, progress, and rollout — not terminal failure. <code>Failed</code> was previously ambiguous precisely because there was no retry budget to define it against.</p>
+<h3 id="73-the-stale-second-half">7.3 The stale second half<a class="headerlink" href="#73-the-stale-second-half" title="Permanent link">&para;</a></h3>
+<p>KEP-820's <em>other</em> feature proposes <code>networkConfig.publishNotReadyAddresses</code> as an opt-in <code>bool</code> with <code>+kubebuilder:default=false</code>, on the premise that "with <code>publishNotReadyAddresses: false</code>, peer FQDN may not be resolvable in init phase."</p>
+<p><strong>That premise does not hold for LWS's own Services.</strong> <code>pkg/utils/controller/controller_utils.go</code> hardcodes <code>PublishNotReadyAddresses: true</code> in <code>CreateHeadlessServiceIfNotExists</code>, and <code>test/testutils/validators.go</code> asserts it. A knob defaulting to <code>false</code> would be a <strong>regression risk</strong>, not a feature.</p>
+<p>This is the single most PR-actionable observation in the whole KEP corpus: a comment on KEP-820 pointing at those two lines would meaningfully improve the proposal, costs nothing, and is a good first interaction with the maintainers.</p>
+<hr />
+<h2 id="lab-break-a-group-on-purpose">Lab: Break a Group on Purpose<a class="headerlink" href="#lab-break-a-group-on-purpose" title="Permanent link">&para;</a></h2>
+<p>The goal is to exercise every branch of the flowchart in §4.3 and to reproduce, deliberately, the failure modes the guards exist to prevent.</p>
+<div class="admonition warning">
+<p class="admonition-title">Scale</p>
+<p>Steps 1–4 run fine on <code>kind</code> with a trivial container. Step 5 (topology pinning) needs <strong>at least two nodes</strong>, and Step 6 needs a multi-node cluster where you can cordon and drain. No accelerators are required for any of it — this module's mechanisms are orthogonal to GPUs.</p>
+</div>
+<h3 id="step-1-establish-the-blast-radius-for-each-policy">Step 1 — Establish the blast radius for each policy<a class="headerlink" href="#step-1-establish-the-blast-radius-for-each-policy" title="Permanent link">&para;</a></h3>
+<p>Deploy three LWSes, identical except for <code>restartPolicy</code>, each <code>replicas: 2, size: 4</code>, running a container you can kill from inside:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;/bin/sh&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;-c&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;trap</span><span class="nv"> </span><span class="s">&#39;exit</span><span class="nv"> </span><span class="s">1&#39;</span><span class="nv"> </span><span class="s">TERM;</span><span class="nv"> </span><span class="s">sleep</span><span class="nv"> </span><span class="s">infinity&quot;</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>For each, kill one worker's main process and record which pods were recreated:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>my-lws-0-2<span class="w"> </span>--<span class="w"> </span><span class="nb">kill</span><span class="w"> </span><span class="m">1</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Policy</th>
+<th style="text-align: left;">Expected pods recreated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupOnPodRestart</code></td>
+<td style="text-align: left;">All 4 in group 0; group 1 untouched</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>None</code></td>
+<td style="text-align: left;">Only <code>my-lws-0-2</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupAfterStart</code></td>
+<td style="text-align: left;">All 4 in group 0 (nothing is Pending)</td>
+</tr>
+</tbody>
+</table>
+<p>Confirm the <code>RecreateGroup</code> event on the LWS:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span><span class="nv">reason</span><span class="o">=</span>RecreateGroup
+</code></pre></div>
+<h3 id="step-2-make-recreategroupafterstart-actually-differ">Step 2 — Make <code>RecreateGroupAfterStart</code> actually differ<a class="headerlink" href="#step-2-make-recreategroupafterstart-actually-differ" title="Permanent link">&para;</a></h3>
+<p>The policies only diverge while a pod is Pending. Force that state: set a resource request no node can satisfy on the worker template so one worker stays Pending, then crash a different worker.</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;add&quot;,</span>
+<span class="s1">  &quot;path&quot;:&quot;/spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/resources&quot;,</span>
+<span class="s1">  &quot;value&quot;:{&quot;requests&quot;:{&quot;cpu&quot;:&quot;1000&quot;}}}]&#39;</span>
+</code></pre></div>
+<p>Under <code>RecreateGroupOnPodRestart</code> the group thrashes. Under <code>RecreateGroupAfterStart</code> it does not, because <code>pendingPodsInGroup</code> returns true. This is the image-pull scenario from §4.1, reproduced deterministically.</p>
+<h3 id="step-3-prove-the-annotation-ignores-its-value">Step 3 — Prove the annotation ignores its value<a class="headerlink" href="#step-3-prove-the-annotation-ignores-its-value" title="Permanent link">&para;</a></h3>
+<p>On an LWS with <code>restartPolicy: RecreateGroupOnPodRestart</code>:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>annotate<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>leaderworkerset.sigs.k8s.io/experimental-recreate-group-after-start<span class="o">=</span><span class="nb">false</span><span class="w"> </span>--overwrite
+</code></pre></div>
+<p>Then repeat Step 2. The behaviour should switch to <code>AfterStart</code> semantics <strong>despite the value being <code>false</code></strong>, because line 220 of <code>pod_controller.go</code> is a presence check. Having reproduced it, you have the evidence for the <a href="../appendix_pr_opportunities/">Appendix B</a> item — this is precisely the kind of finding that makes a good, small upstream issue.</p>
+<h3 id="step-4-watch-the-guards-fire">Step 4 — Watch the guards fire<a class="headerlink" href="#step-4-watch-the-guards-fire" title="Permanent link">&para;</a></h3>
+<p>Enable verbose controller logs and trigger a rollout while simultaneously crashing a worker in a not-yet-updated group:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>logs<span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span>-f<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;revision\|belongs\|recreate&#39;</span>
+</code></pre></div>
+<p>You are looking for Guard 1 (<code>GetRevisionKey(&amp;leader) != GetRevisionKey(&amp;pod)</code>) declining to recreate a group that the rollout is about to replace anyway. Reason through what would happen without that guard: the group is deleted, recreated at the <em>old</em> revision, and then immediately rolled again — doubling the work.</p>
+<h3 id="step-5-topology-pinning-and-its-failure-mode-2-nodes">Step 5 — Topology pinning and its failure mode (2+ nodes)<a class="headerlink" href="#step-5-topology-pinning-and-its-failure-mode-2-nodes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>annotate<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>leaderworkerset.sigs.k8s.io/exclusive-topology<span class="o">=</span>kubernetes.io/hostname<span class="w"> </span>--overwrite
+</code></pre></div>
+<p>Recreate the LWS (remember from <a href="../04_lws_reconciler_internals/">Module 4</a> that annotations are excluded from the revision, so this will <em>not</em> trigger a rollout on its own). Then:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws-0<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.template.spec.nodeSelector}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>my-lws-0<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.affinity}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</code></pre></div>
+<p>Confirm the asymmetry from §6: the leader has affinity terms, the worker StatefulSet has a plain <code>nodeSelector</code> naming the leader's actual node.</p>
+<p>Now create the failure mode. With <code>size: 4</code> and <code>exclusive-topology: kubernetes.io/hostname</code>, all four pods must fit on one node. Set CPU requests so only three fit, and observe: the leader schedules, the workers are pinned to its node, and one worker is Pending forever. The group can never converge, and nothing reports a clear error. This is the argument for gang scheduling.</p>
+<h3 id="step-6-node-failure">Step 6 — Node failure<a class="headerlink" href="#step-6-node-failure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>cordon<span class="w"> </span>&lt;node-hosting-group-0&gt;
+kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+<p>Confirm §5: with the default policy, the <em>entire</em> group moves. With <code>None</code>, only the evicted pods move — leave that variant running and inspect whether the surviving pods' collective still works. For a real inference engine it will not, which is the empirical argument for the default.</p>
+<h3 id="checkpoint-questions">Checkpoint questions<a class="headerlink" href="#checkpoint-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Why does <code>handleRestartPolicy</code> run <strong>before</strong> the "is this a leader pod" check, rather than after?</li>
+<li>The delete uses foreground propagation. Construct the exact sequence of events that background propagation would allow, and say which object ends up adopted by the wrong owner.</li>
+<li><code>ContainerRestarted</code> is level-triggered on <code>RestartCount &gt; 0</code>. What would need to change for the KEP-820 budget to be implementable on top of it?</li>
+</ul>
+<p>Continue to <a href="../06_rollout_and_revisions/">Module 6: Rollouts, Revisions, and Scaling</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

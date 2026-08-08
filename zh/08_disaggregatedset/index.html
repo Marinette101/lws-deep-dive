@@ -1,0 +1,3027 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/08_disaggregatedset/">
+      
+      
+        <link rel="prev" href="../07_scheduling_placement_and_networking/">
+      
+      
+        <link rel="next" href="../09_inference_engine_integration/">
+      
+      
+        
+          <link rel="alternate" href="../../08_disaggregatedset/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>模块 8 - DisaggregatedSet - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#8disaggregatedset" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              模块 8 - DisaggregatedSet
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../08_disaggregatedset/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：为什么要一个新 API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：为什么要一个新 API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 手工拼装的四种失效
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 目标与非目标
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 被否掉的那个替代方案解释了一切
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：对象模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：对象模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 命名
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Label
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 什么决定了 revision
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：控制器架构
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：控制器架构">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-reconcile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Reconcile 骨架
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-plannerexecutor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 planner/executor 拆分
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：N 维滚动
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第四部分：N 维滚动">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-lws-partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 它根本不用 LWS 的 partition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 理想轨迹
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-min-max" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 扩容取 min，缩容取 max
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 决策级联
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-orphan-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Orphan prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-initial-replicas-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 initial-replicas annotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 稳定性闸门与拆除
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 滚动中途增删 role
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sliceskep-846" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：Slices（KEP-846）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：Slices（KEP-846）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 slice 是什么
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-planner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 planner 为什么不用改
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 伸缩 slice 不会滚动
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-slice-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 遗留 slice-0 迁移
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kep-848" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：放置策略（KEP-848）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：放置策略（KEP-848）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-exclusiveslice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 ExclusiveSlice——两项
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-exclusivetopology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 ExclusiveTopology——第三项
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-lws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 惰性生效，以及与 LWS 的冲突
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-role-kep-849" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：Per-Role 自动伸缩（KEP-849）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七部分：Per-Role 自动伸缩（KEP-849）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-scaler-cr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Scaler CR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 生命周期
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 播种，以及它避开的两个死锁
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-no-shrink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 副本解析与 no-shrink 守卫
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-leader-selector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 只选 leader 的 selector，以及为什么
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 代码里记录下来的那些坑
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八部分：Service 与 revision 感知路由
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第九部分：校验
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第九部分：校验">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 会被拒绝的东西
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-all-or-nothing-cel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 all-or-nothing 的 CEL 规则
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第十部分：Status 缺口
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第十部分：Status 缺口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 其他已知缺口
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：驱动一次协调滚动
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：驱动一次协调滚动">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A 部分 — 观察 N 维算法
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-initial-replicas-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2 部分 — 找到 initial-replicas annotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a3-orphan-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A3 部分 — 证明 orphan prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a4-spec-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A4 部分 — 复现非模板 spec 变更的 bug
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-slices-unverified-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B 部分 — Slices 与放置（unverified，需要 2 个以上拓扑域）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-per-role-hpaunverified-metrics-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C 部分 — Per-role HPA（unverified，需要 metrics-server）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：为什么要一个新 API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：为什么要一个新 API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 手工拼装的四种失效
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 目标与非目标
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 被否掉的那个替代方案解释了一切
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：对象模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：对象模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 命名
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Label
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 什么决定了 revision
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：控制器架构
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：控制器架构">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-reconcile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Reconcile 骨架
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-plannerexecutor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 planner/executor 拆分
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：N 维滚动
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第四部分：N 维滚动">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-lws-partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 它根本不用 LWS 的 partition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 理想轨迹
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-min-max" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 扩容取 min，缩容取 max
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 决策级联
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-orphan-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Orphan prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-initial-replicas-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 initial-replicas annotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 稳定性闸门与拆除
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 滚动中途增删 role
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sliceskep-846" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：Slices（KEP-846）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：Slices（KEP-846）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 slice 是什么
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-planner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 planner 为什么不用改
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-slice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 伸缩 slice 不会滚动
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-slice-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 遗留 slice-0 迁移
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kep-848" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：放置策略（KEP-848）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：放置策略（KEP-848）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-exclusiveslice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 ExclusiveSlice——两项
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-exclusivetopology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 ExclusiveTopology——第三项
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-lws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 惰性生效，以及与 LWS 的冲突
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-role-kep-849" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：Per-Role 自动伸缩（KEP-849）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七部分：Per-Role 自动伸缩（KEP-849）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-scaler-cr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Scaler CR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 生命周期
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 播种，以及它避开的两个死锁
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-no-shrink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 副本解析与 no-shrink 守卫
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-leader-selector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 只选 leader 的 selector，以及为什么
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 代码里记录下来的那些坑
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八部分：Service 与 revision 感知路由
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第九部分：校验
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第九部分：校验">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 会被拒绝的东西
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-all-or-nothing-cel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 all-or-nothing 的 CEL 规则
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第十部分：Status 缺口
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第十部分：Status 缺口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 其他已知缺口
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：驱动一次协调滚动
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：驱动一次协调滚动">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A 部分 — 观察 N 维算法
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-initial-replicas-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2 部分 — 找到 initial-replicas annotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a3-orphan-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A3 部分 — 证明 orphan prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a4-spec-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A4 部分 — 复现非模板 spec 变更的 bug
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-slices-unverified-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B 部分 — Slices 与放置（unverified，需要 2 个以上拓扑域）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-per-role-hpaunverified-metrics-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C 部分 — Per-role HPA（unverified，需要 metrics-server）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="8disaggregatedset">模块 8：DisaggregatedSet<a class="headerlink" href="#8disaggregatedset" title="Permanent link">&para;</a></h1>
+<p>Prefill 和 decode 是同一个模型在两种不同硬件画像上干两件不同的活（<a href="../01_multihost_inference_problem_space/">模块 1</a> §1.3）。把它们拆成独立的池，现在已是 vLLM 和 SGLang 的标准做法。而编排这个拆分，确实比编排一个池难得多，<code>DisaggregatedSet</code> 就是干这件事的 API。</p>
+<p>难点不在于跑两个 LeaderWorkerSet，而在于<strong>把它们一起滚动更新</strong>。prefill 把 KV cache 交给 decode，两者必须在布局、量化、模型版本上一致。先把 prefill 全滚完，你就得到了「新版 prefill 服务器把 cache 交给旧版 decode 服务器」——这是正确性 bug，不是性能退化。而且由于最优的 prefill:decode 比例随流量漂移，两者还必须在保持版本耦合的同时<strong>独立伸缩</strong>。</p>
+<p>本模块覆盖<strong>这个 API 为什么存在</strong>、<strong>对象模型</strong>、<strong>planner/executor 拆分</strong>、<strong>完整的 N 维滚动算法</strong>、<strong>slices</strong>、<strong>放置策略</strong>、<strong>per-role 自动伸缩</strong>、<strong>revision 感知的 Service</strong>、<strong>校验</strong>，以及<strong>目前项目里最好的贡献机会——status 缺口</strong>。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源与成熟度</p>
+<p>对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）核实。DisaggregatedSet 随 <strong>v0.9.0</strong> 发布，其每一部分都是 <strong>alpha</strong>。涉及 KEP 766、846、848、849。因为它是最新、变动最快的子系统，所以也是贡献者空间最大的地方——同时 KEP 文本与代码已经在若干处出现分歧，下文逐条标出。</p>
+</div>
+<hr />
+<h2 id="api">第一部分：为什么要一个新 API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h2>
+<h3 id="11">1.1 手工拼装的四种失效<a class="headerlink" href="#11" title="Permanent link">&para;</a></h3>
+<p>KEP-766 的动机就是一份「把 prefill 和 decode 当两个独立 LeaderWorkerSet 部署会坏在哪」的清单：</p>
+<ol>
+<li><strong>运维复杂度</strong>——你必须人工保证所有 role 一起更新。</li>
+<li><strong>滚动更新协调</strong>——「没有内建机制在 role 之间协调滚动更新，只更新其中一个 role 会带来服务中断风险。」</li>
+<li><strong>Service 生命周期</strong>——你必须人工保证 Service「只在所有 role 都就绪后才路由流量」。</li>
+<li><strong>配置漂移</strong>——「没有统一资源，各 role 的配置会逐渐分岔。」</li>
+</ol>
+<p>底层的领域事实是：兄弟 role 之间<strong>按版本耦合</strong>，而两个独立的 LWS 根本表达不了这件事。</p>
+<h3 id="12">1.2 目标与非目标<a class="headerlink" href="#12" title="Permanent link">&para;</a></h3>
+<p><strong>目标</strong>：统一管理 2–10 个 role；通过「一个让所有 role 齐步更新、同时尊重各 role surge 约束的 N 维滚动更新算法」实现协调滚动；以及——那个塑造了整个实现的目标——<strong>无状态控制器</strong>，「从观测到的资源推导出全部状态，从而可以在任意时刻安全重启」。</p>
+<p><strong>非目标</strong>：多集群联邦；LWS 之外的后端；滚动期间的流量管理。自动伸缩原本也是非目标，后被 <strong>KEP-849 取代</strong>。</p>
+<h3 id="13">1.3 被否掉的那个替代方案解释了一切<a class="headerlink" href="#13" title="Permanent link">&para;</a></h3>
+<p>一共考虑了四个替代方案。三个很好理解——扩展 LWS 支持多模板（对 LWS 语义改动太大）、Helm/Kustomize（没有运行时协调）、不带 CRD 的外部 label 监听控制器（体验差）。</p>
+<p>第四个才是承重的，而理解它为什么被否，是读懂整个 planner 的钥匙。</p>
+<blockquote>
+<p><strong>替代方案 4：用 LWS 的 <code>partition</code>，而不是每个 revision 一个 LWS。</strong></p>
+</blockquote>
+<p>三条否决理由：</p>
+<ol>
+<li><strong>revision 感知的流量路由。</strong> 「负载均衡器必须把请求路由到那些其对端处于<strong>同一 revision</strong> 的后端上。」每个 revision 一个 LWS 加一个 Service 时，每个 Pod 的 revision 通过 <code>disaggregatedset.x-k8s.io/revision</code> label 显式可见，于是 LB 可以<em>跨所有 role 池</em>按 revision 统计后端数量并按比例分流。用 <code>partition</code> 的话，同一个 LWS 内的 Pod 只靠序号区分，revision 感知路由会难得多。</li>
+<li><strong>把 LWS 当只读资源</strong>——「就像 Deployment 对待 ReplicaSet 那样」。协调滚动希望每一步里<em>不同 role 走不同的速度</em>；而 <code>partition</code> 是在单个 LWS 上独立起作用的。</li>
+<li><strong>运维可观测性</strong>——你可以直接看到 <code>old-prefill: 2, new-prefill: 3</code>，而不必从 partition 边界去推。</li>
+</ol>
+<p>接受的代价：滚动期间最多 <strong><code>2 × role 数 × slice 数</code></strong> 个 LWS 对象（Pod 数量不变），以及一个被封装在控制器里的更复杂算法。</p>
+<div class="admonition tip">
+<p class="admonition-title">一句话总结</p>
+<p><strong>DisaggregatedSet 对待 LeaderWorkerSet，就像 Deployment 对待 ReplicaSet</strong>：每个 revision 创建一个不可变的子对象，然后把副本从旧的挪到新的。本模块的每一个设计决策都是从这句话推出来的。</p>
+</div>
+<hr />
+<h2 id="_1">第二部分：对象模型<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    DS["&lt;b&gt;DisaggregatedSet&lt;/b&gt; my-inference&lt;br&gt;roles: [prefill, decode]&lt;br&gt;slices: 2"]
+
+    DS --&gt;|owns| S0R0P["&lt;b&gt;LWS&lt;/b&gt; my-inference-0-58f79fdb-prefill&lt;br&gt;slice 0 · rev 58f79fdb · prefill"]
+    DS --&gt;|owns| S0R0D["&lt;b&gt;LWS&lt;/b&gt; my-inference-0-58f79fdb-decode&lt;br&gt;slice 0 · rev 58f79fdb · decode"]
+    DS --&gt;|owns| S1R0P["&lt;b&gt;LWS&lt;/b&gt; my-inference-1-58f79fdb-prefill&lt;br&gt;slice 1"]
+    DS --&gt;|owns| S1R0D["&lt;b&gt;LWS&lt;/b&gt; my-inference-1-58f79fdb-decode&lt;br&gt;slice 1"]
+    DS --&gt;|owns| SC1["&lt;b&gt;DisaggregatedSetRoleScaler&lt;/b&gt;&lt;br&gt;my-inference-prefill&lt;br&gt;&lt;i&gt;仅当 scaling.mode: External&lt;/i&gt;"]
+
+    S0R0P --&gt;|"所有 role 就绪后才建 Service"| SVC1["my-inference-0-58f79fdb-prefill-prv&lt;br&gt;headless · selector 含 revision"]
+    S0R0D --&gt; SVC2["my-inference-0-58f79fdb-decode-prv"]
+
+    S0R0P --&gt; P1["leader + worker Pod&lt;br&gt;（普通的 LWS 组）"]</code></pre>
+<h3 id="21">2.1 命名<a class="headerlink" href="#21" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GenerateName</span><span class="p">(</span><span class="nx">baseName</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s-%d-%s-%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">baseName</span><span class="p">,</span><span class="w"> </span><span class="nx">slice</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="kd">func</span><span class="w"> </span><span class="nx">GenerateLegacyName</span><span class="p">(</span><span class="nx">baseName</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s-%s-%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">baseName</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">对象</th>
+<th style="text-align: left;">格式</th>
+<th style="text-align: left;">示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">LWS</td>
+<td style="text-align: left;"><code>&lt;ds&gt;-&lt;slice&gt;-&lt;revision&gt;-&lt;role&gt;</code></td>
+<td style="text-align: left;"><code>my-inference-0-58f79fdb-prefill</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Service</td>
+<td style="text-align: left;"><code>&lt;lws 名&gt;-prv</code></td>
+<td style="text-align: left;"><code>my-inference-0-58f79fdb-prefill-prv</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Scaler</td>
+<td style="text-align: left;"><code>&lt;ds&gt;-&lt;role&gt;</code>——<strong>无 slice、无 revision</strong></td>
+<td style="text-align: left;"><code>my-inference-prefill</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">遗留 LWS（slices 之前）</td>
+<td style="text-align: left;"><code>&lt;ds&gt;-&lt;revision&gt;-&lt;role&gt;</code></td>
+<td style="text-align: left;"><code>my-inference-58f79fdb-prefill</code></td>
+</tr>
+</tbody>
+</table>
+<p>名字里 <strong>slice 在 revision 之前</strong>，这个顺序是刻意的：slice 是映射到放置域、能跨滚动存活的持久身份；revision 是短暂的。用 KEP-846 的话说，「一个 slice 会轮换多个 revision，而不是反过来」。所有控制器逻辑都基于 <em>label</em>，从不解析名字。</p>
+<p>revision hash 是 <strong>8 个十六进制字符</strong>（<code>revisionLength = 8</code>），尽管站点文档和 KEP 示例里写的是 <code>58f79fdb78</code> 这样的 10 字符串——一处外观上的文档不一致。</p>
+<h3 id="22-label">2.2 Label<a class="headerlink" href="#22-label" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">    </span><span class="s">&quot;app&quot;</span><span class="p">:</span><span class="w">                                    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s-%d-%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">baseName</span><span class="p">,</span><span class="w"> </span><span class="nx">slice</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="p">),</span>
+<span class="w">    </span><span class="s">&quot;disaggregatedset.x-k8s.io/role&quot;</span><span class="p">:</span><span class="w">         </span><span class="nx">role</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;disaggregatedset.x-k8s.io/slice&quot;</span><span class="p">:</span><span class="w">        </span><span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">slice</span><span class="p">),</span>
+<span class="w">    </span><span class="s">&quot;disaggregatedset.x-k8s.io/name&quot;</span><span class="p">:</span><span class="w">         </span><span class="nx">baseName</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;disaggregatedset.x-k8s.io/revision&quot;</span><span class="p">:</span><span class="w">     </span><span class="nx">revision</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>这些既打在 LWS 的 <code>ObjectMeta</code> 上，<strong>也打在两个 Pod 模板上</strong>，与用户 label 合并时系统 label 胜出。</p>
+<div class="admonition warning">
+<p class="admonition-title"><code>app</code> label 是个陷阱</p>
+<p><code>app</code> 的作用域是 slice+role，但<strong>与 revision 无关</strong>。它只是给人看的便利 label，<strong>绝不能</strong>用作 Service selector——滚动期间它会同时匹配两个 revision，而那正是整个设计要防止的跨 revision 路由。</p>
+</div>
+<h3 id="23-revision">2.3 什么决定了 revision<a class="headerlink" href="#23-revision" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">roleTemplate</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Name</span><span class="w">     </span><span class="kt">string</span><span class="w">                                 </span><span class="s">`json:&quot;name&quot;`</span>
+<span class="w">    </span><span class="nx">Template</span><span class="w"> </span><span class="nx">leaderworkersetv1</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="w"> </span><span class="s">`json:&quot;template&quot;`</span>
+<span class="p">}</span>
+<span class="nx">hash</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">sha256</span><span class="p">.</span><span class="nx">Sum256</span><span class="p">(</span><span class="nx">jsonData</span><span class="p">)</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">hex</span><span class="p">.</span><span class="nx">EncodeToString</span><span class="p">(</span><span class="nx">hash</span><span class="p">[:])[:</span><span class="mi">8</span><span class="p">]</span>
+</code></pre></div>
+<p><strong>只有 role 名字和 <code>LeaderWorkerTemplate</code>。</strong> 其余一切——<code>slices</code>、<code>placementPolicy</code>、<code>scaling</code>、<code>replicas</code>、<code>rolloutStrategy</code>、<code>networkConfig</code>、<code>startupPolicy</code>、role 的 <code>metadata</code>——都在哈希之外。</p>
+<p>这正是 slice 伸缩和自动伸缩不会引发滚动的原因。它同时也是下文 §10.1 那个限制的来源，请记住这一点。</p>
+<hr />
+<h2 id="_2">第三部分：控制器架构<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<h3 id="31-reconcile">3.1 Reconcile 骨架<a class="headerlink" href="#31-reconcile" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">revision</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">disaggregatedsetutils</span><span class="p">.</span><span class="nx">ComputeRevision</span><span class="p">(</span><span class="nx">disaggregatedSet</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Roles</span><span class="p">)</span>
+<span class="nx">sliceCount</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">disaggregatedsetutils</span><span class="p">.</span><span class="nx">GetSlices</span><span class="p">(</span><span class="nx">disaggregatedSet</span><span class="p">))</span>
+<span class="nx">r</span><span class="p">.</span><span class="nx">cleanupRemovedSlices</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">disaggregatedSet</span><span class="p">,</span><span class="w"> </span><span class="nx">sliceCount</span><span class="p">)</span>
+<span class="nx">seedFor</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">seedForRole</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">disaggregatedSet</span><span class="p">)</span>
+<span class="nx">scalers</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">ScalerManager</span><span class="p">.</span><span class="nx">Reconcile</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">disaggregatedSet</span><span class="p">,</span><span class="w"> </span><span class="nx">seedFor</span><span class="p">)</span>
+<span class="nx">executor</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">createRollingUpdateExecutor</span><span class="p">()</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">sliceCount</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">recreateLegacySlice0</span><span class="p">(</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">sliceCount</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">reconcileSlice</span><span class="p">(</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">r</span><span class="p">.</span><span class="nx">updateScalerStatus</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">disaggregatedSet</span><span class="p">,</span><span class="w"> </span><span class="nx">scalers</span><span class="p">)</span>
+</code></pre></div>
+<p>两点值得注意：</p>
+<ul>
+<li><strong>revision 对整个 DS 只算一次</strong>，然后 slice 循环对每个 slice 跑同样的逻辑。滚动中途各 slice 处于不同 revision 是完全合法的。</li>
+<li><strong>各 slice 的错误被收集</strong>而不是提前返回：<code>errors.Join(errs...)</code> 意味着一个坏 slice 不会跳过其他 slice，<code>earliestRequeue</code> 保留最近的那个非零 <code>RequeueAfter</code>。</li>
+</ul>
+<p><code>SetupWithManager</code> 是 <code>For(&amp;DisaggregatedSet{}).Owns(&amp;LeaderWorkerSet{}).Owns(&amp;DisaggregatedSetRoleScaler{})</code>。其中 <code>Owns(scaler)</code> 是 KEP-849 的写路径：HPA 对 <code>/scale</code> 的写会碰到 scaler，从而一跳就把父 DS 排进队列。</p>
+<h3 id="32-plannerexecutor">3.2 planner/executor 拆分<a class="headerlink" href="#32-plannerexecutor" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>flowchart LR
+    subgraph EX ["&lt;b&gt;Executor&lt;/b&gt;——唯一碰 API server 的那一半"]
+        E1["GetRevisionRolesList&lt;br&gt;列举 LWS"]
+        E2["buildPlannerState&lt;br&gt;→ 4 个整数向量"]
+        E3["extractRollingUpdateConfig&lt;br&gt;解析 surge/unavailable 百分比"]
+        E6["isRevisionStable&lt;br&gt;闸门"]
+        E7["scaleUpNew / scaleDownOld&lt;br&gt;下发"]
+        E8["Record.Eventf"]
+    end
+    subgraph PL ["&lt;b&gt;Planner&lt;/b&gt;——纯函数，无 client，无副作用"]
+        P1["ComputeNextStep(&lt;br&gt;  initialOld, currentOld,&lt;br&gt;  currentNew, targetNew,&lt;br&gt;  config) *UpdateStep"]
+    end
+    E2 --&gt; P1
+    E3 --&gt; P1
+    P1 --&gt; E7
+    E6 -.-&gt;|"不稳定 → 1 秒后重排队"| E6</code></pre>
+<p>planner 的全部词汇：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">UpdateStep</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Past</span><span class="w"> </span><span class="p">[]</span><span class="kt">int</span><span class="w">   </span><span class="c1">// 各 role 索引上，期望的旧 revision 副本数</span>
+<span class="w">    </span><span class="nx">New</span><span class="w">  </span><span class="p">[]</span><span class="kt">int</span><span class="w">   </span><span class="c1">// 各 role 索引上，期望的新 revision 副本数</span>
+<span class="p">}</span>
+<span class="kd">type</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[]</span><span class="kt">int</span><span class="w">              </span><span class="c1">// 类型别名，不是新定义的类型</span>
+<span class="kd">type</span><span class="w"> </span><span class="nx">RollingUpdateConfig</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">MaxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">MaxUnavailable</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">ComputeNextStep</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="p">,</span>
+<span class="w">                     </span><span class="nx">config</span><span class="w"> </span><span class="p">[]</span><span class="nx">RollingUpdateConfig</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">UpdateStep</span><span class="w">    </span><span class="c1">// nil == 完成</span>
+</code></pre></div>
+<p>每个向量都按 <code>allRoleNames</code> 中的位置索引。<strong><code>UpdateStep</code> 是绝对值而非增量</strong>——重复施加同一步是幂等的，这正是无状态控制器可以在滚动中途安全重启的原因。</p>
+<p><strong>这个拆分为什么存在。</strong> planner 是四个整数向量加配置的纯函数，因此整个 N 维算法可以不依赖 envtest 做穷举单测——<code>planner_test.go</code> 是 38 KB 的表驱动测试，含 <code>TestComputeAllSteps_ExactSequence</code>。它也让 KEP-766 的无状态控制器目标变得可行：不存在内存中的滚动状态机。每次 reconcile 都从列举到的 LWS 对象重新推导 <code>currentOld</code> 和 <code>currentNew</code>，从 annotation 拿 <code>initialOld</code>，然后向 planner 要恰好一步。</p>
+<p>如果你要给滚动算法做贡献，<strong>你几乎肯定只需要改 <code>planner.go</code> 并加表驱动测试</strong>。那是这个子系统里最便宜、最安全、最好 review 的改动类型。</p>
+<hr />
+<h2 id="n">第四部分：N 维滚动<a class="headerlink" href="#n" title="Permanent link">&para;</a></h2>
+<h3 id="41-lws-partition">4.1 它根本不用 LWS 的 <code>partition</code><a class="headerlink" href="#41-lws-partition" title="Permanent link">&para;</a></h3>
+<p>这是最常见的误解，所以值得直说。</p>
+<ul>
+<li><code>partition</code> 被 DS webhook <strong>禁止</strong>：<code>field.Forbidden(..., "partition is not supported by DisaggregatedSet; rolling updates are managed across roles by the DisaggregatedSet controller")</code>。</li>
+<li>DS 控制器从不在子 LWS 上写 <code>Partition</code>。<code>grep -rn "Partition" pkg/controllers/disaggregatedset</code> 什么也搜不到。</li>
+<li>role 的 <code>rolloutStrategy</code> 里的 <code>maxSurge</code> 和 <code>maxUnavailable</code> <strong>只用来给 DS planner 传参</strong>。</li>
+</ul>
+<p>真正的机制是：<strong>在新 revision hash 上创建第二个 LWS，一边把它的 <code>spec.replicas</code> 往上棘轮、一边把旧 LWS 的 <code>spec.replicas</code> 往下棘轮，等所有 role 都归零后删掉旧 LWS。</strong> 一个子 LWS 的 Pod 模板在创建时写一次、之后从不 patch，所以子 LWS 自己的滚动机制从未被触发。</p>
+<div class="admonition bug">
+<p class="admonition-title">KEP-766 与代码在这里不一致</p>
+<p>KEP-766 说 DisaggregatedSet「不会把 <code>RolloutStrategy</code> 传播到底层 LWS 资源」。而代码<strong>会</strong>：<code>lws_manager.go</code> 复制了整个 spec（<code>lwsSpec := config.Spec</code>），只覆盖 <code>Replicas</code>，因此 <code>RolloutStrategy</code> 原样落到了子对象上。实践中它是惰性的——从不发生模板 patch——但文本和代码应当统一。</p>
+</div>
+<h3 id="42">4.2 理想轨迹<a class="headerlink" href="#42" title="Permanent link">&para;</a></h3>
+<p>planner 的包注释写明了目标：</p>
+<div class="arithmatex">\[
+\text{newAtStep}(i) = \left\lceil \frac{i \cdot \text{target}}{\text{totalSteps}} \right\rceil
+\qquad
+\text{oldAtStep}(i) = \text{initialOld} - \left\lfloor \frac{i \cdot \text{initialOld}}{\text{totalSteps}} \right\rfloor
+\]</div>
+<p>由于控制器无状态，它从不保存 <span class="arithmatex">\(i\)</span>。它从观测到的副本数<strong>反解</strong>这个公式，然后在 <span class="arithmatex">\(i+1\)</span> 处求值。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">batchSize</span><span class="p">(</span><span class="nx">maxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">maxUnavailable</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nx">maxUnavailable</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">computeTotalSteps</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="p">[]</span><span class="nx">RollingUpdateConfig</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">totalSteps</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">);</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">maxReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="nx">target</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">roleBatchSize</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">batchSize</span><span class="p">(</span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxUnavailable</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">roleSteps</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">(</span><span class="nx">maxReplicas</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">roleBatchSize</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">roleBatchSize</span><span class="w">   </span><span class="c1">// 向上整除</span>
+<span class="w">        </span><span class="nx">totalSteps</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">totalSteps</span><span class="p">,</span><span class="w"> </span><span class="nx">roleSteps</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">totalSteps</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong><code>totalSteps</code> 取各 role 的最大值，这正是齐步走的强制点。</strong> 副本最多——或批次最小——的那个 role 定节拍。较小的 role 得到一条<em>分数</em>轨迹，由 ceil/floor 离散化，于是 3 副本的 decode 池每隔一步才动一次、而 6 副本的 prefill 池每步都动。比例是构造性地被保持的。</p>
+<div class="admonition note">
+<p class="admonition-title"><code>totalSteps</code> 数的是批次，不是 reconcile</p>
+<p>KEP-766 特别强调这点。它的示例里 <code>totalSteps = 3</code>，却走了 <strong>7 次 reconcile</strong>，因为扩容和缩容是分开的步骤，而稳定性闸门还会插入等待。</p>
+</div>
+<h3 id="43-min-max">4.3 扩容取 min，缩容取 max<a class="headerlink" href="#43-min-max" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// 扩容</span>
+<span class="nx">stepIndex</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">current</span><span class="p">,</span><span class="w"> </span><span class="nx">targetVal</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">targetVal</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">totalSteps</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nb">float64</span><span class="p">(</span><span class="nx">current</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">totalSteps</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">targetVal</span><span class="p">))</span><span class="w">   </span><span class="c1">// 向下取整</span>
+<span class="p">}</span>
+<span class="nx">minStepIdx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">totalSteps</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">target</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">minStepIdx</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">minStepIdx</span><span class="p">,</span><span class="w"> </span><span class="nx">stepIndex</span><span class="p">(</span><span class="nx">currentNew</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="nx">target</span><span class="p">[</span><span class="nx">i</span><span class="p">]))</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">nextStepIdx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">minStepIdx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span>
+
+<span class="nx">computeNew</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">targetVal</span><span class="p">,</span><span class="w"> </span><span class="nx">currentVal</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">progress</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">nextStepIdx</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">targetVal</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">totalSteps</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">computed</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nx">math</span><span class="p">.</span><span class="nx">Ceil</span><span class="p">(</span><span class="nx">progress</span><span class="p">)),</span><span class="w"> </span><span class="nx">targetVal</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">computed</span><span class="p">,</span><span class="w"> </span><span class="nx">currentVal</span><span class="p">)</span><span class="w">      </span><span class="c1">// 单调：新侧永不缩</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1">// 缩容</span>
+<span class="nx">maxStepIdx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">initialOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">removed</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">currentOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">maxStepIdx</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">maxStepIdx</span><span class="p">,</span><span class="w"> </span><span class="nx">stepIndex</span><span class="p">(</span><span class="nx">removed</span><span class="p">,</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]))</span>
+<span class="p">}</span>
+<span class="nx">computeOld</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">sourceVal</span><span class="p">,</span><span class="w"> </span><span class="nx">currentVal</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">progress</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">nextStepIdx</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">sourceVal</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">totalSteps</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">computed</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">sourceVal</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="nx">math</span><span class="p">.</span><span class="nx">Floor</span><span class="p">(</span><span class="nx">progress</span><span class="p">)))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">computed</span><span class="p">,</span><span class="w"> </span><span class="nx">currentVal</span><span class="p">)</span><span class="w">      </span><span class="c1">// 单调：旧侧永不涨</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>扩容取 min，缩容取 max。</strong> 这个不对称是刻意的，即 KEP-766 的 Property 2。扩容取 <em>min</em>，意味着<strong>落后的 role 定步长</strong>——没有 role 能抢跑。缩容取 <em>max</em>，意味着旧集群的排空速度不超过<strong>排空最多</strong>的那个 role 所能证成的程度。两者合起来，从两侧把总占用量往 surge 预算上挤。</p>
+<h3 id="44">4.4 决策级联<a class="headerlink" href="#44" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">ComputeNextStep</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="p">,</span>
+<span class="w">                     </span><span class="nx">config</span><span class="w"> </span><span class="p">[]</span><span class="nx">RollingUpdateConfig</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">UpdateStep</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">isComplete</span><span class="p">(</span><span class="nx">currentOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">}</span><span class="w">                    </span><span class="c1">// (1)</span>
+<span class="w">    </span><span class="nx">totalSteps</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">computeTotalSteps</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">totalSteps</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">}</span><span class="w">                                                  </span><span class="c1">// (2)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">correctAbnormalState</span><span class="p">(</span><span class="nx">currentOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">);</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1">// (3)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">isNewAtTarget</span><span class="p">(</span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">                                          </span><span class="c1">// (4)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">UpdateStep</span><span class="p">{</span><span class="nx">Past</span><span class="p">:</span><span class="w"> </span><span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">)),</span><span class="w"> </span><span class="nx">New</span><span class="p">:</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">nextNew</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">computeNextNewReplicas</span><span class="p">(</span><span class="nx">targetNew</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">totalSteps</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">minOld</span><span class="w">  </span><span class="o">:=</span><span class="w"> </span><span class="nx">computeMinOld</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tryScaleUp</span><span class="p">(</span><span class="o">...</span><span class="p">);</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="p">}</span><span class="w">                            </span><span class="c1">// (5)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tryProportionalDrain</span><span class="p">(</span><span class="o">...</span><span class="p">);</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="p">}</span><span class="w">                  </span><span class="c1">// (6)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tryForceDrain</span><span class="p">(</span><span class="o">...</span><span class="p">);</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="p">}</span><span class="w">                         </span><span class="c1">// (7)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>(5)、(6)、(7) 每一个都只改 <code>Past</code> 或只改 <code>New</code>，绝不同时改。</strong> 这是 KEP-766 的 Property 1「Decoupled Steps」，也是每一步都可独立观测、每一次失败都可独立诊断的原因。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">关卡</th>
+<th style="text-align: left;">做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>(1) <code>isComplete</code></strong></td>
+<td style="text-align: left;">每个 role 都满足 <code>currentOld[i] == 0 &amp;&amp; currentNew[i] &gt;= targetNew[i]</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(3) <code>correctAbnormalState</code></strong></td>
+<td style="text-align: left;">把 <code>currentOld[i]</code> 钳到 <code>min(initialOld[i], currentOld[i])</code>。处理陈旧 annotation 或人工乱动</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(4) <code>isNewAtTarget</code></strong></td>
+<td style="text-align: left;">一旦每个 role 的新集群都到位，跳过步进机制，一把把整个旧侧归零</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(5) <code>tryScaleUp</code></strong></td>
+<td style="text-align: left;">仅当存在 <code>nextNew[i] &gt; currentNew[i]</code> <strong>且</strong> <code>canScaleUp</code> 成立时触发</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(6) <code>tryProportionalDrain</code></strong></td>
+<td style="text-align: left;">沿轨迹排空，逐 role 以 <code>minOld</code> 兜底，再过一遍 orphan prevention</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(7) <code>tryForceDrain</code></strong></td>
+<td style="text-align: left;">当 surge 预算卡住下一次扩容时的解锁器</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>canScaleUp</code> 就是 surge 不变式</strong>，即 KEP-766 的 Property 4：</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">currentOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">currentOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">+</span><span class="nx">nextNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">+</span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxSurge</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>逐 role 检查、对所有 role 检查、在任何 role 扩容之前检查。</strong> surge 预算在向量意义上是全局的：一个 role 超预算就卡住整步。</p>
+<p><strong><code>computeMinOld</code> 是可用性不变式：</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">initialOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">minOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">-</span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxUnavailable</span><span class="o">-</span><span class="nx">currentNew</span><span class="p">[</span><span class="nx">i</span><span class="p">])</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>保留足够的旧副本使 <code>old + new &gt;= target - maxUnavailable</code>。跨 revision 在<em>扩容</em>的 role（<code>initialOld &lt; targetNew</code>）得到 <code>minOld[i] = 0</code>——它们没什么要保护的。</p>
+<p><strong><code>tryForceDrain</code> 是死锁打破器。</strong> 当 surge 卡住下一次扩容时，把旧的排空到 surge 预算恰好要求的程度：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">maxOld</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxSurge</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">nextNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+<span class="nx">drainedOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">currentOld</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="nx">maxOld</span><span class="p">))</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">minOldForRole</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">-</span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxUnavailable</span><span class="o">-</span><span class="nx">nextNew</span><span class="p">[</span><span class="nx">i</span><span class="p">])</span>
+<span class="w">    </span><span class="nx">drainedOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">drainedOld</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="nx">minOldForRole</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>它是对着 <code>nextNew</code> 而不是 <code>currentNew</code> 计算的，所以只排空<em>刚好够</em>容纳下一次扩容的量。它是刻意偏离轨迹的——KEP 说「force-drain 绕过了 step-index 机制」。</p>
+<h3 id="45-orphan-prevention">4.5 Orphan prevention<a class="headerlink" href="#45-orphan-prevention" title="Permanent link">&para;</a></h3>
+<p>这是让整套机制从「收敛」变成「正确」的安全网。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">applyOrphanPrevention</span><span class="p">(</span><span class="nx">nextOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="p">,</span>
+<span class="w">                           </span><span class="nx">config</span><span class="w"> </span><span class="p">[]</span><span class="nx">RollingUpdateConfig</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">anyDrainsToZero</span><span class="p">,</span><span class="w"> </span><span class="nx">allDrainToZero</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">nextOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">nextOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">anyDrainsToZero</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">allDrainToZero</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">anyDrainsToZero</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">allDrainToZero</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">canDrainAllToZero</span><span class="p">(</span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">nextOld</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">nextOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">}</span><span class="w">        </span><span class="c1">// 要么全排空，把这次排完</span>
+<span class="w">        </span><span class="k">return</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">nextOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">nextOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">nextOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// 留一个</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>KEP-766 的 Property 3 是「如果任一 role 归零，所有 role 都被强制归零」，而实现把它做成了双向的：</p>
+<ul>
+<li>如果<strong>新</strong>集群已经能吃下负载（<code>canDrainAllToZero</code>），一次性把整个旧 revision 归零。</li>
+<li>否则<strong>不允许任何 role 归零</strong>，把它钉在 1。</li>
+</ul>
+<p>没有这一手，一次滚动可能留下一个「0 个 prefill、3 个 decode」的旧 revision——一个什么都服务不了、却仍占着 GPU 的 revision。考虑到一个 8 卡 decode 组的成本，这可不是理论上的顾虑。</p>
+<p>executor 在 <code>scaleDownOld</code> 里有它的孪生逻辑：如果一个旧 revision 的<em>任一</em> role 会归零，那<strong>所有</strong> role 在同一趟里一起归零，而被这次协同额外归零的 Pod 不计入排空预算。</p>
+<h3 id="46-initial-replicas-annotation">4.6 <code>initial-replicas</code> annotation<a class="headerlink" href="#46-initial-replicas-annotation" title="Permanent link">&para;</a></h3>
+<p><code>disaggregatedset.x-k8s.io/initial-replicas</code> 之所以存在，是因为 planner 需要 <code>initialOld</code>——<strong>滚动开始时</strong>旧 revision 的副本数——作为排空插值的分母。而在无状态控制器里，唯一能持久保存它的地方就是对象自身，偏偏 <code>spec.replicas</code> 会随滚动推进而变化。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>写入</strong></td>
+<td style="text-align: left;">恰好一次，在 <code>initRollingUpdate</code> 里，<strong>早于</strong>任何新 revision LWS 的创建。按 LWS 的<em>实际</em>名字寻址，这样遗留的 slice-0 对象也会被更新而不是被漏掉</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>随后</strong></td>
+<td style="text-align: left;">新 revision 的 LWS 以 <strong>0 副本</strong>创建，reconcile 返回 <code>RequeueAfter: 1s</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>读取</strong></td>
+<td style="text-align: left;"><code>GetTotalInitialReplicasPerRole</code> 跨旧 revision 求和，缺失时回退到 <code>spec.replicas</code>（或 1）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>覆盖</strong></td>
+<td style="text-align: left;">记录 <code>"WARNING: Overwriting initial-replicas annotation with different value"</code>；值不变时是空操作</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition bug">
+<p class="admonition-title">写失败被吞掉了</p>
+<p><code>initRollingUpdate</code> 对失败的 annotation patch 只做 <code>log.Error</code>。写失败会静默地把该 role 的排空基线降级为 <code>spec.Replicas</code>，而那是<em>当前</em>数量而不是<em>初始</em>数量——产生一条微妙错误的排空轨迹，且没有任何错误浮出水面。把这个错误传播出去是一个小而边界清晰的修复。</p>
+</div>
+<h3 id="47">4.7 稳定性闸门与拆除<a class="headerlink" href="#47" title="Permanent link">&para;</a></h3>
+<p>两道不同的闸门，都在 executor 里。</p>
+<p><strong>每步一次</strong>的 <code>isRevisionStable</code>：</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">roleNames</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">lws</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">rev</span><span class="p">.</span><span class="nx">Roles</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">lws</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">getLWSReplicas</span><span class="p">(</span><span class="nx">lws</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ReadyReplicas</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>只对<strong>新</strong> revision 调用。不稳定时 reconcile 返回 <code>RequeueAfter: 1s</code>，什么都不动。这是 KEP-766 的 Property 6。</p>
+<p>注意它的严格：即便就绪数<em>超过</em>目标，<code>Spec.Replicas != Status.ReadyReplicas</code> 也会阻塞；而且它完全不看旧 revision 的就绪情况。</p>
+<p><strong>revision 拆除</strong>是独立的，发生在下一次 <code>reconcileSlice</code> <em>开头</em>的 <code>cleanupDrainedLWS</code> 里。它把非目标 revision 的 LWS 按 revision 分组，只有当该组里<strong>每个</strong> role 的 <code>spec.replicas == 0</code> 时才删除这个 revision 的对象。key 冲突时它还会记录 <code>"WARNING: multiple LWS found for same role and revision"</code>——一个代码能检测但不去解决的状态。</p>
+<h3 id="48-role">4.8 滚动中途增删 role<a class="headerlink" href="#48-role" title="Permanent link">&para;</a></h3>
+<p><code>detectRoleChanges</code> 把 spec 里的 role 和旧 revision 中存在的 role 做差。被移除的 role <strong>保留一个索引</strong>在 planner 向量里，好让它们的旧副本排空；但 <code>buildPlannerState</code> 把它们的 <code>currentNew</code>/<code>targetNew</code> 留在 0，<code>scaleUpNew</code> 也会跳过它们。由于 role 名字可变（§9），改名会被当成「删除 + 新增」处理。</p>
+<hr />
+<h2 id="sliceskep-846">第五部分：Slices（KEP-846）<a class="headerlink" href="#sliceskep-846" title="Permanent link">&para;</a></h2>
+<h3 id="51-slice">5.1 slice 是什么<a class="headerlink" href="#51-slice" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:default=1</span>
+<span class="c1">// +kubebuilder:validation:Minimum=1</span>
+<span class="c1">// +kubebuilder:validation:Maximum=100</span>
+<span class="nx">Slices</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="s">`json:&quot;slices,omitempty&quot;`</span>
+</code></pre></div>
+<p>「整个 role 拓扑的独立副本数量。每个 slice 是一整套 role，独立滚动。」</p>
+<p>每个 role 的 <code>spec.replicas</code> 是<strong>按 slice 计</strong>的，所以一个 role 的总组数是 <code>replicas × slices</code>。</p>
+<p>KEP-846 给的心智模型：「slice 是持久的外层身份；revision 是短暂的。一个 slice 内通常只有一个 revision 在线，在它滚动时两个 revision 短暂共存。」</p>
+<h3 id="52-planner">5.2 planner 为什么不用改<a class="headerlink" href="#52-planner" title="Permanent link">&para;</a></h3>
+<p><code>Reconcile</code> 只算一次 revision，然后 <code>for slice := range sliceCount { r.reconcileSlice(...) }</code>。里面的一切都是 slice 作用域的。<strong>把同一个 N 维算法对每个 slice 跑一遍，就白得了 per-slice 的独立滚动</strong>——planner 一行都不用改。</p>
+<p>slice 过滤是<strong>客户端</strong>做的，因为「slice label == 0 或不存在」无法用 label selector 表达：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">SliceLabelMatches</span><span class="p">(</span><span class="nx">labels</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span><span class="w">                 </span><span class="c1">// -1 == 所有 slice</span>
+<span class="w">    </span><span class="nx">value</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">labels</span><span class="p">[</span><span class="nx">SliceLabelKey</span><span class="p">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">ok</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">value</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1">// 遗留对象 → slice 0</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">value</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">slice</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="53-slice">5.3 伸缩 slice 不会滚动<a class="headerlink" href="#53-slice" title="Permanent link">&para;</a></h3>
+<p>因为 <code>slices</code> 在 <code>ComputeRevision</code> 之外，把 <code>slices: 2 → 3</code> 不改变任何 revision。slice 循环走到索引 2，发现没有 LWS，于是走 <code>reconcileSimple</code> 路径，在当前 revision 上创建 slice 2。</p>
+<p>缩容（<code>cleanupRemovedSlices</code>）就是把 <code>slice</code> label <code>&gt;= desiredSlices</code> 的每个 LWS 和对应 Service 直接删掉。KEP-846 为「没有编排式排空」给出的理由：「slice 移除没有跨 slice 不变式需要保护（各 slice 相互独立），所以它就是一次普通的伸缩操作。」</p>
+<h3 id="54-slice-0">5.4 遗留 slice-0 迁移<a class="headerlink" href="#54-slice-0" title="Permanent link">&para;</a></h3>
+<p>slices 是在 DisaggregatedSet 首发之后才加的，所以有一层兼容代码，并明确标记了待移除：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// TODO(0.11.0): remove legacy slice-0 handling once pre-slices DisaggregatedSets are no</span>
+<span class="c1">// longer supported. The related legacy-compat code to remove with it: GenerateLegacyName,</span>
+<span class="c1">// GetForRole&#39;s legacy-name fallback, DeleteLegacyService, and the label-less branch in</span>
+<span class="c1">// SliceLabelMatches.</span>
+</code></pre></div>
+<p>三种行为：</p>
+<ol>
+<li><strong>原地收养。</strong> <code>GetForRole</code> 先试 slice-aware 名字，仅当 <code>slice == 0</code> 时回退到 <code>GenerateLegacyName</code>。单纯升级不会重建任何东西。</li>
+<li><strong>下次滚动时迁移</strong>——免费。新 revision 的 slice-0 LWS 以 slice-aware 方式创建，遗留 LWS 通过正常滚动排空，而 Service 是按 revision 划分的，所以永不会交叉选中。</li>
+<li><strong><code>slices</code> 升到 1 以上时迁移</strong>——<code>recreateLegacySlice0</code>，在 slice 循环<em>之前</em>调用。它解决的问题是：遗留 Service 的 selector 是 <code>{name, role, revision}</code>，<strong>没有 slice key</strong>，于是同 revision 的一个新 slice-1 Pod 会是超集匹配，被 slice 0 的 Service 选中。修法是<strong>先</strong>删遗留 Service，<strong>再</strong>删遗留 LWS。这会让 slice 0 重启一次——相对于原地迁移，这是被接受的代价。</li>
+</ol>
+<p>那段 TODO 是一个边界清晰的未来贡献，待移除清单都已经替你列好了。</p>
+<hr />
+<h2 id="kep-848">第六部分：放置策略（KEP-848）<a class="headerlink" href="#kep-848" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">PlacementPolicy</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Type</span><span class="w">     </span><span class="nx">PlacementType</span><span class="w"> </span><span class="s">`json:&quot;type,omitempty&quot;`</span><span class="w">     </span><span class="c1">// None | ExclusiveSlice | ExclusiveTopology</span>
+<span class="w">    </span><span class="nx">Topology</span><span class="w"> </span><span class="kt">string</span><span class="w">        </span><span class="s">`json:&quot;topology,omitempty&quot;`</span><span class="w"> </span><span class="c1">// 节点 label key → 亲和性 topologyKey</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">类型</th>
+<th style="text-align: left;">保证</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>None</code>（默认）</td>
+<td style="text-align: left;">不注入亲和性</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ExclusiveSlice</code></td>
+<td style="text-align: left;">一个 slice 的各 role 共置于一个域，且本 DS 的各 slice 分散到不同域。<strong>其他 DisaggregatedSet 可以共享同一个域</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ExclusiveTopology</code></td>
+<td style="text-align: left;">在 <code>ExclusiveSlice</code> 之上加域独占：<strong>跨所有 DisaggregatedSet</strong>，一个域最多放一个 slice——1:1 的域-slice 映射</td>
+</tr>
+</tbody>
+</table>
+<p>注入只发生在 <strong>LWS 创建时</strong>，在 <code>LeaderWorkerSetManager.Create</code> 里，注入到两个 Pod 模板。没有 mutating webhook；KEP-848 否掉了它，理由是「DisaggregatedSet 控制器本来就在构建和改写 LeaderWorkerSet 的 Pod 模板」。已有的亲和性会被深拷贝，新项是<strong>追加</strong>而不是替换。</p>
+<h3 id="61-exclusiveslice">6.1 <code>ExclusiveSlice</code>——两项<a class="headerlink" href="#61-exclusiveslice" title="Permanent link">&para;</a></h3>
+<p><strong>第 1 项，podAffinity</strong>——把 slice 的各 role 共置：</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;disaggregatedset.x-k8s.io/name&quot;</span><span class="p">,</span><span class="w">  </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">In</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nx">dsName</span><span class="p">]},</span>
+<span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;disaggregatedset.x-k8s.io/slice&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">In</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">slice</span><span class="p">)]},</span>
+</code></pre></div>
+<p>自指的，所以一个 slice 的第一个 Pod 不受钉扎（没有匹配 Pod 的 required podAffinity 视为满足），后续 Pod 被吸引过来。</p>
+<p><strong>第 2 项，podAntiAffinity</strong>——把本 DS 的各 slice 打散：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">spreadExprs</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorRequirement</span><span class="p">{</span>
+<span class="w">    </span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SetNameLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">In</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">dsName</span><span class="p">}},</span>
+<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">spreadExprs</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="nx">spreadExprs</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorRequirement</span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SliceLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorOpExists</span><span class="p">})</span>
+<span class="p">}</span>
+<span class="nx">spreadExprs</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="nx">spreadExprs</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorRequirement</span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SliceLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorOpNotIn</span><span class="p">,</span>
+<span class="w">                                    </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">sliceStr</span><span class="p">}})</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title"><code>slice == 0</code> 这个特例是整个子系统里最微妙的代码</p>
+<p>Kubernetes 的 label selector 会把 <code>NotIn</code> 理解成<strong>也匹配完全没有该 key 的对象</strong>。对 slice ≠ 0 而言这完全正确：一个 slices 之前的、没有 label 的 Pod 语义上属于 slice 0——是<em>另一个</em> slice——理应互斥。</p>
+<p>但对 slice 0 自己来说，那个没有 label 的遗留 Pod 就是<em>同一个</em> slice。没有额外的 <code>Exists</code> 要求，「一个开启了放置策略的 slice-0 Pod 会被它自己的遗留前身排斥，从而在升级期间永远调度不上」。</p>
+<p>如果你要动这里的 selector 构造，先读 <code>affinity.go:74-80</code> 的注释。</p>
+</div>
+<h3 id="62-exclusivetopology">6.2 <code>ExclusiveTopology</code>——第三项<a class="headerlink" href="#62-exclusivetopology" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SetNameLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">Exists</span><span class="p">},</span>
+<span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SetNameLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">NotIn</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">dsName</span><span class="p">}},</span>
+<span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SliceLabelKey</span><span class="p">,</span><span class="w">   </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">Exists</span><span class="p">},</span>
+</code></pre></div>
+<p>看似冗余的 <code>name Exists</code> 与 <code>name NotIn [ds]</code> 并列是刻意的，理由同上：单独的 <code>NotIn</code> 也会匹配<strong>没有</strong> name label 的 Pod——集群里每一个无关负载——把 <code>ExclusiveTopology</code> 变成「对一切都独占」。这两组 <code>Exists</code> 把排斥范围收窄到 DisaggregatedSet 管理的 Pod。</p>
+<p>由于 required podAntiAffinity 各项之间是与关系，第 2 项和第 3 项合起来意味着这个域里没有<em>任何</em>其他 slice，不管是不是同一个 DS。</p>
+<h3 id="63-lws">6.3 惰性生效，以及与 LWS 的冲突<a class="headerlink" href="#63-lws" title="Permanent link">&para;</a></h3>
+<p><code>placementPolicy</code> 在 <code>ComputeRevision</code> 之外，而且控制器刻意<strong>不</strong> patch 已有的 LWS。KEP-848：「改写一个运行中的 LeaderWorkerSet 的 Pod 模板，本身就会强制一次 LWS 级的滚动更新，把一次放置微调变成对所有 slice 同时进行的、隐式且不协调的重启。」</p>
+<p>所以新建的 slice 立即拿到策略；已有 slice 在下次滚动时才采用。</p>
+<p>webhook 会拒绝「非 <code>None</code> 策略」与「LWS 自己的独占拓扑 annotation」同时出现，并且<strong>每个 role 检查三处</strong>——role 的 <code>metadata.annotations</code>、leader 模板的、worker 模板的——因为 LWS 的 Pod webhook 是从 Pod 上读它们的。理由是：LWS 的独占是<em>组</em>粒度（「一个域一个 leader-worker 组」），DS 的放置是 <em>slice</em> 粒度；在同一拓扑层级同时用，结果就是「这个 slice 永远调度不上」。</p>
+<div class="admonition warning">
+<p class="admonition-title">只有硬约束，可能把一个 slice 卡死</p>
+<p>所有项都是 <code>RequiredDuringSchedulingIgnoredDuringExecution</code>。KEP-848 自己的 Risks 章节指出：没有整 slice 的前瞻，一个 slice 的第一个 Pod 可能落到一个装不下其余 Pod 的域里，把剩下的永远钉在 Pending。没有软性/<code>Preferred</code> 变体，DisaggregatedSet 的 gang 调度也被推迟了。这和<a href="../07_scheduling_placement_and_networking/">模块 7</a> §2.3 是同一种失效模式，只是高了一层。</p>
+</div>
+<hr />
+<h2 id="per-role-kep-849">第七部分：Per-Role 自动伸缩（KEP-849）<a class="headerlink" href="#per-role-kep-849" title="Permanent link">&para;</a></h2>
+<p>自动伸缩原本是 KEP-766 的非目标，被 KEP-849 取代。设计难点在于：一个 <code>DisaggregatedSet</code> 有 N 个 role，各自需要独立伸缩，而 <code>/scale</code> 子资源在一个对象上只能指向一个字段。答案是<strong>每个 role 一个独立 CR</strong>。</p>
+<h3 id="71-scaler-cr">7.1 Scaler CR<a class="headerlink" href="#71-scaler-cr" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector</span>
+<span class="c1">// +kubebuilder:resource:shortName=dsrs</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">DisaggregatedSetRoleScalerSpec</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:default=0</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:validation:Minimum=0</span>
+<span class="w">    </span><span class="nx">Replicas</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="s">`json:&quot;replicas&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">「非指针 + 默认值」是承重的</p>
+<p>源码注释把原因写清楚了：「kube-apiserver 的 CRD <code>/scale</code> handler 在读取时提取 <code>.spec.replicas</code>，当 JSONPath 解析不到任何东西时会报错（<code>the spec replicas field does not exist</code>）。HPA 在第一次写之前就会读 <code>/scale</code>；字段缺失会让这个循环死锁。」</p>
+<p>KEP-849 草案里的 API 是 <code>Replicas *int32</code> 带 <code>omitempty</code>。实现刻意偏离了它，而在你按 Kubernetes 惯例去「修正」它之前，值得知道这个理由。</p>
+</div>
+<h3 id="72">7.2 生命周期<a class="headerlink" href="#72" title="Permanent link">&para;</a></h3>
+<p><code>ScalerManager.Reconcile</code> 在任何 LWS 工作<strong>之前</strong>运行，这样下游的副本解析看到的是一个已经稳定的 scaler map：</p>
+<ol>
+<li>构造 <code>scaling.mode: External</code> 的 role 集合。</li>
+<li>列出命名空间内所有带本 DS 名字 label 的 scaler。</li>
+<li>逐个处理：不受本 DS 控制的跳过；其 role 不再是 External 的<strong>删掉</strong>（<code>ScalerDeleted</code>）；否则记录下来。</li>
+<li>对每个没有 scaler 的 External role，创建一个。</li>
+</ol>
+<p>一趟就同时处理了 External→Static 的拆除和 Static→External 的创建。遇到 <code>IsAlreadyExists</code> 时，如果已有对象不受本 DS 控制，它会发一个 <strong>Warning</strong> 级的 <code>ScalerConflict</code> 并返回，不做收养——它拒绝接管一个手工创建的对象。</p>
+<h3 id="73">7.3 播种，以及它避开的两个死锁<a class="headerlink" href="#73" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// seedForRole</span>
+<span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">seen</span><span class="p">[</span><span class="nx">role</span><span class="p">]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span><span class="w">      </span><span class="c1">// 全新 role</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">sums</span><span class="p">[</span><span class="nx">role</span><span class="p">]</span><span class="w">                 </span><span class="c1">// 跨所有 slice 的当前 LWS 副本聚合</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">情况</th>
+<th style="text-align: left;">播种值</th>
+<th style="text-align: left;">为什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">全新 role，还没有 LWS</td>
+<td style="text-align: left;"><strong>1</strong>，不是 0</td>
+<td style="text-align: left;">「当 HPA 从 <code>/scale</code> 读到 current=0 时会停在 <code>ScalingDisabled</code>，与 <code>minReplicas</code> 无关，除非启用了 <code>HPAScaleToZero</code> feature gate」</td>
+</tr>
+<tr>
+<td style="text-align: left;">运行中的 role 从 Static 翻成 External</td>
+<td style="text-align: left;">该 role 当前的聚合 LWS 副本数</td>
+<td style="text-align: left;">使这次翻转「不会排空到零」</td>
+</tr>
+</tbody>
+</table>
+<p>支持 scale-from-zero 的自动伸缩器（KEDA，或开了 gate 的 HPA）在挂上之后仍然可以把 role 降到 0。</p>
+<h3 id="74-no-shrink">7.4 副本解析与 no-shrink 守卫<a class="headerlink" href="#74-no-shrink" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">getTargetReplicas</span><span class="p">(</span><span class="nx">ds</span><span class="p">,</span><span class="w"> </span><span class="nx">roleName</span><span class="p">,</span><span class="w"> </span><span class="nx">scalers</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">p</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">ds</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Roles</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">Name</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">roleName</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">Scaling</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">Scaling</span><span class="p">.</span><span class="nx">Mode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">RoleScalingExternal</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scalers</span><span class="p">[</span><span class="nx">roleName</span><span class="p">];</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nx">currentNew</span><span class="w">                     </span><span class="c1">// 没有 scaler → 维持现状</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="o">*</span><span class="nx">p</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>以及 <code>buildPlannerState</code> 里：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// no-shrink 守卫：滚动中途，如果 HPA 在旧 revision 还在排空时写了一个更小的值，</span>
+<span class="c1">// External role 不得缩小新 revision 集群。</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">isExternal</span><span class="p">(</span><span class="nx">ds</span><span class="p">,</span><span class="w"> </span><span class="nx">roleName</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">oldRevisions</span><span class="p">)</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>len(oldRevisions) &gt; 0</code> 是释放条件：旧 revision 一消失，目标就精确跟随 scaler。稳态路径没有这道守卫，这是对的——没有滚动在进行。</p>
+<h3 id="75-leader-selector">7.5 只选 leader 的 selector，以及为什么<a class="headerlink" href="#75-leader-selector" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">desired</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Selector</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s=%s,%s=%s,%s=0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">SetNameLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">ds</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span><span class="w"> </span><span class="nx">RoleLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="p">,</span><span class="w"> </span><span class="nx">leaderworkersetv1</span><span class="p">.</span><span class="nx">WorkerIndexLabelKey</span><span class="p">)</span>
+</code></pre></div>
+<p>产生：</p>
+<div class="highlight"><pre><span></span><code>disaggregatedset.x-k8s.io/name=&lt;ds&gt;,disaggregatedset.x-k8s.io/role=&lt;role&gt;,leaderworkerset.sigs.k8s.io/worker-index=0
+</code></pre></div>
+<p><strong>单位一致性论证</strong>和<a href="../02_api_surface_anatomy/">模块 2</a> §4 是同一个，值得能自己复述出来：HPA 把 per-pod 指标的和除以匹配 <code>status.selector</code> 的 Pod 数，而这个除数必须等于 <code>status.replicas</code>。由于 <code>spec.replicas</code>（HPA 写）和 <code>status.replicas</code>（HPA 读）都是 <strong>LWS 组</strong>，selector 就必须精确匹配<strong>每组一个 Pod</strong>——也就是 leader。否则在 <code>size: 4</code> 时，HPA 会除以 <code>4 × 组数</code>、却拿它和<code>组数</code>比，比值会差 4 倍。</p>
+<p>selector 是 revision <strong>无关</strong>的，所以 HPA 在滚动期间观察到的是整个在服务的集群。</p>
+<p><code>status.replicas</code> 通过累加每个子 LWS 的 <code>Status.Replicas</code>（即其组数），<strong>跨所有 slice 和所有 revision</strong>聚合得到。</p>
+<h3 id="76">7.6 代码里记录下来的那些坑<a class="headerlink" href="#76" title="Permanent link">&para;</a></h3>
+<p>这份清单格外有价值，因为每一条都是别人已经踩过的坑：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">坑</th>
+<th style="text-align: left;">缓解</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"><code>current=0</code> 让 HPA 停在 <code>ScalingDisabled</code>，与 <code>minReplicas</code> 无关</td>
+<td style="text-align: left;">播种为 1</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;"><code>.spec.replicas</code> 字段缺失会让 apiserver 的 <code>/scale</code> handler 报错</td>
+<td style="text-align: left;">非指针 + <code>default=0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">Static→External 会静默排空该 role</td>
+<td style="text-align: left;">从当前聚合值播种</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">滚动中途 HPA 缩容会让目标反复横跳</td>
+<td style="text-align: left;">no-shrink 守卫</td>
+</tr>
+<tr>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">组数与 Pod 数的除数不匹配</td>
+<td style="text-align: left;">只选 leader 的 selector</td>
+</tr>
+<tr>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;"><strong>CEL 默认值陷阱</strong>——<code>LeaderWorkerSetSpec.Replicas</code> 带 <code>+kubebuilder:default=1</code>，而默认值填充跑在 CEL <em>之前</em>，所以一条「禁止 External role 的 <code>replicas &gt; 0</code>」的规则「会拒绝掉每一个 External role」</td>
+<td style="text-align: left;">对 <code>&gt; 1</code> 发<strong>警告</strong>而不是拒绝，并用 <code>filter</code> 把 all-or-nothing 的 CEL 规则限定到非 External role</td>
+</tr>
+<tr>
+<td style="text-align: left;">7</td>
+<td style="text-align: left;">删掉 scaler 并不能退出——控制器会重建它</td>
+<td style="text-align: left;">把 <code>scaling.mode</code> 翻回 <code>Static</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">滚动期间指标基线跨 revision 混合</td>
+<td style="text-align: left;">作为已知缺点记录在案</td>
+</tr>
+</tbody>
+</table>
+<p>第 6 条最有教益。它是一条真实的 Kubernetes API 设计约束——CRD 结构化默认值填充跑在 CEL 校验之前——而它的绕法（发警告而不是拒绝、用 <code>filter</code> 收窄 CEL 规则）是任何 API PR 都值得记住的模式。</p>
+<hr />
+<h2 id="service-revision">第八部分：Service 与 revision 感知路由<a class="headerlink" href="#service-revision" title="Permanent link">&para;</a></h2>
+<p><code>ReconcileServices</code> 找到与目标 revision 匹配的 <code>RevisionRoles</code> 分组，并且在每个 role 都至少有一个就绪副本之前<strong>直接返回</strong>：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">revisionReadyOnAllRoles</span><span class="p">(</span><span class="nx">group</span><span class="w"> </span><span class="nx">RevisionRoles</span><span class="p">,</span><span class="w"> </span><span class="nx">roleNames</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">roleName</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">roleNames</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">lws</span><span class="p">,</span><span class="w"> </span><span class="nx">hasRole</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">group</span><span class="p">.</span><span class="nx">Roles</span><span class="p">[</span><span class="nx">roleName</span><span class="p">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">hasRole</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ReadyReplicas</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>这就是 KEP-766 那条「Service 在所有 role 就绪之前不得路由流量」，实现为 Service <em>创建</em>的前置条件。</p>
+<div class="highlight"><pre><span></span><code><span class="nx">selector</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">SetNameLabelKey</span><span class="p">:</span><span class="w">  </span><span class="nx">ds</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">RoleLabelKey</span><span class="p">:</span><span class="w">     </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Labels</span><span class="p">[</span><span class="nx">RoleLabelKey</span><span class="p">],</span>
+<span class="w">    </span><span class="nx">RevisionLabelKey</span><span class="p">:</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Labels</span><span class="p">[</span><span class="nx">RevisionLabelKey</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">HasSliceLabel</span><span class="p">(</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Labels</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">selector</span><span class="p">[</span><span class="nx">SliceLabelKey</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Labels</span><span class="p">[</span><span class="nx">SliceLabelKey</span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<span class="c1">// 名字：lws.Name + &quot;-prv&quot;；ClusterIP: None；owner：DisaggregatedSet</span>
+</code></pre></div>
+<p>每个 <code>(slice, revision, role)</code> 一个 headless Service。<strong>这就是替代方案 4 的回报。</strong> 因为每个 Service 都是按 revision 划分的，revision <code>r</code> 的 prefill Pod 只会解析到同一 slice 内 revision <code>r</code> 的 decode Pod。滚动期间 <code>…-&lt;oldrev&gt;-decode-prv</code> 和 <code>…-&lt;newrev&gt;-decode-prv</code> 同时存在，外部负载均衡器可以跨 role 池按 revision 统计后端并按比例分流。</p>
+<p>Service 名字取自<strong>观测到的</strong> LWS 名字，所以遗留的 slice-0 LWS 会自动产生遗留形态的 <code>-prv</code> 名字。</p>
+<div class="admonition bug">
+<p class="admonition-title">Service 只创建、从不修复</p>
+<p><code>ensureService</code> 调用 <code>Create</code> 并把 <code>IsAlreadyExists</code> 当成功。selector 漂移的 Service——被手改过的，或者旧版控制器遗留的——<strong>永远不会被协调回来</strong>。再加上控制器根本不 watch Service（只有 <code>Owns(&amp;LeaderWorkerSet{})</code> 和 <code>Owns(&amp;scaler)</code>），一个被手工删掉的 Service 只有等下一次由 DS 触发的 reconcile 才会重建。</p>
+<p>加上 <code>Owns(&amp;corev1.Service{})</code> 并在 <code>ensureService</code> 里做 spec diff-and-patch，是一个边界清晰、动机明确的 PR。</p>
+</div>
+<p>清理：<code>cleanupDrainedServices</code> 构造出「所有 role 都就绪的 revision」集合，强制加入目标 revision，然后删掉所有 revision label 不在集合里的 Service。<code>DeleteLegacyService</code> 单独存在，因为「遗留 Service 与目标 revision 相同，所以按 revision 的排空清理永远删不掉它」。</p>
+<hr />
+<h2 id="_3">第九部分：校验<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>这个 webhook <strong>只做校验</strong>——<code>SetupDisaggregatedSetWebhook</code> 只注册了 <code>WithValidator</code>，没有 <code>WithDefaulter</code>，与 LWS 和 Pod 的 webhook 不同。DisaggregatedSet 的所有默认值都是声明式的 CRD 默认值：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">字段</th>
+<th style="text-align: left;">默认值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>spec.slices</code></td>
+<td style="text-align: left;"><code>1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.placementPolicy.type</code></td>
+<td style="text-align: left;"><code>None</code>（仅当该子结构存在时）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.roles[].scaling.mode</code></td>
+<td style="text-align: left;"><code>Static</code>（仅当 <code>scaling</code> 存在时）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.roles[].spec.replicas</code></td>
+<td style="text-align: left;"><code>1</code>（继承自 <code>LeaderWorkerSetSpec</code>）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>DisaggregatedSetRoleScaler.spec.replicas</code></td>
+<td style="text-align: left;"><code>0</code></td>
+</tr>
+</tbody>
+</table>
+<p>由于省略时 <code>scaling</code> 子结构不会被物化，<strong><code>Scaling == nil</code> 和 <code>Scaling.Mode == Static</code> 必须被同等对待</strong>——每个调用点都是这么做的。</p>
+<h3 id="91">9.1 会被拒绝的东西<a class="headerlink" href="#91" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">规则</th>
+<th style="text-align: left;">原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>rolloutStrategy.type</code> 不是 <code>RollingUpdate</code> 也不是 <code>""</code></td>
+<td style="text-align: left;"><code>Recreate</code> 会破坏跨 role 同版本不变式</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rollingUpdateConfiguration.partition != 0</code></td>
+<td style="text-align: left;">滚动由 DS 掌管；per-LWS 的 partition 会是第二个不协调的驱动者</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>maxSurge == 0 &amp;&amp; maxUnavailable == 0</code> 且 <code>replicas &gt; 0</code></td>
+<td style="text-align: left;">与 LWS 的检查一致。<code>replicas == 0</code> 的 role 豁免——「一个全零的 DisaggregatedSet 是合法的」</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.slices &gt; 1</code> 且存在 External role</td>
+<td style="text-align: left;">标注了 <code>// Alpha:</code>——「多 slice 的 scaler 设计推迟到后续 KEP」（issue #948）</td>
+</tr>
+<tr>
+<td style="text-align: left;">非 <code>None</code> 的 <code>placementPolicy</code> 但 <code>topology</code> 为空</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">非 <code>None</code> 的 <code>placementPolicy</code> + LWS 独占拓扑 annotation</td>
+<td style="text-align: left;">§6.3</td>
+</tr>
+<tr>
+<td style="text-align: left;">External role 的 <code>len(dsName + "-" + roleName) &gt; 253</code></td>
+<td style="text-align: left;">scaler 名字必须是合法对象名。role 上限 63 字符，因此给 DS 名留下 189 字符</td>
+</tr>
+</tbody>
+</table>
+<p>外加一条<strong>警告</strong>而非错误：<code>spec.replicas &gt; 1</code> 的 External role 会收到「<code>spec.replicas</code> 被忽略；请通过 <code>DisaggregatedSetRoleScaler</code> 驱动副本数」。</p>
+<h3 id="92-all-or-nothing-cel">9.2 all-or-nothing 的 CEL 规则<a class="headerlink" href="#92-all-or-nothing-cel" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>self.roles.filter(r, !has(r.scaling) || r.scaling.mode != &#39;External&#39;)
+          .all(r, !has(r.spec.replicas) || r.spec.replicas == 0)
+||
+self.roles.filter(r, !has(r.scaling) || r.scaling.mode != &#39;External&#39;)
+          .all(r, has(r.spec.replicas) &amp;&amp; r.spec.replicas &gt; 0)
+</code></pre></div>
+<p>你可以有一个全部缩到零的 DisaggregatedSet，也可以有一个全部拉起来的，但<strong>不能有一半一半的</strong>——那会是一个服务不了的 revision。<code>filter(...)</code> 前缀是 KEP-849 的改动，用来豁免 External role，「因为它们的有效副本数活在 DS spec 之外」。</p>
+<p>role 唯一性由 <code>+listType=map +listMapKey=name</code> 强制，而不是 CEL 规则——KEP-766 提议的 <code>filter(s, s.name == r.name).size() == 1</code> 被更高效的 listMap 声明取代。role 名字是 RFC 1123 label，role 数 2–10，<code>slices</code> 1–100。</p>
+<div class="admonition warning">
+<p class="admonition-title">完全没有不可变性校验</p>
+<p><code>ValidateUpdate</code> 做的事和 <code>ValidateCreate</code> 一模一样。没有任何 <code>ValidateImmutableField</code> 调用，<code>oldDisagg</code> 是个未使用的参数。对比 LWS 的 webhook，它是会钉住 <code>subGroupSize</code> 的。</p>
+<p>尤其是 <strong>role 名字可变</strong>，控制器把它当成「删除 + 新增」来处理——旧 role 的 LWS 排空，新 role 的被创建。这个行为大概说得过去，但它是涌现出来的而不是设计出来的，而且 API 里没有任何东西告诉用户「改一个 role 的名字会重建它的整个集群」。</p>
+</div>
+<hr />
+<h2 id="status">第十部分：Status 缺口<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
+<p><strong>这是目前项目里最好的贡献机会。</strong></p>
+<p>API 声明了一套完整的 status：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">RoleStatus</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Name</span><span class="w">            </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;name&quot;`</span>
+<span class="w">    </span><span class="nx">Replicas</span><span class="w">        </span><span class="kt">int32</span><span class="w">  </span><span class="s">`json:&quot;replicas,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">ReadyReplicas</span><span class="w">   </span><span class="kt">int32</span><span class="w">  </span><span class="s">`json:&quot;readyReplicas,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">UpdatedReplicas</span><span class="w"> </span><span class="kt">int32</span><span class="w">  </span><span class="s">`json:&quot;updatedReplicas,omitempty&quot;`</span>
+<span class="p">}</span>
+<span class="kd">type</span><span class="w"> </span><span class="nx">DisaggregatedSetStatus</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">RoleStatuses</span><span class="w"> </span><span class="p">[]</span><span class="nx">RoleStatus</span><span class="w">       </span><span class="s">`json:&quot;roleStatuses,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">Conditions</span><span class="w">   </span><span class="p">[]</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">Condition</span><span class="w"> </span><span class="s">`json:&quot;conditions,omitempty&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>文档注释里点名了预期的 condition 类型——<code>Available</code>、<code>Progressing</code>、<code>Degraded</code>。CRD 上有 <code>+kubebuilder:subresource:status</code>。对 <code>disaggregatedsets/status</code> 的 <code>get;update;patch</code> RBAC 也已经授予。</p>
+<p><strong>但没有任何代码写它。</strong> 控制器里任何地方都没有对 <code>DisaggregatedSet</code> 的 <code>Status().Update</code> 或 <code>Status().Patch</code>。在生成的 deepcopy 之外 <code>grep -rn "RoleStatuses"</code> 只能命中类型声明。<code>Reconcile</code> 以 <code>return result, errors.Join(errs...)</code> 结束——完全没有 status 环节。整个子系统里唯一的 status 写回是 <code>ScalerManager.WriteStatus</code>，写的是 <em>scaler</em> 的 status。</p>
+<p>后果是用户可见的：</p>
+<ul>
+<li><code>kubectl describe disaggregatedset</code>——上游示例页明确让用户跑它来「查看 DisaggregatedSet 的整体状态」——显示的是空 status。文档紧接着就转向「按 label 查看子 LWS 的状态」，那才是实际能用的工作流。</li>
+<li><code>DisaggregatedSet</code> 上<strong>没有 printcolumn</strong>，所以 <code>kubectl get disaggregatedset</code> 只显示 NAME 和 AGE。（<code>DisaggregatedSetRoleScaler</code> 倒是有 <code>Desired</code>/<code>Current</code>/<code>Age</code>。）</li>
+</ul>
+<p>而计算它所需的一切<strong>每次 reconcile 都已经取到了</strong>。<code>LWSManager.List(ctx, ns, name, -1, "")</code> 返回每一个子对象，各自带着 <code>Status.Replicas</code>、<code>Status.ReadyReplicas</code>、<code>Status.UpdatedReplicas</code> 和 revision label。<code>RoleStatus</code> 就是按 role label 分组求和，<code>UpdatedReplicas</code> 再按目标 revision 过滤。condition 也有自然的映射：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Condition</th>
+<th style="text-align: left;">推导方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Progressing</code></td>
+<td style="text-align: left;">任一 slice 满足 <code>len(oldRevisions) &gt; 0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Available</code></td>
+<td style="text-align: left;">所有 slice 在目标 revision 上都满足 <code>revisionReadyOnAllRoles</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Degraded</code></td>
+<td style="text-align: left;">累积的 <code>errs</code></td>
+</tr>
+</tbody>
+</table>
+<p>子系统里今天每一处就绪判断读的都是子 LWS 的 status——<code>isRevisionStable</code>、<code>revisionReadyOnAllRoles</code>、<code>updateScalerStatus</code>、<code>cleanupDrainedLWS</code>——所以聚合逻辑有充分的先例可循。</p>
+<p>另外，对照 KEP-766 的 Beta 标准「metrics for observability」也是缺的：<strong>DisaggregatedSet 子系统完全没有 Prometheus 指标。</strong> KEP-846 想要 per-slice 的滚动状态指标，KEP-849 想要 <code>WaitingForScaler</code> 计数。这是第二个、也更大的贡献，且有明确的 KEP 背书。</p>
+<h3 id="101">10.1 其他已知缺口<a class="headerlink" href="#101" title="Permanent link">&para;</a></h3>
+<p>除了 status 和指标，以下来自代码注释和 KEP-与-代码的对比：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">缺口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>非模板 spec 变更被静默丢弃</strong></td>
+<td style="text-align: left;"><code>ComputeRevision</code> 只哈希 role 名 + <code>LeaderWorkerTemplate</code>。改一个 role 的 <code>networkConfig</code>、<code>startupPolicy</code>、<code>rolloutStrategy</code> 或 <code>metadata</code>，得到的是同一个哈希——于是不会创建新 LWS，已有的也永不被 patch（<code>reconcileRoleSimple</code> 只调 <code>Scale</code>）。这个改动会一直被丢弃，直到某次无关的模板变更逼出一个新 revision。<strong>这是子系统里对用户最尖锐的可见 bug。</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">没有控制器集成测试</td>
+<td style="text-align: left;"><code>test/integration/</code> 里有 <code>webhooks/disaggregatedset_test.go</code>，但 <code>test/integration/controllers/</code> 只有 <code>leaderworkerset_test.go</code>。覆盖靠单测加 e2e</td>
+</tr>
+<tr>
+<td style="text-align: left;">planner 里的浮点算术</td>
+<td style="text-align: left;"><code>int(float64(a) * float64(b) / float64(c))</code> 截断，而整数运算完全等价且不受任何浮点边界影响</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>extractRollingUpdateConfig</code> 不对称</td>
+<td style="text-align: left;"><code>unavail &gt; 0</code> 时两个字段都设；只有 <code>surge &gt; 0</code> 时只设 surge。两者都解析为 0 时，该 role 会静默退回 <code>MaxSurge=1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">冗余列举</td>
+<td style="text-align: left;"><code>updateScalerStatus</code> 和 <code>seedForRole</code> 各自在 per-slice 列举之上再发一次跨 slice 的 <code>List</code>。虽然走缓存，但 100 个 slice 时很浪费</td>
+</tr>
+<tr>
+<td style="text-align: left;">死代码</td>
+<td style="text-align: left;"><code>NumRequiredRoles</code>（零引用）、<code>ComputeInitialReplicaState</code>（只有测试用）、自由函数 <code>SetInitialReplicas</code>、<code>ServiceManager.scheme</code>、<code>sortByNewestTimestamp</code> 的 <code>roleNames</code> 参数、<code>ValidateUpdate</code> 的 <code>oldDisagg</code> 参数</td>
+</tr>
+</tbody>
+</table>
+<p>按胃口从这张表里挑：删死代码和浮点转整数是一下午的 PR；status 聚合要一周，还需要一次设计讨论；非模板 spec 变更那个 bug 大概要先开 issue，因为修法里含有设计选择。</p>
+<hr />
+<h2 id="_4">实验：驱动一次协调滚动<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">规模</p>
+<p>A 部分在 <code>kind</code> 上用一个简单容器就能跑——planner 与加速器完全正交，启动快的镜像能让步进序列可观察。B 和 C 部分需要带拓扑 label 和指标的真实集群，标注为 unverified。</p>
+</div>
+<h3 id="a-n">A 部分 — 观察 N 维算法<a class="headerlink" href="#a-n" title="Permanent link">&para;</a></h3>
+<p>部署一个副本数刻意不对称的双 role DisaggregatedSet，好让比例保持看得见：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disaggregatedset.x-k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DisaggregatedSet</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pd</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">slices</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">roles</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prefill</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6</span>
+<span class="w">        </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">          </span><span class="nt">workerTemplate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> spec</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> containers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">c</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">nginxinc/nginx-unprivileged</span><span class="p p-Indicator">:</span><span class="nv">1.27</span><span class="w"> </span><span class="p p-Indicator">}]</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">        </span><span class="nt">rolloutStrategy</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">rollingUpdateConfiguration</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> maxSurge</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="nt"> maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">decode</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">        </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">          </span><span class="nt">workerTemplate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> spec</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> containers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">c</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">nginxinc/nginx-unprivileged</span><span class="p p-Indicator">:</span><span class="nv">1.27</span><span class="w"> </span><span class="p p-Indicator">}]</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">        </span><span class="nt">rolloutStrategy</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">rollingUpdateConfiguration</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> maxSurge</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="nt"> maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<p>在触发任何东西之前，按 §4.2 手算 <code>totalSteps</code>：</p>
+<ul>
+<li>prefill：<code>max(6, 6) = 6</code>，批次 = <code>maxSurge</code> = 2 → <code>ceil(6/2)</code> = <strong>3</strong> 步</li>
+<li>decode：<code>max(3, 3) = 3</code>，批次 = 1 → <code>ceil(3/1)</code> = <strong>3</strong> 步</li>
+<li><code>totalSteps = max(3, 3) = 3</code></li>
+</ul>
+<p>一个终端里观察：</p>
+<div class="highlight"><pre><span></span><code>watch<span class="w"> </span>-n1<span class="w"> </span><span class="s1">&#39;kubectl get lws -L disaggregatedset.x-k8s.io/role,disaggregatedset.x-k8s.io/revision,disaggregatedset.x-k8s.io/slice&#39;</span>
+</code></pre></div>
+<p>另一个终端里同时改<strong>两个</strong> role 的镜像来触发滚动。记录每次迁移时的 <code>(prefill_old, prefill_new, decode_old, decode_new)</code> 向量，检查三条论断：</p>
+<ol>
+<li><strong>比例保持</strong>——在服务的 prefill 与 decode 之比始终不会偏离 2:1 太远。</li>
+<li><strong>步骤解耦</strong>——每次迁移只改旧侧或只改新侧，绝不同时（§4.4 Property 1）。</li>
+<li><strong>surge 不变式</strong>——每个 role 在任何时刻都满足 <code>old + new &lt;= target + maxSurge</code>（§4.4 的 <code>canScaleUp</code>）。</li>
+</ol>
+<h3 id="a2-initial-replicas-annotation">A2 部分 — 找到 <code>initial-replicas</code> annotation<a class="headerlink" href="#a2-initial-replicas-annotation" title="Permanent link">&para;</a></h3>
+<p>在滚动刚开始时：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;NAME:.metadata.name,REPLICAS:.spec.replicas,INITIAL:.metadata.annotations.disaggregatedset\.x-k8s\.io/initial-replicas&#39;</span>
+</code></pre></div>
+<p>旧 LWS 应该带着与滚动前数量一致的 <code>initial-replicas</code>，新的应该是以 <strong>0 副本</strong>创建的。对照 §4.6 推演：为什么 planner 不能直接拿旧 LWS 当前的 <code>spec.replicas</code> 当排空分母？</p>
+<h3 id="a3-orphan-prevention">A3 部分 — 证明 orphan prevention<a class="headerlink" href="#a3-orphan-prevention" title="Permanent link">&para;</a></h3>
+<p>强制走到那个有意思的分支。像上面那样把两个 role 的 <code>maxUnavailable</code> 都设为 0，让 <code>canDrainAllToZero</code> 难以满足，然后开始滚动并反复杀掉新 revision 的 prefill Pod，使新集群吃不下负载：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>disaggregatedset.x-k8s.io/role<span class="o">=</span>prefill,disaggregatedset.x-k8s.io/revision<span class="o">=</span>&lt;newrev&gt;
+</code></pre></div>
+<p>旧 revision <strong>绝不应该</strong>在一个 role 非零时把另一个 role 降到 0。如果你能造出 <code>old-prefill: 0, old-decode: 2</code> 这样的状态，那你就找到了一个真 bug——写下来报上去。</p>
+<h3 id="a4-spec-bug">A4 部分 — 复现非模板 spec 变更的 bug<a class="headerlink" href="#a4-spec-bug" title="Permanent link">&para;</a></h3>
+<p>这是 §10.1 的第一行，复现出来你就有了一份完整的 issue：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[*].metadata.labels.disaggregatedset\.x-k8s\.io/revision}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+<span class="c1"># 改一个 LeaderWorkerTemplate 之外的东西：</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>disaggregatedset<span class="w"> </span>pd<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;add&quot;,&quot;path&quot;:&quot;/spec/roles/0/spec/startupPolicy&quot;,&quot;value&quot;:&quot;LeaderReady&quot;}]&#39;</span>
+sleep<span class="w"> </span><span class="m">10</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[*].metadata.labels.disaggregatedset\.x-k8s\.io/revision}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>&lt;prefill-lws&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.startupPolicy}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>revision 没变，子 LWS 上仍然是<strong>旧的</strong> <code>startupPolicy</code>。你的修改被 API server 接受了，然后被静默丢弃。现在把镜像也改一下，看两个改动一起落地。</p>
+<h3 id="b-slices-unverified-2">B 部分 — Slices 与放置（unverified，需要 2 个以上拓扑域）<a class="headerlink" href="#b-slices-unverified-2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;n1&gt;<span class="w"> </span>&lt;n2&gt;<span class="w"> </span>topology.example.com/zone<span class="o">=</span>z1
+kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;n3&gt;<span class="w"> </span>&lt;n4&gt;<span class="w"> </span>topology.example.com/zone<span class="o">=</span>z2
+</code></pre></div>
+<p>设 <code>slices: 2</code> 并加上：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">placementPolicy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ExclusiveSlice</span>
+<span class="w">  </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology.example.com/zone</span>
+</code></pre></div>
+<p>验证：</p>
+<ul>
+<li>四个 LWS，名为 <code>pd-0-&lt;rev&gt;-prefill</code>、<code>pd-0-&lt;rev&gt;-decode</code>、<code>pd-1-&lt;rev&gt;-…</code>。</li>
+<li>slice 0 的 Pod 全在一个 zone，slice 1 的全在另一个。</li>
+<li><code>kubectl get pod &lt;slice-0-pod&gt; -o jsonpath='{.spec.affinity}' | jq</code> 对 <code>ExclusiveSlice</code> 显示<strong>两项</strong>，且 slice 0 的反亲和性带着 §6.1 那条额外的 <code>slice Exists</code> 要求。</li>
+</ul>
+<p>然后切到 <code>ExclusiveTopology</code>，确认多出<strong>第三条</strong>反亲和性项。注意已有的 slice 保留着旧的亲和性——§6.3 的惰性生效——你必须触发一次滚动才能传播它。也把这一点确认掉。</p>
+<p>最后，滚动其中一个 slice，确认另一个不受影响：slice 独立滚动，也可以处于不同 revision。</p>
+<h3 id="c-per-role-hpaunverified-metrics-server">C 部分 — Per-role HPA（unverified，需要 metrics-server）<a class="headerlink" href="#c-per-role-hpaunverified-metrics-server" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>disaggregatedset<span class="w"> </span>pd<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;add&quot;,&quot;path&quot;:&quot;/spec/roles/0/scaling&quot;,&quot;value&quot;:{&quot;mode&quot;:&quot;External&quot;}}]&#39;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>dsrs
+</code></pre></div>
+<p>对照 §7 验证：</p>
+<ul>
+<li>存在一个名为 <code>pd-prefill</code>、由 DisaggregatedSet 拥有的 scaler。</li>
+<li>它的 <code>spec.replicas</code> 是<strong>从当前聚合值播种</strong>的，不是 0（§7.3）。</li>
+<li>在任何东西写它<em>之前</em>，<code>kubectl get --raw "/apis/disaggregatedset.x-k8s.io/v1/namespaces/default/disaggregatedsetrolescalers/pd-prefill/scale"</code> 就能返回一个合法的 Scale 对象。这就是第 2 个坑。</li>
+<li><code>status.selector</code> 以 <code>worker-index=0</code> 结尾。</li>
+</ul>
+<p>现在数一数 selector 匹配到的 Pod 数与 <code>status.replicas</code>：</p>
+<div class="highlight"><pre><span></span><code><span class="nv">SEL</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>dsrs<span class="w"> </span>pd-prefill<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.selector}&#39;</span><span class="k">)</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SEL</span><span class="s2">&quot;</span><span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
+kubectl<span class="w"> </span>get<span class="w"> </span>dsrs<span class="w"> </span>pd-prefill<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.replicas}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>两者必须相等。把 prefill role 的 <code>size</code> 设为 4，确认它们<em>依然</em>相等——§7.5 的全部论证，被演示了出来。</p>
+<p>然后挂上 HPA，在它正在伸缩时触发一次滚动。观察 no-shrink 守卫（§7.4）即便 HPA 写了更小的值也把新 revision 集群稳住，并确认它在旧 revision 消失的那一刻释放。</p>
+<h3 id="_5">检查点问题<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>totalSteps</code> 取各 role 的最大值。请构造一个双 role 配置，使得改取<em>最小值</em>会破坏容量比例，并算出偏差有多大。</li>
+<li>扩容取 <code>min(stepIndex)</code>、缩容取 <code>max(stepIndex)</code>。把它们互换，描述由此产生的失效——先坏的是 surge 不变式还是可用性不变式？</li>
+<li>slice-0 的反亲和性多了一条 <code>slice Exists</code>。写出没有它就会失败的那个升级场景，指明是哪个 Pod 排斥了哪个 Pod。</li>
+<li>DisaggregatedSet 的 status 从不被写。勾勒一下你会加的 <code>updateStatus</code> 函数：它列举什么、按什么分组、放在 <code>Reconcile</code> 的哪个位置？</li>
+</ul>
+<p>继续阅读<a href="../09_inference_engine_integration/">模块 9：推理引擎集成</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

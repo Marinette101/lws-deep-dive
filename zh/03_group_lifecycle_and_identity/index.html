@@ -1,0 +1,2060 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/03_group_lifecycle_and_identity/">
+      
+      
+        <link rel="prev" href="../02_api_surface_anatomy/">
+      
+      
+        <link rel="next" href="../04_lws_reconciler_internals/">
+      
+      
+        
+          <link rel="alternate" href="../../03_group_lifecycle_and_identity/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>模块 3 - 组的生命周期与 Pod 身份 - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#3-pod" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              模块 3 - 组的生命周期与 Pod 身份
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../03_group_lifecycle_and_identity/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：名字就是数据结构
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：名字就是数据结构">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 命名方案
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 把名字解析回去
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-worker-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 worker 序号为什么从 1 开始
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：一个组的诞生
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#startup-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：Startup Policy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：身份注入
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第四部分：身份注入">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-leader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 leader 分支
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 worker 分支
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 环境变量注入
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dns-headless-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：DNS 与 Headless Service
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：DNS 与 Headless Service">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-uniqueperreplica" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 什么时候用 UniquePerReplica
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：子组
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：子组">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 索引算术
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 两种策略类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 子组 key 与亲和性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：TPU 身份
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七部分：TPU 身份">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-leader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 leader 偏移问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-tpu-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 多容器 TPU Pod
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 子组路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八部分：组的拆除
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：端到端追踪一个身份
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：端到端追踪一个身份">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-leader-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 读一个 leader Pod 的完整身份
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 确认环境变量顺序的保证
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-dns-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 验证 DNS 在 Ready 之前就能解析
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-subdomain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 两种 subdomain 策略都跑一遍
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-unverified-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 5 — 子组算术（unverified，需要 2 个以上节点）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 6 — 复现防递归守卫（思想实验）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：名字就是数据结构
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：名字就是数据结构">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 命名方案
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 把名字解析回去
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-worker-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 worker 序号为什么从 1 开始
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：一个组的诞生
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#startup-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：Startup Policy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：身份注入
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第四部分：身份注入">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-leader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 leader 分支
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 worker 分支
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 环境变量注入
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dns-headless-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：DNS 与 Headless Service
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：DNS 与 Headless Service">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-uniqueperreplica" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 什么时候用 UniquePerReplica
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：子组
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：子组">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 索引算术
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 两种策略类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 子组 key 与亲和性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：TPU 身份
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七部分：TPU 身份">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-leader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 leader 偏移问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-tpu-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 多容器 TPU Pod
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 子组路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八部分：组的拆除
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：端到端追踪一个身份
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：端到端追踪一个身份">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-leader-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 读一个 leader Pod 的完整身份
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 确认环境变量顺序的保证
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-dns-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 验证 DNS 在 Ready 之前就能解析
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-subdomain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 两种 subdomain 策略都跑一遍
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-unverified-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 5 — 子组算术（unverified，需要 2 个以上节点）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 6 — 复现防递归守卫（思想实验）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="3-pod">模块 3：组的生命周期与 Pod 身份<a class="headerlink" href="#3-pod" title="Permanent link">&para;</a></h1>
+<p>一组互相寻址不到的 Pod 不叫一个组，那叫巧合。本模块讲的是 LWS 如何把 <code>replicas: 2, size: 4</code> 变成八个 Pod，让每一个都在开始服务之前就确切知道：我是谁、其他人是谁、怎么联系上他们。</p>
+<p>这套机制分散在四个组件里，每个只做一小部分，只有看清交接点才能理解整体。本模块覆盖<strong>命名与序号方案</strong>、<strong>一个组的诞生过程</strong>、<strong>startup policy</strong>、<strong>Pod mutating webhook 的身份注入</strong>、<strong>DNS 与 headless Service</strong>、<strong>子组</strong>、<strong>TPU 身份</strong>，以及<strong>组的拆除</strong>。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源信息</p>
+<p>对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）、v0.9.0 核实。主要来源：<code>pkg/webhooks/pod_webhook.go</code>、<code>pkg/controllers/pod_controller.go</code>、<code>pkg/utils/pod/pod_utils.go</code>、<code>pkg/utils/statefulset/statefulset_utils.go</code>、<code>pkg/utils/accelerators/tpu.go</code>。</p>
+</div>
+<hr />
+<h2 id="_1">第一部分：名字就是数据结构<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<p>LWS 自己几乎不保存组状态。控制器里没有任何「组索引 → Pod 集合」的映射。取而代之的是：<strong>Pod 名字编码了组成员关系</strong>，控制器需要时再把它解析回来。</p>
+<h3 id="11">1.1 命名方案<a class="headerlink" href="#11" title="Permanent link">&para;</a></h3>
+<p>以 <code>replicas: 2, size: 4</code> 的 <code>my-lws</code> 为例：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">对象</th>
+<th style="text-align: left;">名字</th>
+<th style="text-align: left;">由来</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">leader StatefulSet</td>
+<td style="text-align: left;"><code>my-lws</code></td>
+<td style="text-align: left;">LWS 名字</td>
+</tr>
+<tr>
+<td style="text-align: left;">组 0 的 leader Pod</td>
+<td style="text-align: left;"><code>my-lws-0</code></td>
+<td style="text-align: left;">STS 序号 0</td>
+</tr>
+<tr>
+<td style="text-align: left;">组 1 的 leader Pod</td>
+<td style="text-align: left;"><code>my-lws-1</code></td>
+<td style="text-align: left;">STS 序号 1</td>
+</tr>
+<tr>
+<td style="text-align: left;">组 0 的 worker StatefulSet</td>
+<td style="text-align: left;"><code>my-lws-0</code></td>
+<td style="text-align: left;"><strong>leader Pod 的名字</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">组 0 的 worker Pod</td>
+<td style="text-align: left;"><code>my-lws-0-1</code>、<code>my-lws-0-2</code>、<code>my-lws-0-3</code></td>
+<td style="text-align: left;">worker STS 序号 1..3</td>
+</tr>
+<tr>
+<td style="text-align: left;">组 1 的 worker Pod</td>
+<td style="text-align: left;"><code>my-lws-1-1</code>、<code>my-lws-1-2</code>、<code>my-lws-1-3</code></td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<p>leader Pod 的名字同时是：组的身份、worker StatefulSet 的名字、worker Pod 的名字前缀，以及（在 <code>UniquePerReplica</code> 下）每组 Service 的名字。正是这一重多用，决定了 LWS 名字必须是 DNS-1035 label——这个约束会一路传递下去。</p>
+<h3 id="12">1.2 把名字解析回去<a class="headerlink" href="#12" title="Permanent link">&para;</a></h3>
+<p><code>pkg/utils/statefulset/statefulset_utils.go</code> 提供了逆操作：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// statefulPodRegex 匹配 Pod 名，捕获 parent 和序号。</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">statefulPodRegex</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">regexp</span><span class="p">.</span><span class="nx">MustCompile</span><span class="p">(</span><span class="s">&quot;(.*)-([0-9]+)$&quot;</span><span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">GetParentNameAndOrdinal</span><span class="p">(</span><span class="nx">name</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="c1">// 不匹配时返回 (&quot;&quot;, -1)</span>
+</code></pre></div>
+<p>这一个函数干的活出人意料地多。作用在 leader Pod <code>my-lws-1</code> 上，得到 <code>("my-lws", 1)</code>——LWS 名字和<strong>组索引</strong>。作用在 worker Pod <code>my-lws-1-2</code> 上，得到 <code>("my-lws-1", 2)</code>——<strong>leader Pod 名</strong>和 <strong>worker 索引</strong>。同一个正则，两种含义，全靠调用方知道自己在看 leader 还是 worker 来消歧。</p>
+<p>凡是 worker 需要找到自己的 leader，用的都是这一招：把结尾的 <code>-&lt;n&gt;</code> 剥掉。</p>
+<h3 id="13-worker-1">1.3 worker 序号为什么从 1 开始<a class="headerlink" href="#13-worker-1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// constructWorkerStatefulSetApplyConfiguration，pkg/controllers/pod_controller.go</span>
+<span class="nx">WithOrdinals</span><span class="p">(</span><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">StatefulSetOrdinals</span><span class="p">().</span><span class="nx">WithStart</span><span class="p">(</span><span class="mi">1</span><span class="p">)).</span>
+</code></pre></div>
+<p>如果 worker 序号从 0 开始，worker Pod 会叫 <code>my-lws-1-0 … my-lws-1-2</code>，<code>workerIndex</code> 就和 <code>LWS_WORKER_INDEX</code> 对不上了：leader 是索引 0，所以第一个 worker 必须是索引 1。让 worker StatefulSet 的序号从 1 起，全局索引空间才是连续且一致的。</p>
+<p>这是对上游 <code>StatefulSetStartOrdinal</code> 特性的硬依赖，也是 LWS 把 Kubernetes <strong>≥ 1.26</strong> 写成下限、并要求恰好 1.26 时手动开 gate 的原因。在一个忽略该字段的集群上，worker StatefulSet 会产出一个序号 0、名叫 <code>my-lws-1-0</code> 的 Pod——它<em>看起来</em>像一个嵌套 LWS 的 leader Pod，并会无限递归地继续创建 StatefulSet。</p>
+<p>Pod 控制器专门防了这一手：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Reconcile 的第 6 步——防递归守卫，kubernetes-sigs/lws#391</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Annotations</span><span class="p">[</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderPodNameAnnotationKey</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 一个「看起来像 leader」却带着 leader-name annotation 的 Pod，</span>
+<span class="w">    </span><span class="c1">// 实际上是某个忽略了 ordinals.start 的集群上的 worker</span>
+<span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="o">...</span><span class="p">);</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">Record</span><span class="p">.</span><span class="nx">Eventf</span><span class="p">(</span><span class="o">...</span><span class="p">,</span><span class="w"> </span><span class="nx">FailedCreate</span><span class="p">,</span><span class="w"> </span><span class="o">...</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">ctrl</span><span class="p">.</span><span class="nx">Result</span><span class="p">{},</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>如果你看到抱怨这件事的 <code>FailedCreate</code> 事件，诊断永远是同一个：集群太老，或者 feature gate 没开。</p>
+<hr />
+<h2 id="_2">第二部分：一个组的诞生<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<p>创建一个组要八个组件参与。顺序很重要，而且有好几步是有条件的。</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as 用户
+    participant API as kube-apiserver
+    participant LWSC as LWS Reconciler
+    participant STSC as StatefulSet 控制器
+    participant PW as Pod Mutating Webhook
+    participant PC as Pod Reconciler
+    participant SCHED as kube-scheduler
+
+    U-&gt;&gt;API: 创建 LeaderWorkerSet
+    API-&gt;&gt;LWSC: reconcile
+    LWSC-&gt;&gt;API: 创建/更新 ControllerRevision
+    LWSC-&gt;&gt;API: SSA leader StatefulSet（replicas = 组数）
+    LWSC-&gt;&gt;API: 创建共享 headless Service（Shared 时）
+    API-&gt;&gt;STSC: leader STS 已创建
+    STSC-&gt;&gt;API: 创建 leader Pod my-lws-0
+    API-&gt;&gt;PW: 准入（mutate）
+    Note over PW: 从名字推出 group-index&lt;br/&gt;设 group-key = sha1(ns/podName)&lt;br/&gt;设 subdomain（UniquePerReplica）&lt;br/&gt;注入独占亲和性&lt;br/&gt;注入 LWS_* 环境变量
+    PW--&gt;&gt;API: 改写后的 Pod
+    API-&gt;&gt;SCHED: 调度
+    API-&gt;&gt;PC: leader Pod 事件
+    alt subdomainPolicy = UniquePerReplica
+        PC-&gt;&gt;API: 创建每组 headless Service（owner = leader Pod）
+    end
+    alt startupPolicy = LeaderReady
+        Note over PC: 在 leader Pod Ready 之前直接返回
+    end
+    PC-&gt;&gt;API: 按 Pod 的 revision hash 读取 ControllerRevision
+    PC-&gt;&gt;API: 创建 worker StatefulSet（owner = leader Pod，ordinals.start=1）
+    API-&gt;&gt;STSC: worker STS 已创建
+    STSC-&gt;&gt;API: 创建 worker Pod my-lws-0-1 …
+    API-&gt;&gt;PW: 准入（mutate）
+    Note over PW: 从名字推出 worker-index&lt;br/&gt;计算子组索引&lt;br/&gt;注入 LWS_* 环境变量
+    PW--&gt;&gt;API: 改写后的 Pod</code></pre>
+<p>有三点很容易漏掉，但极其重要：</p>
+<ol>
+<li>
+<p><strong>worker StatefulSet 是按 leader Pod 引用的 ControllerRevision 构建的，不是按活的 LWS spec。</strong> <code>pkg/controllers/pod_controller.go</code> 调用 <code>revisionutils.GetRevision(ctx, r.Client, &amp;lws, revisionutils.GetRevisionKey(&amp;pod))</code>，找不到 revision 时一秒后重排队。这正是滚动更新中途组内保持自洽的原因：即便 LWS spec 已经往前走了，老 revision 的 leader 得到的仍是老 revision 的 worker。</p>
+</li>
+<li>
+<p><strong>worker StatefulSet 是「只创建」的。</strong> 第 16 步先 <code>Get</code>，只有 <code>NotFound</code> 才创建。它从不被 patch、从不 server-side apply、从不更新。模板变更产生的是一个<em>新的 leader Pod</em>，它拥有一个<em>新的 worker StatefulSet</em>。<code>setNodeSelectorForWorkerPods</code> 里有一段注释描述了当前代码并未实现的更新行为——别被它误导。</p>
+</li>
+<li>
+<p><strong>有两处逻辑挂在 <code>pod.DeletionTimestamp</code> 上。</strong> leader Pod 正在终止时 Pod reconciler 会提前返回（第 8 步），这就是它不会在一个正被拆除的组下面重建 worker StatefulSet 的原因。没有这道守卫，all-or-nothing 重启会和自己竞态。</p>
+</li>
+</ol>
+<hr />
+<h2 id="startup-policy">第三部分：Startup Policy<a class="headerlink" href="#startup-policy" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">StartupPolicy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderReadyStartupPolicy</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">!</span><span class="nx">podutils</span><span class="p">.</span><span class="nx">IsPodReady</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">pod</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">ctrl</span><span class="p">.</span><span class="nx">Result</span><span class="p">{},</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>这就是 KEP-135 的全部实现。<code>LeaderCreated</code>（默认）跳过这个检查，所以 leader Pod <em>对象</em>一存在，worker StatefulSet 就被创建了——在它被调度之前，更别提运行。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"><code>LeaderCreated</code>（默认）</th>
+<th style="text-align: left;"><code>LeaderReady</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">worker STS 何时创建</td>
+<td style="text-align: left;">leader Pod 对象存在时</td>
+<td style="text-align: left;">leader Pod <code>Ready</code> 时</td>
+</tr>
+<tr>
+<td style="text-align: left;">启动形态</td>
+<td style="text-align: left;">完全并行</td>
+<td style="text-align: left;">leader 先，worker 后</td>
+</tr>
+<tr>
+<td style="text-align: left;">冷启动</td>
+<td style="text-align: left;">leader 与 worker 并发加载权重</td>
+<td style="text-align: left;">串行：先 leader 加载，再 worker 加载</td>
+</tr>
+<tr>
+<td style="text-align: left;">适用于</td>
+<td style="text-align: left;">带重试 rendezvous 的引擎（Ray、带重试的 torch.distributed）</td>
+<td style="text-align: left;">worker 连不上 leader 端点就硬失败的引擎</td>
+</tr>
+<tr>
+<td style="text-align: left;">与什么相冲</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;"><strong>Gang 调度</strong>——gang 希望所有 Pod 同时 pending，但 leader Ready 之前 worker 根本不存在</td>
+</tr>
+</tbody>
+</table>
+<p>对大模型来说 <code>LeaderReady</code> 的代价是实打实的。如果 leader 加载权重要四分钟，每个组的冷启动就多四分钟，而这会与逐组滚动复合：20 个组 × 多 4 分钟，就是一个多小时的额外滚动时间。能改引擎的重试行为就优先改引擎。</p>
+<hr />
+<h2 id="_3">第四部分：身份注入<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p><code>pkg/webhooks/pod_webhook.go</code> 是一个 Pod 获得「关于自己的一切」的地方。webhook 注册在 <code>/mutate--v1-pod</code>，只对 <code>create</code> 生效——而且关键在于，manifest 补丁 <code>config/webhook/mutating-patch.yaml</code> 加了对象选择器：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">objectSelector</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">matchExpressions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaderworkerset.sigs.k8s.io/name</span>
+<span class="w">      </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Exists</span>
+</code></pre></div>
+<p>没有它，集群里每一个 Pod 都会被路由到 LWS 的 webhook。如果你在装了 LWS 之后排查全集群范围的 Pod 准入变慢，先确认这个选择器还在。</p>
+<div class="admonition note">
+<p class="admonition-title">Pod validating webhook 是空实现</p>
+<p><code>/validate--v1-pod</code> 注册了，但 <code>validate()</code> 在提前返回后直接 <code>return (nil, nil)</code>。它是个占位。删掉它，或者给它安排点用途，都是站得住脚的 PR。</p>
+</div>
+<h3 id="41-leader">4.1 leader 分支<a class="headerlink" href="#41-leader" title="Permanent link">&para;</a></h3>
+<p><code>labels["leaderworkerset.sigs.k8s.io/worker-index"] == "0"</code> 的 Pod 就是 leader。对 leader：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">步骤</th>
+<th style="text-align: left;">动作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">若无 <code>group-index</code>，推导之：<code>_, ordinal := GetParentNameAndOrdinal(pod.Name)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">若 <code>subdomainPolicy</code> annotation 是 <code>UniquePerReplica</code>，设 <strong><code>pod.Spec.Subdomain = pod.Name</code></strong>。（<code>Shared</code> 下 subdomain 来自 StatefulSet 的 <code>serviceName</code>。）</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">若无 <code>group-key</code>，设为 <code>Sha1Hash(fmt.Sprintf("%s/%s", namespace, podName))</code>——一个 40 字符十六进制摘要</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">若存在 <code>exclusive-topology</code> annotation，调用 <code>SetExclusiveAffinities(pod, groupKey, topologyKey, GroupUniqueHashLabelKey)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">子组处理（§6）</td>
+</tr>
+</tbody>
+</table>
+<p>有意思的是 <code>group-key</code>。为什么要哈希命名空间和 Pod 名，而不直接拿 Pod 名当亲和性 key？因为这个值必须<strong>在组被重建时改变</strong>。两个 key 相同的 Pod 是在声明「我们属于一起」；如果 key 跨重建保持稳定，一个刚创建的组可能会误把亲和性满足在前任正在终止的 Pod 上，从而落到错误的拓扑域。哈希名字和命名空间给出的值，在一个组的生命周期<em>内</em>稳定，而在不同命名空间的 LWS 之间互不相同。</p>
+<h3 id="42-worker">4.2 worker 分支<a class="headerlink" href="#42-worker" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">步骤</th>
+<th style="text-align: left;">动作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"><code>_, workerIndex := GetParentNameAndOrdinal(pod.Name)</code>；设 <code>worker-index</code> label</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">计算子组索引与 <code>subgroup-key</code>（§6）</td>
+</tr>
+</tbody>
+</table>
+<p>注意 worker 的 <code>group-index</code> label <strong>不是</strong>在这里推导的——它来自 worker StatefulSet 的 Pod 模板，而那是 Pod 控制器构建 StatefulSet 时填进去的。</p>
+<h3 id="43">4.3 环境变量注入<a class="headerlink" href="#43" title="Permanent link">&para;</a></h3>
+<p><code>podutils.AddLWSVariables(pod)</code> 向<strong>每个容器和每个 init 容器</strong>注入三个变量：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">变量</th>
+<th style="text-align: left;">值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>LWS_LEADER_ADDRESS</code></td>
+<td style="text-align: left;"><code>fmt.Sprintf("%s-%s.%s.%s", lwsName, groupIndex, pod.Spec.Subdomain, namespace)</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LWS_GROUP_SIZE</code></td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/size</code> annotation 的值</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LWS_WORKER_INDEX</code></td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/worker-index</code> label 的值</td>
+</tr>
+</tbody>
+</table>
+<p>对 <code>my-lws</code>、组 3、命名空间 <code>default</code>：</p>
+<ul>
+<li><code>Shared</code>：<code>my-lws-3.my-lws.default</code></li>
+<li><code>UniquePerReplica</code>：<code>my-lws-3.my-lws-3.default</code></li>
+</ul>
+<p>注意这<strong>不是完全限定名</strong>——没有 <code>.svc.cluster.local</code>。它靠 Pod 的 DNS search 路径解析，集群内没问题，但你要是想在集群外用它就会中招。</p>
+<div class="admonition tip">
+<p class="admonition-title">注入顺序是承重的</p>
+<p><code>addEnvVarsIfNotExists</code> 把三个 LWS 变量<strong>前置</strong>，然后再追加用户自己的，而不是反过来。这是刻意的（kubernetes-sigs/lws#152）：Kubernetes 只会拿<strong>更早</strong>定义的变量去解析 <code>$(VAR)</code> 引用。前置它们，才使得用户可以写</p>
+<div class="highlight"><pre><span></span><code><span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RAY_ADDRESS</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$(LWS_LEADER_ADDRESS):6379&quot;</span>
+</code></pre></div>
+<p>并且真的能展开。哪天你重排了这个函数，所有这么写的 manifest 都会坏掉。</p>
+<p>用户自定义的同名变量会被丢弃、以注入值为准——因为注入的名字先被塞进了去重表。</p>
+</div>
+<hr />
+<h2 id="dns-headless-service">第五部分：DNS 与 Headless Service<a class="headerlink" href="#dns-headless-service" title="Permanent link">&para;</a></h2>
+<p>有两个不同的组件会创建 Service，谁来创建取决于策略。</p>
+<pre class="mermaid"><code>flowchart TD
+    POL{"networkConfig.subdomainPolicy"}
+    POL --&gt;|"Shared（默认）"| SH["&lt;b&gt;LWS Reconciler&lt;/b&gt; 创建&lt;br&gt;一个名为 &amp;lt;lws&amp;gt; 的 Service&lt;br&gt;selector: name=&amp;lt;lws&amp;gt;&lt;br&gt;owner：LeaderWorkerSet"]
+    POL --&gt;|"UniquePerReplica"| UQ["&lt;b&gt;Pod Reconciler&lt;/b&gt; 创建&lt;br&gt;每组一个，名为 &amp;lt;leaderPod&amp;gt;&lt;br&gt;selector: name=&amp;lt;lws&amp;gt;, group-index=&amp;lt;i&amp;gt;&lt;br&gt;owner：&lt;b&gt;leader Pod&lt;/b&gt;"]
+    SH --&gt; DNS1["my-lws-0.my-lws&lt;br&gt;my-lws-0-1.my-lws&lt;br&gt;my-lws-1.my-lws&lt;br&gt;…所有组同在一个域"]
+    UQ --&gt; DNS2["my-lws-0.my-lws-0&lt;br&gt;my-lws-0-1.my-lws-0&lt;br&gt;my-lws-1.my-lws-1&lt;br&gt;…每组一个域"]</code></pre>
+<p>两者都由 <code>controllerutils.CreateHeadlessServiceIfNotExists</code> 创建，带：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">ClusterIP</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;None&quot;</span>
+<span class="nx">PublishNotReadyAddresses</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+<p><code>publishNotReadyAddresses: true</code> 是承重设置。rendezvous 发生在启动<em>过程中</em>：worker 会在任何东西 Ready 之前解析 <code>LWS_LEADER_ADDRESS</code>。没有这个开关，DNS 记录要等 leader 通过 readiness probe 才存在，于是每个引擎的启动都会死锁——leader 不 Ready 是因为 worker 没连上，worker 连不上是因为 leader 没有 DNS 记录。</p>
+<div class="admonition note">
+<p class="admonition-title">这让 KEP-820 的前提失效了</p>
+<p>KEP-820 提议加一个 init 阶段的 DNS 开关，理由是「<code>publishNotReadyAddresses: false</code> 时 peer FQDN 在 init 阶段可能解析不了」。而 LWS 自己的 headless Service 无条件把它设成 <code>true</code>，<code>test/testutils/validators.go</code> 里还有断言。见<a href="../appendix_pr_opportunities/">附录 B</a>。</p>
+</div>
+<p>所有权的差异对垃圾回收有影响。共享 Service 由 LWS 拥有，与 LWS 同寿。每组 Service 由 <strong>leader Pod</strong> 拥有，因此随组一起被删——这完全正确，但也意味着每次组重建、每一步滚动更新，它都会被重建一次。</p>
+<h3 id="51-uniqueperreplica">5.1 什么时候用 <code>UniquePerReplica</code><a class="headerlink" href="#51-uniqueperreplica" title="Permanent link">&para;</a></h3>
+<p>共享 headless Service 会为整个 LWS 的每个 Pod 各产生一条 DNS A 记录。100 个组 × 8 个 Pod，每次 <code>LWS_LEADER_ADDRESS</code> 查询就返回 800 条记录，CoreDNS 会成为冷启动延迟中可测量的一部分。<code>UniquePerReplica</code>（KEP-173）把每次查询的范围收窄到一个组。</p>
+<p>代价：每组多一个 Service 对象（100 个组就是多 100 个对象要 kube-proxy 和 CoreDNS 跟踪），而且这个字段可变——切换它会重写每个 Pod 的 DNS 名并强制全量滚动，期间新老组的 FQDN 形状还不一样。</p>
+<hr />
+<h2 id="_4">第六部分：子组<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<p>子组（KEP-115，由 KEP-257 扩展）存在的唯一理由是：一个组可能大于一个拓扑域。一个横跨两台 8 卡主机的 16-Pod 组，想要的是把<em>每一半</em>钉在一台主机上，而不是把整体钉在一个并不存在的东西上。</p>
+<h3 id="61">6.1 索引算术<a class="headerlink" href="#61" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">getSubGroupIndex</span><span class="p">(</span><span class="nx">podCount</span><span class="p">,</span><span class="w"> </span><span class="nx">subGroupSize</span><span class="p">,</span><span class="w"> </span><span class="nx">workerIndex</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">podCount</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">%</span><span class="nx">subGroupSize</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">podCount</span><span class="o">%</span><span class="nx">subGroupSize</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// leader 是多出来的那个，归入第一个子组。</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprint</span><span class="p">((</span><span class="nx">workerIndex</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">subGroupSize</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprint</span><span class="p">(</span><span class="nx">workerIndex</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">subGroupSize</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>两种情形，由整除性选择：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">情形</th>
+<th style="text-align: left;">条件</th>
+<th style="text-align: left;"><code>size=9, subGroupSize=4</code> / <code>size=8, subGroupSize=4</code> 的布局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>leader 是多出来的</strong></td>
+<td style="text-align: left;"><code>(size-1) % sgs == 0</code> 且 <code>size % sgs != 0</code></td>
+<td style="text-align: left;"><code>size=9, sgs=4</code>：子组 0 = {0（leader）, 1, 2, 3, 4}，子组 1 = {5, 6, 7, 8}。leader 并入子组 0，使其有 5 个成员。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>整除</strong></td>
+<td style="text-align: left;"><code>size % sgs == 0</code></td>
+<td style="text-align: left;"><code>size=8, sgs=4</code>：子组 0 = {0（leader）, 1, 2, 3}，子组 1 = {4, 5, 6, 7}。leader 占据子组 0 的第一个位置。</td>
+</tr>
+</tbody>
+</table>
+<p>webhook 强制两个条件必须满足其一（<code>size % sgs == 0 || (size-1) % sgs == 0</code>），所以不会出现第三种情况。</p>
+<h3 id="62">6.2 两种策略类型<a class="headerlink" href="#62" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><code>subGroupPolicyType</code></th>
+<th style="text-align: left;">leader 的位置</th>
+<th style="text-align: left;">额外约束</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>LeaderWorker</code>（默认）</td>
+<td style="text-align: left;">leader 在子组 0</td>
+<td style="text-align: left;">—</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LeaderExcluded</code></td>
+<td style="text-align: left;">leader <strong>不在任何</strong>子组</td>
+<td style="text-align: left;">要求 <code>(size-1) % sgs == 0</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>LeaderExcluded</code>（KEP-257）针对的是常见的推理拓扑：leader 是个不持有分片的协调者。它跑 OpenAPI server 并向 worker 分发；把它塞进某个 worker 子组，就会在一个真正需要放分片的拓扑域里占掉一个位置。</p>
+<p>Pod webhook 的 leader 分支对此有显式检查：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// 只有策略不是 LeaderExcluded 时，才把 leader 分到子组 0</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">存在</span><span class="w"> </span><span class="nx">subGroupSize</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">subgroup</span><span class="o">-</span><span class="nx">index</span><span class="w"> </span><span class="nx">为空</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">subgroup</span><span class="o">-</span><span class="nx">policy</span><span class="o">-</span><span class="kd">type</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;LeaderExcluded&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">labels</span><span class="p">[</span><span class="nx">SubGroupIndexLabelKey</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;0&quot;</span>
+<span class="w">    </span><span class="nx">labels</span><span class="p">[</span><span class="nx">SubGroupUniqueHashLabelKey</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">genGroupUniqueKey</span><span class="p">(</span><span class="nx">pod</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;0&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="admonition danger">
+<p class="admonition-title">上游 concepts 页面描述了一个不存在的取值</p>
+<p><code>site/content/en/docs/concepts/_index.md</code> 写了 <code>SubGroupType: LeaderOnly</code>，并说它会<em>专门为</em> leader 创建一个子组。真实取值是 <code>LeaderExcluded</code>，含义是 leader <em>不在任何</em>子组——正好相反。照着那一页写的人会得到一份被 webhook 拒绝的 manifest；就算他们猜对了名字，拿到的行为也和预期相反。这是目前最有价值的文档修复；见<a href="../appendix_pr_opportunities/">附录 B</a>。</p>
+</div>
+<h3 id="63-key">6.3 子组 key 与亲和性<a class="headerlink" href="#63-key" title="Permanent link">&para;</a></h3>
+<p><code>subgroup-key</code> 是 <code>Sha1Hash("&lt;leaderPodName&gt;/&lt;subGroupIndex&gt;")</code>——注意这个 helper 是通用的（<code>genGroupUniqueKey(a, b) = sha1(a + "/" + b)</code>），所以在子组这个调用点上参数名读起来有点怪。这个 key 的用法和 <code>group-key</code> 完全一样，只是拓扑 key 换成了 <code>subgroup-exclusive-topology</code>。</p>
+<p>一个 Pod 可以<strong>同时</strong>带两套：组级亲和性把组钉在一个机架上，子组级亲和性把每一半钉在一台主机上。结果是两条 Pod 亲和性项加两条反亲和性项，全部为 <code>RequiredDuringSchedulingIgnoredDuringExecution</code>。亲和性本身的机制在<a href="../07_scheduling_placement_and_networking/">模块 7</a>。</p>
+<hr />
+<h2 id="tpu">第七部分：TPU 身份<a class="headerlink" href="#tpu" title="Permanent link">&para;</a></h2>
+<p><code>pkg/utils/accelerators/tpu.go</code>（包名 <code>accelerator</code>）之所以存在，是因为 JAX 和 TPU 运行时想要一套不同于 <code>LWS_WORKER_INDEX</code> 的身份词汇。只要有任一容器或 init 容器在 limits（先查）或 requests 里带非零 <code>google.com/tpu</code>，这个 Pod 就算「请求 TPU」。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">常量</th>
+<th style="text-align: left;">值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>TpuResourceName</code></td>
+<td style="text-align: left;"><code>google.com/tpu</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TpuProcessDefaultPort</code></td>
+<td style="text-align: left;"><code>8476</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">注入的环境变量</td>
+<td style="text-align: left;"><code>TPU_WORKER_ID</code>、<code>TPU_WORKER_HOSTNAMES</code>、<code>TPU_NAME</code>、<code>TPU_PROCESS_ADDRESSES</code>、<code>TPU_PROCESS_PORT</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="71-leader">7.1 leader 偏移问题<a class="headerlink" href="#71-leader" title="Permanent link">&para;</a></h3>
+<p>核心微妙点在于：<strong>leader 可能是也可能不是 TPU worker。</strong> 如果 leader 是个不带 TPU 的纯协调者，那么 <code>my-lws-0-1</code> 应该是 TPU worker <em>0</em>，而不是 1。如果 leader 确实持有 TPU，它就是 TPU worker 0，<code>my-lws-0-1</code> 是 TPU worker 1。</p>
+<p>控制器的解法是让 leader 告诉 worker。构建 worker StatefulSet 时会调用 <code>AddTPUAnnotations(leaderPod, annotations)</code>，只在 leader 自己请求 TPU 时给 worker Pod 模板打上：</p>
+<div class="highlight"><pre><span></span><code>leaderworkerset.sigs.k8s.io/leader-requests-tpus: &quot;true&quot;
+</code></pre></div>
+<p>worker webhook 随后做偏移：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">leaderPodName</span><span class="p">,</span><span class="w"> </span><span class="nx">podWorkerIndex</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">GetParentNameAndOrdinal</span><span class="p">(</span><span class="nx">pod</span><span class="p">.</span><span class="nx">Name</span><span class="p">)</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Annotations</span><span class="p">[</span><span class="nx">LeaderRequestsTPUsAnnotationKey</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;true&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">podWorkerIndex</span><span class="o">--</span><span class="w">   </span><span class="c1">// leader 不是 TPU worker，ID 整体下移一位</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="72-tpu-pod">7.2 多容器 TPU Pod<a class="headerlink" href="#72-tpu-pod" title="Permanent link">&para;</a></h3>
+<p>扁平路径是感知多容器的。若一个 Pod 里有 <code>n</code> 个请求 TPU 的容器：</p>
+<ul>
+<li>每个容器的端口取用户设的 <code>TPU_PROCESS_PORT</code>，否则是 <code>8476 + i</code>。</li>
+<li><code>TPU_WORKER_ID = podWorkerIndex * numContainers + i</code>。</li>
+<li><code>TPU_WORKER_HOSTNAMES</code> 和 <code>TPU_PROCESS_ADDRESSES</code> 会按容器顺序，把每个 peer 主机名重复 <code>n</code> 次列出。</li>
+</ul>
+<h3 id="73">7.3 子组路径<a class="headerlink" href="#73" title="Permanent link">&para;</a></h3>
+<p><code>addTPUVariablesSubGroup</code> <strong>只支持单容器</strong>——它取 <code>containers[0]</code>。它计算的是子组相对的 worker ID 和一个主机名窗口：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">tpuWorkerId</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">workerIndex</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="nx">subGroupSize</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">workerIndex</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">pod</span><span class="p">.</span><span class="nx">Annotations</span><span class="p">[</span><span class="nx">LeaderRequestsTPUsAnnotationKey</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;true&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">tpuWorkerId</span><span class="w">   </span><span class="p">=</span><span class="w"> </span><span class="p">(</span><span class="nx">workerIndex</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="nx">subGroupSize</span>
+<span class="w">    </span><span class="nx">subGroupIndex</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">(</span><span class="nx">workerIndex</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">subGroupSize</span>
+<span class="p">}</span>
+<span class="nx">start</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">subGroupSize</span><span class="o">*</span><span class="nx">subGroupIndex</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span>
+<span class="nx">end</span><span class="w">   </span><span class="o">:=</span><span class="w"> </span><span class="nx">subGroupSize</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="nx">subGroupIndex</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<p>窗口随后按 leader 是否占位而移动：子组 0 且 leader 持有 TPU 时，<code>end -= 1</code> 并把 leader 主机名前置；后续子组且 leader 持有 TPU 时，<code>start</code> 和 <code>end</code> 都下移一位。</p>
+<p>有两个后果值得知道：</p>
+<ul>
+<li>启用子组后，<code>TPU_WORKER_ID</code> 是<strong>子组相对</strong>的（<code>0..subGroupSize-1</code>），不是组相对的。假设全局 rank 的 JAX 程序会算错。</li>
+<li><code>TPU_NAME</code> 仍然是 <strong>leader Pod 名</strong>，不是每个子组各自的身份。这是否正确取决于运行时的期望，依赖它之前值得对照当前的 JAX/TPU 文档确认一下。</li>
+</ul>
+<p>两条 TPU 路径都是幂等的——如果第一个 TPU 容器上已有 <code>TPU_WORKER_HOSTNAMES</code> 或 <code>TPU_WORKER_ID</code>，就直接跳过。</p>
+<hr />
+<h2 id="_5">第八部分：组的拆除<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<p>拆除几乎完全是 Kubernetes 的垃圾回收，这也是 LWS 里全程没有 finalizer 的原因。</p>
+<pre class="mermaid"><code>flowchart TD
+    D["删除 leader Pod my-lws-0&lt;br&gt;（缩容、滚动更新或重启策略）"]
+    D --&gt;|"ownerReference，foreground 传播"| WSTS["worker StatefulSet my-lws-0&lt;br&gt;被删除"]
+    D --&gt;|"ownerReference（UniquePerReplica）"| SVC["Service my-lws-0&lt;br&gt;被删除"]
+    WSTS --&gt;|"StatefulSet GC"| WP["worker Pod my-lws-0-1 …&lt;br&gt;被删除"]
+    LWSD["删除 LeaderWorkerSet"] --&gt;|"ownerReference"| LSTS["leader StatefulSet"]
+    LWSD --&gt;|"ownerReference"| SHSVC["共享 Service"]
+    LWSD --&gt;|"ownerReference"| CR["ControllerRevision"]
+    LSTS --&gt; D</code></pre>
+<p>让这套机制成立的几个零件：</p>
+<ul>
+<li>LWS 上的 <code>Reconcile</code> 在 <code>DeletionTimestamp != nil</code> 时立刻返回——没什么要清理的，所有权已经处理了。</li>
+<li>组重启路径删除 leader 时带 <code>PropagationPolicy: Foreground</code>，所以 worker StatefulSet 会在 leader Pod 对象消失之前彻底消失。没有 foreground 传播的话，leader 可能在旧 worker StatefulSet 还在时就被它的 StatefulSet 重建出来。</li>
+<li>Pod reconciler 的 <code>pod.DeletionTimestamp != nil</code> 提前返回，避免它在 leader 终止的窗口期重建 worker StatefulSet。</li>
+</ul>
+<p>有一道守卫值得细讲，在 <code>workerPodBelongsToLeader</code> 里。当一个 worker Pod 触发组重启时，控制器必须确认这个 worker 真的属于<em>当前</em>的 leader，而不是上一代。它会沿着所有权链走，并检查 <strong>UID</strong> 而不只是名字：</p>
+<blockquote>
+<p>pod → controller ref → 若是 <code>StatefulSet</code>，<code>Get</code> 它，要求 <code>workerSts.UID == owner.UID</code>，再要求这个 StatefulSet 自己的 controller 是一个 <code>Pod</code>，且名字<strong>和 UID</strong> 都与 leader 相符。</p>
+</blockquote>
+<p>名字在组重建之间会被复用，UID 不会。没有 UID 检查，上一代 worker StatefulSet 的后台删除就可能触发刚重建出来的 leader 被删——一个非常难查的无限重启循环。</p>
+<hr />
+<h2 id="_6">实验：端到端追踪一个身份<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<p>目标是在真实 Pod 上看到第四到第六部分的每一个字段，并逐个故意打破这些机制。</p>
+<div class="admonition warning">
+<p class="admonition-title">规模</p>
+<p>本实验的第 1–4 步在 <code>kind</code> 上就能跑。第 5 步（带独占拓扑的子组）需要至少<strong>两个多卡节点</strong>才有意义，因为它的全部意义就是把子组钉到不同主机上。需要加速器容量的命令标注为 unverified。</p>
+</div>
+<h3 id="1-leader-pod">步骤 1 — 读一个 leader Pod 的完整身份<a class="headerlink" href="#1-leader-pod" title="Permanent link">&para;</a></h3>
+<p>部署一个 <code>replicas: 2, size: 4</code> 的 LWS，然后 dump 一个 leader Pod：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>my-lws-1<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.metadata.labels}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>my-lws-1<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.metadata.annotations}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>my-lws-1<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.subdomain}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>my-lws-1<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.containers[0].env}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</code></pre></div>
+<p>对照 §4.1 和 §4.3 验证：</p>
+<ul>
+<li><code>worker-index</code> 是 <code>0</code>，<code>group-index</code> 是 <code>1</code>。</li>
+<li><code>group-key</code> 是 40 字符十六进制串。算一下 <code>echo -n "default/my-lws-1" | sha1sum</code>，确认一致。</li>
+<li><code>LWS_LEADER_ADDRESS</code> 是 <code>my-lws-1.my-lws.default</code>，且<strong>排在 env 列表的最前面</strong>。</li>
+</ul>
+<h3 id="2">步骤 2 — 确认环境变量顺序的保证<a class="headerlink" href="#2" title="Permanent link">&para;</a></h3>
+<p>加一个引用注入变量的容器环境变量：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RENDEZVOUS</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$(LWS_LEADER_ADDRESS):29500&quot;</span>
+</code></pre></div>
+<p>然后确认它真的展开了：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>my-lws-1<span class="w"> </span>--<span class="w"> </span>printenv<span class="w"> </span>RENDEZVOUS
+</code></pre></div>
+<p>现在设想 <code>addEnvVarsIfNotExists</code> 改成追加而不是前置，<code>printenv</code> 会显示什么？（Kubernetes 会把无法解析的 <code>$(VAR)</code> 原样留着。）这就是前置为什么是承重的。</p>
+<h3 id="3-dns-ready">步骤 3 — 验证 DNS 在 Ready 之前就能解析<a class="headerlink" href="#3-dns-ready" title="Permanent link">&para;</a></h3>
+<p>给 leader 设一个永远不通过的 readiness probe（<code>exec: ["false"]</code>），然后从 worker 上：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>my-lws-1-1<span class="w"> </span>--<span class="w"> </span>nslookup<span class="w"> </span>my-lws-1.my-lws.default
+</code></pre></div>
+<p>即便 leader 不 Ready，它也应该能解析。现在把 Service 改成 <code>publishNotReadyAddresses: false</code> 再试一次——查询失败，你就复现了这个开关要防的死锁。（记得改回去；控制器不会在这个字段上跟你抢，所以得你自己撤销。）</p>
+<h3 id="4-subdomain">步骤 4 — 两种 subdomain 策略都跑一遍<a class="headerlink" href="#4-subdomain" title="Permanent link">&para;</a></h3>
+<p>同一个 LWS 部署两次，各用一种 <code>subdomainPolicy</code>，然后对比：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>my-lws-1<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.subdomain}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>my-lws-1-1<span class="w"> </span>--<span class="w"> </span>printenv<span class="w"> </span>LWS_LEADER_ADDRESS
+</code></pre></div>
+<p>在 <code>UniquePerReplica</code> 下，查一下每组 Service 的 owner：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>my-lws-1<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.metadata.ownerReferences}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</code></pre></div>
+<p>它应该是 <strong>leader Pod</strong>，不是 LWS。删掉 leader Pod，确认 Service 跟着消失。</p>
+<h3 id="5-unverified-2">步骤 5 — 子组算术（unverified，需要 2 个以上节点）<a class="headerlink" href="#5-unverified-2" title="Permanent link">&para;</a></h3>
+<p>用 <code>size: 9, subGroupSize: 4</code> 部署，然后枚举分配结果：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="s1">&#39;NAME:.metadata.name,W:.metadata.labels.leaderworkerset\.sigs\.k8s\.io/worker-index,SG:.metadata.labels.leaderworkerset\.sigs\.k8s\.io/subgroup-index&#39;</span>
+</code></pre></div>
+<p>跑之前先用 <code>getSubGroupIndex</code> 预测输出。<code>size=9, sgs=4</code> 时：<code>(9-1)%4 == 0</code> 且 <code>9%4 != 0</code>，所以走「leader 是多出来的」分支，worker 用 <code>(workerIndex-1)/4</code>。预期子组 0 = worker 索引 0–4，子组 1 = 5–8。</p>
+<p>然后试 <code>subGroupPolicyType: LeaderExcluded</code> 配 <code>size: 9, subGroupSize: 4</code>——<code>(9-1)%4 == 0</code>，会被接受，而 leader 应该<strong>没有</strong> <code>subgroup-index</code> label。再试 <code>LeaderExcluded</code> 配 <code>size: 10, subGroupSize: 4</code>，确认 webhook 拒绝，并引用 <code>validateUpdateSubGroupPolicy</code> 里的原话。</p>
+<h3 id="6">步骤 6 — 复现防递归守卫（思想实验）<a class="headerlink" href="#6" title="Permanent link">&para;</a></h3>
+<p>你几乎不可能跑得起一个老到会忽略 <code>ordinals.start</code> 的 Kubernetes 集群。改为阅读 <code>PodReconciler.Reconcile</code> 的第 6 步，并回答：</p>
+<ul>
+<li>一个忽略 <code>ordinals.start</code> 的集群，会给组 1 的第一个 worker 起什么名字？</li>
+<li>为什么单看 <code>worker-index</code> label，这个名字会让它与 leader 无法区分？</li>
+<li>是哪个 annotation 打破了平局，它又是在哪里被设上的？</li>
+</ul>
+<p>如果这三问你都能不看答案说出来，说明你已经吃透了命名方案。</p>
+<p>继续阅读<a href="../04_lws_reconciler_internals/">模块 4：LeaderWorkerSet 控制器内核</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

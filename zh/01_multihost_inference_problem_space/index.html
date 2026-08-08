@@ -1,0 +1,2183 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/01_multihost_inference_problem_space/">
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../02_api_surface_anatomy/">
+      
+      
+        
+          <link rel="alternate" href="../../01_multihost_inference_problem_space/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>模块 1 - 多机推理的问题域 - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              模块 1 - 多机推理的问题域
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../01_multihost_inference_problem_space/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：工作负载的形状
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：工作负载的形状">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 逼出问题的那道算术
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 并行度分类学
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-prefilldecode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Prefill/Decode 分离
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 需求清单
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：既有 API 差在哪
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：既有 API 差在哪">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-job-jobset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Job 与 JobSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 框架专属 Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leaderworkerset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：LeaderWorkerSet 的答案
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：LeaderWorkerSet 的答案">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 最小对象
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 需求到机制的映射
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 为什么是两层 StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：生态分工
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v090" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：v0.9.0 时的项目现状
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：v0.9.0 时的项目现状">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 特性成熟度
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 采用情况
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 治理
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：建立基线
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：建立基线">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 准备多机加速器容量（unverified）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-lws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 安装 LWS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 部署基线并读懂对象图
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 亲手证伪 StatefulSet 方案
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 5 — 建立故障基线
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：工作负载的形状
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：工作负载的形状">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 逼出问题的那道算术
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 并行度分类学
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-prefilldecode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Prefill/Decode 分离
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 需求清单
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：既有 API 差在哪
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：既有 API 差在哪">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-job-jobset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Job 与 JobSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 框架专属 Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leaderworkerset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：LeaderWorkerSet 的答案
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：LeaderWorkerSet 的答案">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 最小对象
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 需求到机制的映射
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 为什么是两层 StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：生态分工
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v090" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：v0.9.0 时的项目现状
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：v0.9.0 时的项目现状">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 特性成熟度
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 采用情况
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 治理
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：建立基线
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：建立基线">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 准备多机加速器容量（unverified）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-lws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 安装 LWS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 部署基线并读懂对象图
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 亲手证伪 StatefulSet 方案
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 5 — 建立故障基线
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="1">模块 1：多机推理的问题域<a class="headerlink" href="#1" title="Permanent link">&para;</a></h1>
+<p>在读 LWS 源码的第一行之前，值得先把工作负载的形状说清楚。多机推理不是泛泛意义上的「一个分布式系统」——它是一个非常具体的形状，带着一组非常具体的诉求，而 LWS 几乎每一个设计决策都是对其中某一条的直接回应。跳过本模块的读者会觉得控制器代码里满是任意的选择；读过的人会觉得它基本上是必然的。</p>
+<p>本模块覆盖<strong>并行度分类学及各维度的诉求</strong>、<strong>prefill/decode 分离</strong>、<strong>把编排需求提炼成清单</strong>、<strong>Deployment、StatefulSet、Job、JobSet 各自在哪一条上失败</strong>、<strong>LWS 的答案</strong>、<strong>生态分工</strong>，以及 <strong>v0.9.0 时的项目现状</strong>。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源信息</p>
+<p>对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）、v0.9.0 核实。</p>
+</div>
+<hr />
+<h2 id="_1">第一部分：工作负载的形状<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<h3 id="11">1.1 逼出问题的那道算术<a class="headerlink" href="#11" title="Permanent link">&para;</a></h3>
+<p>稠密 Transformer 在 bf16 下的权重显存约为 <span class="arithmatex">\(2 \times P\)</span> 字节，<span class="arithmatex">\(P\)</span> 为参数量。再加上推理侧的开销——激活缓冲、CUDA graph、运行时本身——然后是 KV cache，对批大小 <span class="arithmatex">\(B\)</span>、序列长度 <span class="arithmatex">\(L\)</span> 而言约为</p>
+<div class="arithmatex">\[
+2 \times L \times B \times n_{\text{layers}} \times n_{\text{kv heads}} \times d_{\text{head}} \times \text{每元素字节数}
+\]</div>
+<p>对当前的前沿模型，实际结论是：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">模型量级</th>
+<th style="text-align: right;">bf16 权重</th>
+<th style="text-align: right;">含余量的最小 HBM</th>
+<th style="text-align: left;">装得下的形态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">8B 稠密</td>
+<td style="text-align: right;">~16 GB</td>
+<td style="text-align: right;">~24 GB</td>
+<td style="text-align: left;">1 × L4 / A100-40</td>
+</tr>
+<tr>
+<td style="text-align: left;">70B 稠密</td>
+<td style="text-align: right;">~140 GB</td>
+<td style="text-align: right;">~200 GB</td>
+<td style="text-align: left;">2–4 × H100-80（单机）</td>
+</tr>
+<tr>
+<td style="text-align: left;">405B 稠密</td>
+<td style="text-align: right;">~810 GB</td>
+<td style="text-align: right;">~1.1 TB</td>
+<td style="text-align: left;"><strong>2 台 8×H100 主机</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">671B MoE（DeepSeek 量级）</td>
+<td style="text-align: right;">~1.3 TB</td>
+<td style="text-align: right;">~1.8 TB</td>
+<td style="text-align: left;"><strong>4 台 8×H100 主机</strong></td>
+</tr>
+</tbody>
+</table>
+<p>真正重要的阈值不是「能不能装进一张 GPU」，而是<strong>「能不能装进一个 NVLink 域」</strong>。机内 GPU 之间走 NVLink/NVSwitch，带宽数百 GB/s；跨机则走 RDMA fabric——InfiniBand、RoCE，或云上的等价物如 GPUDirect-TCPX——带宽明显更低、延迟明显更高。跨过这条边界，就是「调度问题」变成「<strong>编排</strong>问题」的那一刻，因为从此 Pod 之间的相对放置直接决定了这个负载是快、是慢，还是根本不能用。</p>
+<h3 id="12">1.2 并行度分类学<a class="headerlink" href="#12" title="Permanent link">&para;</a></h3>
+<p>生产推理里会出现四种并行维度。它们是乘性叠加的，而且每一种对编排器的诉求都不一样。</p>
+<pre class="mermaid"><code>flowchart LR
+    subgraph HOST1 ["主机 A · 8 GPU · 一个 NVLink 域"]
+        G0["GPU 0&lt;br&gt;TP rank 0"]
+        G1["GPU 1&lt;br&gt;TP rank 1"]
+        G2["GPU …"]
+        G3["GPU 7&lt;br&gt;TP rank 7"]
+    end
+    subgraph HOST2 ["主机 B · 8 GPU · 一个 NVLink 域"]
+        H0["GPU 0&lt;br&gt;TP rank 0"]
+        H1["GPU 1&lt;br&gt;TP rank 1"]
+        H2["GPU …"]
+        H3["GPU 7&lt;br&gt;TP rank 7"]
+    end
+    HOST1 --&gt;|"pipeline stage 0 → 1&lt;br&gt;激活值走 RDMA"| HOST2
+    G0 &lt;-.-&gt;|"每层两次 all-reduce&lt;br&gt;走 NVLink"| G3
+    H0 &lt;-.-&gt;|"每层两次 all-reduce"| H3</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">维度</th>
+<th style="text-align: left;">切什么</th>
+<th style="text-align: left;">通信模式</th>
+<th style="text-align: left;">带宽敏感度</th>
+<th style="text-align: left;">对编排的诉求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>TP</strong>（张量）</td>
+<td style="text-align: left;">每一个权重矩阵，跨 rank 切</td>
+<td style="text-align: left;"><strong>每个 Transformer 层两次</strong> <code>all-reduce</code></td>
+<td style="text-align: left;">极高——所以 TP 想待在 NVLink 里</td>
+<td style="text-align: left;">所有 TP rank 必须共处一个高带宽域、同时启动，并在进程启动时就知道 world size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>PP</strong>（流水）</td>
+<td style="text-align: left;">层，切成顺序的 stage</td>
+<td style="text-align: left;">stage 边界上的点对点激活值传递</td>
+<td style="text-align: left;">中等——每个 micro-batch 每个边界一次</td>
+<td style="text-align: left;">stage 可以跨机；stage 的顺序和可寻址性很重要</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EP</strong>（专家）</td>
+<td style="text-align: left;">MoE 专家，跨 rank 切</td>
+<td style="text-align: left;">每个 MoE 层一次 token dispatch/combine 的 <code>all-to-all</code></td>
+<td style="text-align: left;">高且<strong>突发</strong>——流量取决于路由</td>
+<td style="text-align: left;">与 TP 同样的共置压力，外加对负载不均衡敏感</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DP</strong>（数据）</td>
+<td style="text-align: left;">什么都不切；互相独立的副本</td>
+<td style="text-align: left;">副本之间无通信</td>
+<td style="text-align: left;">零</td>
+<td style="text-align: left;">这就是横向扩展的维度——也正是 <code>LeaderWorkerSet.spec.replicas</code> 在数的东西</td>
+</tr>
+</tbody>
+</table>
+<p>关键观察是：<strong>TP、PP、EP 都活在一个服务单元的<em>内部</em>，而 DP 活在服务单元<em>之间</em>。</strong> 一个只理解「Pod 数量」的编排器无法表达这件事。它需要知道这 16 个 Pod 是「两份 8-Pod 的东西」，而不是「十六份什么东西」。</p>
+<h3 id="13-prefilldecode">1.3 Prefill/Decode 分离<a class="headerlink" href="#13-prefilldecode" title="Permanent link">&para;</a></h3>
+<p>第二个结构性事实是：LLM 推理有两个硬件画像相反的阶段。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Prefill</th>
+<th style="text-align: left;">Decode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">做什么</td>
+<td style="text-align: left;">处理整个 prompt，建 KV cache</td>
+<td style="text-align: left;">一次生成一个 token</td>
+</tr>
+<tr>
+<td style="text-align: left;">可用并行度</td>
+<td style="text-align: left;">极大——所有 prompt token 一起算</td>
+<td style="text-align: left;">每个序列每步一个 token</td>
+</tr>
+<tr>
+<td style="text-align: left;">瓶颈</td>
+<td style="text-align: left;"><strong>算力受限</strong>（FLOPs）</td>
+<td style="text-align: left;"><strong>显存带宽受限</strong>（读权重 + KV cache）</td>
+</tr>
+<tr>
+<td style="text-align: left;">理想批次</td>
+<td style="text-align: left;">小批次、长序列</td>
+<td style="text-align: left;">大批次，摊薄权重读取</td>
+</tr>
+<tr>
+<td style="text-align: left;">理想硬件</td>
+<td style="text-align: left;">FLOPs 越高越好</td>
+<td style="text-align: left;">HBM 带宽和容量越大越好</td>
+</tr>
+<tr>
+<td style="text-align: left;">延迟 SLO</td>
+<td style="text-align: left;">TTFT（首 token 时间）</td>
+<td style="text-align: left;">ITL / TPOT（token 间延迟）</td>
+</tr>
+</tbody>
+</table>
+<p>把两个阶段跑在同一个进程里就必须折中：continuous batching 会把它们交织起来，一次长 prefill 会卡住批次里的每一个 decode（表现为 ITL 尖刺的「队头阻塞」）。<strong>分离式服务</strong>把它们拆成独立的池，把 KV cache 经由 fabric 从 prefill 传给 decode。vLLM 和 SGLang 都支持这种模式。</p>
+<p>由此带来的编排后果非常严重，而这正是 <code>DisaggregatedSet</code> 存在的理由：</p>
+<ul>
+<li>prefill 池和 decode 池<strong>形状不同</strong>（TP 度不同、GPU 型号不同、副本数不同）。</li>
+<li>它们的副本数必须<strong>独立伸缩</strong>——最优 P:D 比取决于「prompt 长度 : 生成长度」的比值，会随流量漂移。</li>
+<li>它们<strong>在版本上是耦合的</strong>。prefill 服务器把 KV cache 交给 decode 服务器；两者必须在布局、量化、模型版本上完全一致。只滚其中一个是正确性 bug，不是性能问题。</li>
+<li>流量路由必须<strong>感知 revision</strong>：一个请求的 prefill 和 decode 必须落在<strong>同一 revision</strong> 的后端上。</li>
+</ul>
+<p>最后这条是<a href="../08_disaggregatedset/">模块 8</a> 中影响最深远的设计约束，也是 DisaggregatedSet 为什么给「每个 role 的每个 revision」各建一个 LeaderWorkerSet、而不是复用 LWS 自己的 <code>partition</code> 机制的原因。</p>
+<h3 id="14">1.4 需求清单<a class="headerlink" href="#14" title="Permanent link">&para;</a></h3>
+<p>把 1.1–1.3 提炼成「编排器到底必须提供什么」：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">需求</th>
+<th style="text-align: left;">由什么驱动</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>R1</strong></td>
+<td style="text-align: left;"><span class="arithmatex">\(N\)</span> 个 Pod 组成的组，<strong>作为一个整体</strong>创建、伸缩、更新、删除</td>
+<td style="text-align: left;">TP/PP/EP 在组内；DP 在组间</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R2</strong></td>
+<td style="text-align: left;">每个 Pod 在<strong>进程启动前</strong>就知道自己的 rank 和 world size</td>
+<td style="text-align: left;">集合通信库在 init 时就要 <code>WORLD_SIZE</code>/<code>RANK</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R3</strong></td>
+<td style="text-align: left;">每个 Pod 能在任何 Pod Ready 之前，用稳定名字<strong>寻址到其他每个 Pod</strong></td>
+<td style="text-align: left;">rendezvous 发生在启动过程中，不是启动之后</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R4</strong></td>
+<td style="text-align: left;">组可选地<strong>共置</strong>在指定的拓扑域内</td>
+<td style="text-align: left;">TP/EP 的带宽敏感度</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R5</strong></td>
+<td style="text-align: left;">整个组的容量<strong>要么全拿到要么都不拿</strong></td>
+<td style="text-align: left;">半调度的组占着 GPU 却不提供服务</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R6</strong></td>
+<td style="text-align: left;">单个 Pod 或容器故障要<strong>重建整个组</strong></td>
+<td style="text-align: left;">分片状态没有部分恢复的路径</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R7</strong></td>
+<td style="text-align: left;">滚动更新<strong>逐组推进</strong>，surge 与不可用度可配置</td>
+<td style="text-align: left;">更新半个组会产生混版本的集合通信</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R8</strong></td>
+<td style="text-align: left;">横向伸缩作用于<strong>组的数量</strong>，指标按组聚合</td>
+<td style="text-align: left;">DP 才是伸缩维度</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R9</strong></td>
+<td style="text-align: left;">多个<strong>形状不同、版本耦合</strong>的组能被统一管理和联动滚动</td>
+<td style="text-align: left;">prefill/decode 分离</td>
+</tr>
+</tbody>
+</table>
+<p>R1–R8 是 LeaderWorkerSet。R9 是 DisaggregatedSet。</p>
+<hr />
+<h2 id="api">第二部分：既有 API 差在哪<a class="headerlink" href="#api" title="Permanent link">&para;</a></h2>
+<p>LWS 出现之前，每一个内置工作负载 API 都被拿来试过。搞清楚每个具体断在哪一环，是理解 LWS 为什么长这样的最快路径。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">API</th>
+<th style="text-align: center;">R1 组为单位</th>
+<th style="text-align: center;">R2 rank</th>
+<th style="text-align: center;">R3 稳定 DNS</th>
+<th style="text-align: center;">R5 gang</th>
+<th style="text-align: center;">R6 组重启</th>
+<th style="text-align: center;">R7 组滚动</th>
+<th style="text-align: center;">R8 组伸缩</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Deployment</strong></td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>StatefulSet</strong></td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">部分</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Job</strong></td>
+<td style="text-align: center;">✓（完成语义）</td>
+<td style="text-align: center;">✓（indexed）</td>
+<td style="text-align: center;">部分</td>
+<td style="text-align: center;">靠插件</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">不适用</td>
+<td style="text-align: center;">不适用</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>JobSet</strong></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">不适用</td>
+<td style="text-align: center;">不适用</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>LeaderWorkerSet</strong></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓（alpha）</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+</tbody>
+</table>
+<h3 id="21-deployment">2.1 Deployment<a class="headerlink" href="#21-deployment" title="Permanent link">&para;</a></h3>
+<p>Deployment 的模型是<em>可互换、匿名、可单独替换</em>的副本。这三个词对一个分片模型服务器全是错的。Pod 名字带随机后缀，因此没有 rank。没有 per-pod DNS。滚动更新逐个替换 Pod，所以更新中途你会得到一个权重不一致的集合通信组。它不是差一点，它是反着设计的。</p>
+<h3 id="22-statefulset">2.2 StatefulSet<a class="headerlink" href="#22-statefulset" title="Permanent link">&para;</a></h3>
+<p>StatefulSet 接近得多，而且事实上正是 LWS 的底座。它给你序号身份（<code>sts-0</code>、<code>sts-1</code>……）、通过 headless Service 实现的 per-pod 稳定 DNS、用于同时创建的 <code>podManagementPolicy: Parallel</code>，以及 PVC 模板。</p>
+<p>它断在<strong>维度</strong>上。StatefulSet 只有一个 <code>replicas</code> 旋钮。而多机模型需要两个：每组几个 Pod、一共几组。把两者压进一个数字（<code>replicas = 组数 × 组大小</code>）会毁掉所有组级操作：</p>
+<ul>
+<li>滚动更新按序号走 Pod，于是它会把「组 0 的第 7 个 Pod」和「组 1 的第 0 个 Pod」当作两件无关的事来更新——必然产生混版本集合通信。</li>
+<li>想加一个组，结果只加了一个 Pod。</li>
+<li>HPA 无法表达「再来一份那个 8-Pod 的东西」。</li>
+<li>故障处理天然就是 per-pod 的。</li>
+</ul>
+<p>而且它没有 leader 的概念——没有一个 Pod 可以被路由、可以聚合指标、可以跑引擎的前端。</p>
+<h3 id="23-job-jobset">2.3 Job 与 JobSet<a class="headerlink" href="#23-job-jobset" title="Permanent link">&para;</a></h3>
+<p>Indexed Job 给你 <code>JOB_COMPLETION_INDEX</code>，这是货真价实的 rank。<a href="https://github.com/kubernetes-sigs/jobset">JobSet</a>——LWS 在 SIG-Apps 的姊妹项目——把多个 Job 组合成一个 gang 调度、DNS 可寻址的单元，用于多机<strong>训练</strong>确实非常好。</p>
+<p>不匹配之处在于 <strong>run-to-completion 语义</strong>。Job 在 Pod 成功退出时算完成；而服务端点永远不会「成功退出」。具体表现为：没有滚动更新（你只能整体替换 JobSet）、没有给 HPA 用的 scale 子资源、backoff/retry 语义是为批任务失败而不是为热端点调的，以及一个「succeeded 是你永远不想到达的终态」的生命周期。</p>
+<p>上游的立场是 JobSet 和 LWS 互补而非竞争：<strong>JobSet 管训练，LWS 管服务。</strong> 两者共享相当多的设计基因——gang 调度、独占放置、per-replica DNS——所以在其中一个上学到的模式可以迁移到另一个。</p>
+<h3 id="24-operator">2.4 框架专属 Operator<a class="headerlink" href="#24-operator" title="Permanent link">&para;</a></h3>
+<p>Ray、MPI Operator、TorchElastic 之类都解决了 rank 分配和 rendezvous，也被广泛使用。代价是它们把一整个框架的控制面塞进了你的服务路径、它们是框架专属的、它们的故障语义是框架的而不是 Kubernetes 的。LWS 的立场是：rank 分配和组生命周期属于<strong>工作负载 API</strong>，框架应该只是容器镜像里的一个细节——所以 LWS 是与基于 Ray 的 vLLM 部署<strong>集成</strong>，而不是取代它（见<a href="../09_inference_engine_integration/">模块 9</a>）。</p>
+<hr />
+<h2 id="leaderworkerset">第三部分：LeaderWorkerSet 的答案<a class="headerlink" href="#leaderworkerset" title="Permanent link">&para;</a></h2>
+<h3 id="31">3.1 最小对象<a class="headerlink" href="#31" title="Permanent link">&para;</a></h3>
+<p>下面是一个完整的双机张量并行部署，只保留了关键字段。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaderworkerset.x-k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LeaderWorkerSet</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">                              </span><span class="c1"># R8：两个互相独立的模型服务器</span>
+<span class="w">  </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">                                </span><span class="c1"># R1：每个服务器 2 个 Pod（leader + 1 worker）</span>
+<span class="w">    </span><span class="nt">restartPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RecreateGroupOnPodRestart</span><span class="w">  </span><span class="c1"># R6：默认值</span>
+<span class="w">    </span><span class="nt">leaderTemplate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-leader</span>
+<span class="w">            </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm/vllm-openai:latest</span>
+<span class="w">            </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> limits</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">workerTemplate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-worker</span>
+<span class="w">            </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm/vllm-openai:latest</span>
+<span class="w">            </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> limits</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">rolloutStrategy</span><span class="p">:</span><span class="w">                         </span><span class="c1"># R7</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RollingUpdate</span>
+<span class="w">    </span><span class="nt">rollingUpdateConfiguration</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">      </span><span class="nt">maxSurge</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</code></pre></div>
+<p>共 4 个 Pod，分成 2 组、每组 2 个，每组横跨 2 台各 8 卡的主机——每组 16 路张量并行。API 把组数和组大小表达成两个独立的数字，其余一切都由此推出。</p>
+<div class="admonition note">
+<p class="admonition-title">组名就是 API</p>
+<p>注意两级命名：leader Pod 是 <code>vllm-0</code>、<code>vllm-1</code>；worker 是 <code>vllm-0-1</code>、<code>vllm-1-1</code>。leader Pod 的名字<strong>就是</strong>组名，在整个控制器里被用作 owner 和身份锚点。<a href="../03_group_lifecycle_and_identity/">模块 3</a> 会讲透这一点。</p>
+</div>
+<h3 id="32">3.2 需求到机制的映射<a class="headerlink" href="#32" title="Permanent link">&para;</a></h3>
+<p>这张表就是后续笔记的路线图。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">需求</th>
+<th style="text-align: left;">机制</th>
+<th style="text-align: left;">代码位置</th>
+<th style="text-align: left;">模块</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">R1</td>
+<td style="text-align: left;">leader StatefulSet 每组一个 leader Pod；每个 leader Pod 拥有一个 worker StatefulSet</td>
+<td style="text-align: left;"><code>pkg/controllers/leaderworkerset_controller.go</code>、<code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;"><a href="../03_group_lifecycle_and_identity/">3</a>、<a href="../04_lws_reconciler_internals/">4</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R2</td>
+<td style="text-align: left;">mutating webhook 注入 <code>LWS_WORKER_INDEX</code>、<code>LWS_GROUP_SIZE</code></td>
+<td style="text-align: left;"><code>pkg/webhooks/pod_webhook.go</code></td>
+<td style="text-align: left;"><a href="../03_group_lifecycle_and_identity/">3</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R3</td>
+<td style="text-align: left;"><code>LWS_LEADER_ADDRESS</code> + 带 <code>publishNotReadyAddresses: true</code> 的 headless Service；<code>subdomainPolicy</code> 取 Shared 或 UniquePerReplica</td>
+<td style="text-align: left;"><code>pkg/utils/controller/controller_utils.go</code>、KEP-173</td>
+<td style="text-align: left;"><a href="../03_group_lifecycle_and_identity/">3</a>、<a href="../07_scheduling_placement_and_networking/">7</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R4</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/exclusive-topology</code> annotation → 注入 Pod 亲和/反亲和</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;"><a href="../05_pod_controller_and_failure_handling/">5</a>、<a href="../07_scheduling_placement_and_networking/">7</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R5</td>
+<td style="text-align: left;"><code>SchedulerProvider</code> 接口 → Volcano <code>PodGroup</code>，由 <code>PodGroupPerReplica</code> feature gate 控制</td>
+<td style="text-align: left;"><code>pkg/schedulerprovider/</code>、KEP-407</td>
+<td style="text-align: left;"><a href="../07_scheduling_placement_and_networking/">7</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R6</td>
+<td style="text-align: left;"><code>restartPolicy</code> + Pod 控制器里的容器重启检测</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;"><a href="../05_pod_controller_and_failure_handling/">5</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R7</td>
+<td style="text-align: left;">在 leader StatefulSet 上递减 partition，配合 <code>maxSurge</code>/<code>maxUnavailable</code></td>
+<td style="text-align: left;"><code>rollingUpdateParameters()</code></td>
+<td style="text-align: left;"><a href="../06_rollout_and_revisions/">6</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R8</td>
+<td style="text-align: left;"><code>+kubebuilder:subresource:scale</code> 配 <code>selectorpath=.status.hpaPodSelector</code>，选择器只选 leader Pod</td>
+<td style="text-align: left;"><code>api/leaderworkerset/v1/leaderworkerset_types.go</code></td>
+<td style="text-align: left;"><a href="../02_api_surface_anatomy/">2</a>、<a href="../06_rollout_and_revisions/">6</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R9</td>
+<td style="text-align: left;"><code>DisaggregatedSet</code> 管理 N 个 LeaderWorkerSet，每个 (slice, revision, role) 一个</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/</code></td>
+<td style="text-align: left;"><a href="../08_disaggregatedset/">8</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-statefulset">3.3 为什么是两层 StatefulSet<a class="headerlink" href="#33-statefulset" title="Permanent link">&para;</a></h3>
+<p>LWS 里最常被质疑的设计决策，就是这个两层结构：整个 LWS 一个 leader StatefulSet，外加每组一个由 leader <strong>Pod</strong> 拥有的 worker StatefulSet。显而易见的替代方案——一个 <code>replicas × size</code> 的扁平 StatefulSet——在 §2.2 就已经出局。不那么显然的替代方案——由 LWS 控制器直接创建 worker StatefulSet——值得理解，因为被否掉的这个选项解释了很多代码。</p>
+<p>让 <strong>leader Pod</strong> 成为 worker StatefulSet 的 owner，买到了三样东西：</p>
+<ol>
+<li><strong>垃圾回收是免费的。</strong> 删掉 leader Pod 会级联到它的 worker StatefulSet，再级联到 worker Pod。缩容、滚动更新、<code>RecreateGroupOnPodRestart</code> 时的组拆除，都只是「一次 delete + Kubernetes 自带的 GC」。这里没有 finalizer——事实上 <code>Reconcile</code> 一旦看到 <code>DeletionTimestamp</code> 就直接返回。</li>
+<li><strong>组的生命周期锚定在一个真实对象上。</strong> leader Pod 的存在<strong>就是</strong>这个组的存在，这给了控制器一个天然的地方去挂 label（<code>group-index</code>、<code>group-key</code>），也给了 scale 子资源选择器一个天然的 key。</li>
+<li><strong>滚动更新白捡一个排序原语。</strong> 因为 leader Pod 是某个 StatefulSet 的成员，LWS 可以直接借 StatefulSet 控制器自己的 <code>partition</code> 机制来驱动逐组滚动，而不必自己实现有序替换。</li>
+</ol>
+<p>代价是真实存在的：worker StatefulSet <strong>不在</strong> LWS 控制器的 <code>Owns()</code> 图里，所以控制器需要第二条基于 label 的 watch 才能感知它们的变化。那就是<a href="../04_lws_reconciler_internals/">模块 4</a> 里的 <code>enqueueLWSRequests</code>——忘了它的存在，是「我的 reconcile 怎么没触发」这类困惑的常见来源。</p>
+<hr />
+<h2 id="_2">第四部分：生态分工<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<p>LWS 刻意做得很小。知道它<strong>拒绝</strong>做什么，和知道它做什么同样重要——一个给 LWS 加上「它已经明确委托出去的职责」的 PR，是不会被合的。</p>
+<pre class="mermaid"><code>flowchart TD
+    subgraph L4 ["服务栈（组合下面的一切）"]
+        LLMD["llm-d&lt;br&gt;CNCF sandbox · vLLM + P/D + prefix cache"]
+        DYN["NVIDIA Dynamo"]
+        LLMAZ["llmaz · OME · Kubeflow Trainer · AXLearn"]
+    end
+    subgraph L3 ["流量"]
+        GIE["Gateway API Inference Extension&lt;br&gt;模型感知路由、负载感知 LB"]
+    end
+    subgraph L2 ["工作负载 API"]
+        LWSAPI["&lt;b&gt;LeaderWorkerSet&lt;/b&gt;&lt;br&gt;组为复制单元"]
+        DS["&lt;b&gt;DisaggregatedSet&lt;/b&gt;&lt;br&gt;N 个版本耦合的 role"]
+        JS["JobSet&lt;br&gt;（训练侧对应物）"]
+    end
+    subgraph L1 ["容量与调度"]
+        KUEUE["Kueue&lt;br&gt;配额、准入、TAS、DWS flex-start"]
+        VOLC["Volcano / kube-scheduler&lt;br&gt;经由 PodGroup 做 gang 调度"]
+        HPA["HPA / KEDA&lt;br&gt;经由 /scale 子资源"]
+    end
+    subgraph L0 ["Kubernetes 原语"]
+        STS["StatefulSet&lt;br&gt;序号 · DNS · PVC · 并行创建"]
+    end
+
+    LLMD --&gt; DS
+    DYN --&gt; LWSAPI
+    LLMAZ --&gt; LWSAPI
+    GIE --&gt; LWSAPI
+    DS --&gt; LWSAPI
+    LWSAPI --&gt; STS
+    KUEUE -.-&gt;|"准入"| LWSAPI
+    VOLC -.-&gt;|"gang 调度"| LWSAPI
+    HPA -.-&gt;|"伸缩"| LWSAPI</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">关注点</th>
+<th style="text-align: left;">归属</th>
+<th style="text-align: left;">LWS 的角色</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">序号、稳定 DNS、PVC 绑定、并行创建 Pod</td>
+<td style="text-align: left;">StatefulSet</td>
+<td style="text-align: left;">创建并配置 StatefulSet</td>
+</tr>
+<tr>
+<td style="text-align: left;">配额、排队、准入、拓扑感知调度、DWS flex-start</td>
+<td style="text-align: left;">Kueue</td>
+<td style="text-align: left;">带上 <code>kueue.x-k8s.io/queue-name</code> label；其余被动</td>
+</tr>
+<tr>
+<td style="text-align: left;">Gang 调度</td>
+<td style="text-align: left;">Volcano（经 <code>SchedulerProvider</code>）</td>
+<td style="text-align: left;">每组建一个 <code>PodGroup</code>，给 Pod 打上标签</td>
+</tr>
+<tr>
+<td style="text-align: left;">横向自动伸缩</td>
+<td style="text-align: left;">HPA / KEDA</td>
+<td style="text-align: left;">暴露 <code>/scale</code>；发布只含 leader 的 Pod 选择器</td>
+</tr>
+<tr>
+<td style="text-align: left;">模型感知的请求路由、prefix-cache 感知的负载均衡</td>
+<td style="text-align: left;">Gateway API Inference Extension</td>
+<td style="text-align: left;">无——路由不在范围内</td>
+</tr>
+<tr>
+<td style="text-align: left;">模型下载、量化、引擎参数</td>
+<td style="text-align: left;">容器镜像</td>
+<td style="text-align: left;">无</td>
+</tr>
+<tr>
+<td style="text-align: left;">prefill/decode 的 role 协调</td>
+<td style="text-align: left;"><strong>DisaggregatedSet</strong></td>
+<td style="text-align: left;">同一项目，上一层</td>
+</tr>
+</tbody>
+</table>
+<p>读 issue 和 PR 时，有两条共同设计关系值得知道。<strong><a href="https://github.com/llm-d/llm-d">llm-d</a></strong>（CNCF sandbox）是两个 API 共同设计时的参考消费方，好几个 KEP 直接引用了 llm-d 的需求。<strong>JobSet</strong> 是姊妹 API；当某个机制只在其中一边存在时，review 里就会冒出「这个是不是该共用」，而诚实的回答通常是「早晚要，靠一个还不存在的公共库」。</p>
+<hr />
+<h2 id="v090">第五部分：v0.9.0 时的项目现状<a class="headerlink" href="#v090" title="Permanent link">&para;</a></h2>
+<h3 id="51">5.1 特性成熟度<a class="headerlink" href="#51" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">特性</th>
+<th style="text-align: left;">KEP</th>
+<th style="text-align: left;">成熟度</th>
+<th style="text-align: left;">备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">核心组 API（leader + worker，双模板）</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>leaderworkerset.x-k8s.io/v1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">带 <code>maxUnavailable</code>/<code>maxSurge</code> 的滚动更新</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>maxUnavailable &gt; 1</code> 需要上游 <code>MaxUnavailableStatefulSet</code> gate</td>
+</tr>
+<tr>
+<td style="text-align: left;">基于 ControllerRevision 的滚动更新</td>
+<td style="text-align: left;">KEP-238</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">支撑回滚与 revision 感知的 status</td>
+</tr>
+<tr>
+<td style="text-align: left;">独占拓扑放置</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">annotation 驱动</td>
+</tr>
+<tr>
+<td style="text-align: left;">重启策略 / 组级故障处理</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>Default</code> 取值已废弃，改用 <code>None</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Startup policy（<code>LeaderReady</code>）</td>
+<td style="text-align: left;">KEP-135</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">子组</td>
+<td style="text-align: left;">KEP-115、KEP-257</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>LeaderWorker</code> 与 <code>LeaderExcluded</code> 两种策略类型</td>
+</tr>
+<tr>
+<td style="text-align: left;">每组一个 headless Service</td>
+<td style="text-align: left;">KEP-173</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>subdomainPolicy: UniquePerReplica</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">用户可设的 <code>partition</code></td>
+<td style="text-align: left;">KEP-511</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">灰度与 xPyD 滚动</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>volumeClaimTemplates</code></td>
+<td style="text-align: left;">KEP-622</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">注意<a href="../07_scheduling_placement_and_networking/">模块 7</a> 提到的字段透传缺口</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>size</code> 可调整</td>
+<td style="text-align: left;">KEP-552</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">Gang 调度</td>
+<td style="text-align: left;">KEP-407</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;">仅 Volcano；<code>PodGroupPerReplica</code> feature gate；API 可能变</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupAfterStart</code></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;"><strong>Experimental</strong></td>
+<td style="text-align: left;">由 annotation 开启，不是 spec 字段</td>
+</tr>
+<tr>
+<td style="text-align: left;">DisaggregatedSet</td>
+<td style="text-align: left;">KEP-766</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;">v0.9.0 随发</td>
+</tr>
+<tr>
+<td style="text-align: left;">DisaggregatedSet slices</td>
+<td style="text-align: left;">KEP-846</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">DisaggregatedSet 放置策略</td>
+<td style="text-align: left;">KEP-848</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">DisaggregatedSet per-role HPA</td>
+<td style="text-align: left;">KEP-849</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;"><code>DisaggregatedSetRoleScaler</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Fail-fast restart budget</td>
+<td style="text-align: left;">KEP-820</td>
+<td style="text-align: left;"><strong>仅提案</strong></td>
+<td style="text-align: left;"><code>status: provisional</code>，<code>pkg/</code> 中无实现</td>
+</tr>
+</tbody>
+</table>
+<p>alpha 那一列就是贡献机会所在。见<a href="../appendix_pr_opportunities/">附录 B</a>。</p>
+<h3 id="52">5.2 采用情况<a class="headerlink" href="#52" title="Permanent link">&para;</a></h3>
+<p>上游列出的公开采用方：<strong>AWS</strong>（EKS 多机 TensorRT-LLM + Triton，以及一套启用 EFA 的 EKS Blueprints 多机 vLLM 模式）、<strong>DaoCloud</strong>（跨节点大模型的默认方式）、<strong>Google Cloud</strong>（GKE 多机生成式 AI 服务；DeepSeek-R1 671B 与 Llama 3.1 405B 指南）、<strong>NVIDIA</strong>（多机 NIM 的推荐部署方式）、<strong>Red Hat</strong>（OpenShift 上经 OperatorHub 提供的 Leader Worker Set Operator）。</p>
+<p>列出的集成方：AXLearn、Kubeflow Trainer、llm-d、llmaz、NVIDIA Dynamo、OME、SGLang、vLLM。</p>
+<p>这份名单对贡献者的实用价值在于：它告诉你<strong>谁会感受到你的改动</strong>。一个对 <code>leaderWorkerTemplate</code> 的 API 改动会碰到上面每一个；一个对 DisaggregatedSet planner 的改动基本只碰到 llm-d——这也是 DS 的 alpha 改动能明显更快通过 review 的原因。</p>
+<h3 id="53">5.3 治理<a class="headerlink" href="#53" title="Permanent link">&para;</a></h3>
+<p>LWS 位于 <code>kubernetes-sigs</code> 下的 <strong>SIG-Apps</strong>。讨论在 Kubernetes Slack 的 <code>#sig-apps</code> 和 <code>kubernetes-sig-apps</code> 邮件列表。根 <code>OWNERS</code> 层的 approver 是一小撮人——<code>ahg-g</code>、<code>Edwinhr716</code>、<code>kerthcet</code> 在 <code>OWNERS</code>、<code>site/OWNERS</code> 和各 KEP 的 approver 名单里反复出现——所以 PR 的限速环节通常是 review 带宽而不是意见分歧。非平凡特性需要 KEP；<a href="../11_contributor_workflow/">模块 11</a> 会走一遍这个流程。</p>
+<hr />
+<h2 id="_3">实验：建立基线<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>目标是搭出一套可用的双机张量并行部署，后续每个模块都会回到它上面。之后的一切都假设你已经有了它。</p>
+<div class="admonition warning">
+<p class="admonition-title">规模与验证状态</p>
+<p>本实验需要<strong>两个各带 8 张 GPU 的节点</strong>，且处于同一个高带宽域内，以及一个大到确实需要两台机器的模型。用单卡凑数能跑通 API 路径，但关于 R3、R4、R5 你什么都学不到。下面的命令转录自上游示例和 GKE 文档，凡未在活集群上执行的均标注 <strong>unverified</strong>。</p>
+</div>
+<h3 id="1-unverified">步骤 1 — 准备多机加速器容量（unverified）<a class="headerlink" href="#1-unverified" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># GKE：一个 2 节点的 A3 High 池。placement policy 让两个节点落在</span>
+<span class="c1"># 同一个高带宽域内，这是跨机 TP 可行的前提。</span>
+gcloud<span class="w"> </span>container<span class="w"> </span>node-pools<span class="w"> </span>create<span class="w"> </span>a3-pool<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cluster<span class="o">=</span>lws-lab<span class="w"> </span>--region<span class="o">=</span>us-central1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--machine-type<span class="o">=</span>a3-highgpu-8g<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--accelerator<span class="o">=</span><span class="nv">type</span><span class="o">=</span>nvidia-h100-80gb,count<span class="o">=</span><span class="m">8</span>,gpu-driver-version<span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--num-nodes<span class="o">=</span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--placement-type<span class="o">=</span>COMPACT<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--enable-gvnic
+</code></pre></div>
+<p>这类机型的容量受地域限制。如果 <code>COMPACT</code> 放置无法满足，要么申请预留，要么用 Dynamic Workload Scheduler flex-start——注意 flex-start 会把调度这件事变得足够不同，以至于在<a href="../07_scheduling_placement_and_networking/">模块 7</a> 里需要单独讨论。</p>
+<h3 id="2-lws">步骤 2 — 安装 LWS<a class="headerlink" href="#2-lws" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">VERSION</span><span class="o">=</span>v0.9.0
+kubectl<span class="w"> </span>apply<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://github.com/kubernetes-sigs/lws/releases/download/<span class="nv">$VERSION</span>/manifests.yaml
+
+kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/lws-controller-manager
+kubectl<span class="w"> </span>api-resources<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;leaderworkerset|disaggregatedset&#39;</span>
+</code></pre></div>
+<p>你应该看到 <code>leaderworkersets</code>（短名 <code>lws</code>），以及自 v0.9.0 起的 <code>disaggregatedsets</code> 和 <code>disaggregatedsetrolescalers</code>。</p>
+<h3 id="3">步骤 3 — 部署基线并读懂对象图<a class="headerlink" href="#3" title="Permanent link">&para;</a></h3>
+<p>以上游的 vLLM 示例为起点，然后<strong>从活集群上</strong>而不是从 YAML 上回答下面这些问题：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws,sts,svc,pods<span class="w"> </span>-o<span class="w"> </span>wide
+kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision
+</code></pre></div>
+<p>逐条确认第三部分 3.3 的论断：</p>
+<ol>
+<li>有<strong>一个</strong>与 LWS 同名的 StatefulSet，其 <code>replicas</code> 等于 <code>spec.replicas</code>。</li>
+<li><strong>每组额外一个</strong> StatefulSet，以其 leader Pod 命名。</li>
+<li><code>kubectl get sts &lt;组名&gt; -o jsonpath='{.spec.ordinals.start}'</code> 返回 <code>1</code>。</li>
+<li><code>kubectl get sts &lt;组名&gt; -o jsonpath='{.metadata.ownerReferences[0].kind}'</code> 返回 <code>Pod</code>，而不是 <code>LeaderWorkerSet</code>。</li>
+<li><code>kubectl get svc &lt;lws 名&gt; -o jsonpath='{.spec.publishNotReadyAddresses}'</code> 返回 <code>true</code>。</li>
+</ol>
+<h3 id="4-statefulset">步骤 4 — 亲手证伪 StatefulSet 方案<a class="headerlink" href="#4-statefulset" title="Permanent link">&para;</a></h3>
+<p>别把 §2.2 当结论接受，自己证一遍。把 LWS 扩一个组，看看变了什么：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>scale<span class="w"> </span>lws/vllm<span class="w"> </span>--replicas<span class="o">=</span><span class="m">3</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+<p>然后数一数：出现了几个 Pod，它们相互之间的出现顺序是什么？再想想一个 <code>replicas: 6</code> 的 StatefulSet 在 <code>kubectl scale --replicas=7</code> 时会做什么。「多一个组」和「多一个 Pod」之间的差别，就是这个 API 的全部理由。</p>
+<h3 id="5">步骤 5 — 建立故障基线<a class="headerlink" href="#5" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 杀掉组 0 里的一个 worker，观察爆炸半径。</span>
+kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>vllm-0-1
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+<p>记录哪些 Pod 被重建了。这就是 R6 和默认的 <code>RecreateGroupOnPodRestart</code> 策略在起作用；<a href="../05_pod_controller_and_failure_handling/">模块 5</a> 里你会换一个 <code>restartPolicy</code> 重做同样的实验。</p>
+<h3 id="_4">检查点问题<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>为什么 <strong>leader</strong> StatefulSet 不设 <code>.spec.ordinals.start</code>，而每个 worker StatefulSet 都设？</li>
+<li>如果你直接删掉组 1 的 leader Pod，是谁清理掉它的 worker StatefulSet——LWS 控制器，还是 Kubernetes 垃圾回收？</li>
+<li>你的模型需要 16 路 TP，但一个 NVLink 域只装得下 8 张卡。这对 <code>size</code> 意味着什么？对 R4 又意味着什么？</li>
+</ul>
+<p>继续阅读<a href="../02_api_surface_anatomy/">模块 2：API 表面全解剖</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

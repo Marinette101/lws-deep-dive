@@ -1,0 +1,1966 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/09_inference_engine_integration/">
+      
+      
+        <link rel="prev" href="../08_disaggregatedset/">
+      
+      
+        <link rel="next" href="../10_operations_and_troubleshooting/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/09_inference_engine_integration/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 9 - Inference Engine Integration - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-9-inference-engine-integration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 9 - Inference Engine Integration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/09_inference_engine_integration/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-lws_-contract-as-an-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The LWS_* Contract as an ABI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: The LWS_* Contract as an ABI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-the-three-properties-that-make-it-an-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 The three properties that make it an ABI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-the-universal-entrypoint-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 The universal entrypoint shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-what-lws-does-not-give-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 What LWS does not give you
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-four-engine-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Four Engine Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: The Four Engine Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-pattern-a-vllm-with-ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Pattern A — vLLM with Ray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-pattern-b-sglang-native-distributed-init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Pattern B — SGLang, native distributed init
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-pattern-c-tensorrt-llm-with-mpi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Pattern C — TensorRT-LLM with MPI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-pattern-d-llamacpp-and-the-front-service-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Pattern D — llama.cpp, and the front-Service pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-probe-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Probe Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: Probe Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-why-liveness-probes-are-dangerous-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Why liveness probes are dangerous here
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-a-workable-leader-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 A workable leader probe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-cold-start-and-weight-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Cold Start and Weight Loading
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: Cold Start and Weight Loading">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-where-cold-start-compounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Where cold start compounds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-composition-with-other-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Composition with Other Systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: Composition with Other Systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-kueue-and-dynamic-workload-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Kueue and Dynamic Workload Scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-gateway-api-inference-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Gateway API Inference Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-llm-d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 llm-d
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-confidential-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Confidential serving
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-integrating-a-new-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Integrating a New Engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-integrate-an-engine-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Integrate an Engine End to End
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Integrate an Engine End to End">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-llamacpp-on-kind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A — llama.cpp on kind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a2-prove-the-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A2 — Prove the ABI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-vllm-multi-host-unverified-needs-2-8-gpu-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B — vLLM multi-host (unverified, needs 2 × 8-GPU nodes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b2-measure-the-group-restart-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B2 — Measure the group-restart cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-c-write-a-new-engine-integration-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part C — Write a new engine integration (unverified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-lws_-contract-as-an-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The LWS_* Contract as an ABI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: The LWS_* Contract as an ABI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-the-three-properties-that-make-it-an-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 The three properties that make it an ABI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-the-universal-entrypoint-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 The universal entrypoint shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-what-lws-does-not-give-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 What LWS does not give you
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-four-engine-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Four Engine Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: The Four Engine Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-pattern-a-vllm-with-ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Pattern A — vLLM with Ray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-pattern-b-sglang-native-distributed-init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Pattern B — SGLang, native distributed init
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-pattern-c-tensorrt-llm-with-mpi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Pattern C — TensorRT-LLM with MPI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-pattern-d-llamacpp-and-the-front-service-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Pattern D — llama.cpp, and the front-Service pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-probe-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Probe Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: Probe Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-why-liveness-probes-are-dangerous-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Why liveness probes are dangerous here
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-a-workable-leader-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 A workable leader probe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-cold-start-and-weight-loading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Cold Start and Weight Loading
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: Cold Start and Weight Loading">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-where-cold-start-compounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Where cold start compounds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-composition-with-other-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Composition with Other Systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: Composition with Other Systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-kueue-and-dynamic-workload-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Kueue and Dynamic Workload Scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-gateway-api-inference-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Gateway API Inference Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-llm-d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 llm-d
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-confidential-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Confidential serving
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-integrating-a-new-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Integrating a New Engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-integrate-an-engine-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Integrate an Engine End to End
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Integrate an Engine End to End">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-llamacpp-on-kind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A — llama.cpp on kind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a2-prove-the-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A2 — Prove the ABI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-vllm-multi-host-unverified-needs-2-8-gpu-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B — vLLM multi-host (unverified, needs 2 × 8-GPU nodes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b2-measure-the-group-restart-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B2 — Measure the group-restart cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-c-write-a-new-engine-integration-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part C — Write a new engine integration (unverified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-9-inference-engine-integration">Module 9: Inference Engine Integration<a class="headerlink" href="#module-9-inference-engine-integration" title="Permanent link">&para;</a></h1>
+<p>LWS does not know what an LLM is. It creates pods, gives them names, injects three environment variables, and makes sure they can resolve each other. Everything that makes the group <em>serve a model</em> happens inside the container image, in a startup script that reads those variables and translates them into whatever the engine's own distributed runtime wants.</p>
+<p>That translation is the entire integration surface, and this module is about doing it correctly. Covered: <strong>the <code>LWS_*</code> contract as an ABI</strong>, <strong>the four upstream engine patterns</strong> (vLLM/Ray, SGLang, TensorRT-LLM/MPI, llama.cpp), <strong>probe design for multi-host engines</strong>, <strong>the front-Service pattern</strong>, <strong>cold start and weight loading</strong>, and <strong>how this composes with confidential serving</strong>.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06). Engine examples are from <code>site/content/en/docs/examples/</code> and <code>docs/examples/</code>. Engine-side flags change fast — always check the engine's own current documentation before copying a command from here or from the upstream examples, several of which pin old versions.</p>
+</div>
+<hr />
+<h2 id="part-1-the-lws_-contract-as-an-abi">Part 1: The <code>LWS_*</code> Contract as an ABI<a class="headerlink" href="#part-1-the-lws_-contract-as-an-abi" title="Permanent link">&para;</a></h2>
+<p>Three variables, injected into <strong>every container and init-container</strong> of <strong>every pod</strong> by the mutating webhook (<a href="../03_group_lifecycle_and_identity/">Module 3</a>, §4.3):</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Variable</th>
+<th style="text-align: left;">Value</th>
+<th style="text-align: left;">Maps to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>LWS_LEADER_ADDRESS</code></td>
+<td style="text-align: left;"><code>&lt;lws&gt;-&lt;groupIndex&gt;.&lt;subdomain&gt;.&lt;namespace&gt;</code></td>
+<td style="text-align: left;">Rendezvous / head-node / master address</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LWS_GROUP_SIZE</code></td>
+<td style="text-align: left;"><code>leaderWorkerTemplate.size</code></td>
+<td style="text-align: left;">World size, <code>nnodes</code>, cluster size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LWS_WORKER_INDEX</code></td>
+<td style="text-align: left;"><code>0</code> for the leader, <code>1..size-1</code> for workers</td>
+<td style="text-align: left;">Rank, <code>node_rank</code>, "am I the head?"</td>
+</tr>
+</tbody>
+</table>
+<p>Everything else — pod name, group index, subgroup index — is available only as a label or annotation and must be surfaced with the Downward API if a container needs it.</p>
+<h3 id="11-the-three-properties-that-make-it-an-abi">1.1 The three properties that make it an ABI<a class="headerlink" href="#11-the-three-properties-that-make-it-an-abi" title="Permanent link">&para;</a></h3>
+<p><strong>It is available before the process starts.</strong> The webhook runs at admission, so the variables are in the pod spec before the kubelet pulls the image. There is no discovery step, no init container polling, no race.</p>
+<p><strong>It is stable across recreations.</strong> Group index comes from the StatefulSet ordinal, so <code>vllm-1</code> is always group 1. A recreated group gets the same names and the same addresses.</p>
+<p><strong>It supports variable expansion.</strong> Because <code>addEnvVarsIfNotExists</code> <strong>prepends</strong> the three variables, user-defined variables can reference them:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RAY_ADDRESS</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$(LWS_LEADER_ADDRESS):6379&quot;</span>
+</code></pre></div>
+<p>Kubernetes resolves <code>$(VAR)</code> only against variables defined <strong>earlier</strong> in the list, so this only works because of the prepend. Every upstream example depends on it — <code>--ray_address=$(LWS_LEADER_ADDRESS)</code>, <code>--ray_cluster_size=$(LWS_GROUP_SIZE)</code> — and reordering that function would break all of them.</p>
+<h3 id="12-the-universal-entrypoint-shape">1.2 The universal entrypoint shape<a class="headerlink" href="#12-the-universal-entrypoint-shape" title="Permanent link">&para;</a></h3>
+<p>Almost every integration reduces to the same branch:</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_WORKER_INDEX</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># leader: start the rendezvous / head, wait for peers, then serve</span>
+<span class="w">    </span>start_head_node
+<span class="w">    </span>wait_for_workers<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_GROUP_SIZE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">exec</span><span class="w"> </span>serve_model<span class="w"> </span>--world-size<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_GROUP_SIZE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="c1"># worker: join and block</span>
+<span class="w">    </span><span class="nb">exec</span><span class="w"> </span>join_cluster<span class="w"> </span>--address<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_LEADER_ADDRESS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--rank<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_WORKER_INDEX</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">fi</span>
+</code></pre></div>
+<p>Three details separate a working script from one that flaps:</p>
+<ul>
+<li><strong>The worker's join must retry.</strong> With the default <code>startupPolicy: LeaderCreated</code>, workers start immediately and the leader may not be listening yet. Either retry in the script or use <code>startupPolicy: LeaderReady</code> and accept the serialized cold start (<a href="../03_group_lifecycle_and_identity/">Module 3</a>, §3).</li>
+<li><strong><code>exec</code> matters.</strong> Without it, the shell is PID 1, signals go to the shell instead of the engine, and termination becomes a 30-second <code>SIGKILL</code> wait on every rollout step. Across a 20-group rollout that is ten minutes of pure waiting.</li>
+<li><strong>Workers must block forever.</strong> A worker whose process exits is a container restart, and with the default restart policy that recreates the entire group (<a href="../05_pod_controller_and_failure_handling/">Module 5</a>).</li>
+</ul>
+<h3 id="13-what-lws-does-not-give-you">1.3 What LWS does <em>not</em> give you<a class="headerlink" href="#13-what-lws-does-not-give-you" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Missing signal</th>
+<th style="text-align: left;">Consequence</th>
+<th style="text-align: left;">Workaround in practice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">"All workers are ready"</td>
+<td style="text-align: left;">The leader cannot know when to start serving</td>
+<td style="text-align: left;">Engine-side rendezvous, or poll the Kubernetes API (the TensorRT-LLM example does exactly this)</td>
+</tr>
+<tr>
+<td style="text-align: left;">A per-group ready gate</td>
+<td style="text-align: left;">Individual pods pass their probes before the group can serve</td>
+<td style="text-align: left;">Put the readiness probe only on the leader, and have it reflect <em>group</em> health</td>
+</tr>
+<tr>
+<td style="text-align: left;">Group-level metrics</td>
+<td style="text-align: left;">HPA sees only leader pods (<a href="../02_api_surface_anatomy/">Module 2</a>, §4)</td>
+<td style="text-align: left;">The leader must aggregate and expose group metrics itself</td>
+</tr>
+</tbody>
+</table>
+<p>The first gap is the most interesting for a contributor, because the TensorRT-LLM example works around it by <strong>granting the pod RBAC to call <code>kubectl</code></strong> — the leader polls the API server to learn when workers are ready. That is a strong signal that an LWS-native mechanism is missing. KEP-135's <code>LeaderReady</code> addresses the inverse direction (workers wait for the leader) and does nothing for this one.</p>
+<hr />
+<h2 id="part-2-the-four-engine-patterns">Part 2: The Four Engine Patterns<a class="headerlink" href="#part-2-the-four-engine-patterns" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    subgraph RAY ["Pattern A · Ray head/worker — vLLM"]
+        A1["leader: ray start --head&lt;br&gt;then vllm serve"]
+        A2["workers: ray start --address=$(LWS_LEADER_ADDRESS)"]
+        A2 --&gt; A1
+    end
+    subgraph NATIVE ["Pattern B · Native dist-init — SGLang"]
+        B1["all pods: same binary&lt;br&gt;--dist-init-addr $(LWS_LEADER_ADDRESS)&lt;br&gt;--node-rank $(LWS_WORKER_INDEX)"]
+    end
+    subgraph MPI ["Pattern C · MPI launcher — TensorRT-LLM"]
+        C1["leader: poll worker readiness,&lt;br&gt;then mpirun -H all-hosts"]
+        C2["workers: sshd / orted, wait"]
+        C1 --&gt; C2
+    end
+    subgraph RPC ["Pattern D · RPC backends — llama.cpp"]
+        D1["leader: llama-server --rpc host1,host2,…"]
+        D2["workers: rpc-server, wait"]
+        D1 --&gt; D2
+    end</code></pre>
+<h3 id="21-pattern-a-vllm-with-ray">2.1 Pattern A — vLLM with Ray<a class="headerlink" href="#21-pattern-a-vllm-with-ray" title="Permanent link">&para;</a></h3>
+<p>The upstream example deploys two vLLM replicas in two flavours:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Flavour</th>
+<th style="text-align: left;">Topology</th>
+<th style="text-align: left;">Parallelism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">GPU</td>
+<td style="text-align: left;">2 pods per replica, 8 GPUs per pod</td>
+<td style="text-align: left;"><code>pipeline_parallel_size=2</code>, <code>tensor_parallel_size=8</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">TPU</td>
+<td style="text-align: left;">Two TPU v5e-16 slices, 4 hosts each, 4 TPUs per host</td>
+<td style="text-align: left;"><code>pipeline_parallel_size=2</code>, <code>tensor_parallel_size=16</code></td>
+</tr>
+</tbody>
+</table>
+<p>Ray uses the <strong>leader pod as the head node</strong> and worker pods as Ray nodes. The leader then runs the vLLM server, exposed through a ClusterIP Service.</p>
+<p>Note the parallelism mapping: <strong>TP within a pod, PP across pods.</strong> That is deliberate — TP is the bandwidth-hungry dimension (<a href="../01_multihost_inference_problem_space/">Module 1</a>, §1.2), so it stays inside one host's NVLink domain, and the cross-pod dimension is pipeline parallelism, which needs only point-to-point activation transfers.</p>
+<p>Verification, which is a useful habit:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>logs<span class="w"> </span>vllm-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;Loading model weights took&quot;</span>
+kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/vllm-leader<span class="w"> </span><span class="m">8080</span>:8080
+</code></pre></div>
+<p>The log line appears once per Ray worker, which is the quickest confirmation that every rank actually joined.</p>
+<div class="admonition tip">
+<p class="admonition-title">The TPU flavour exercises the TPU env injection</p>
+<p>On the TPU path, <code>TPU_WORKER_HOSTNAMES</code> and <code>TPU_WORKER_ID</code> (<a href="../03_group_lifecycle_and_identity/">Module 3</a>, §7) do the work that Ray does on the GPU path. If you are debugging a TPU deployment, check those variables first — the leader-shift logic around <code>leader-requests-tpus</code> is the usual culprit.</p>
+</div>
+<h3 id="22-pattern-b-sglang-native-distributed-init">2.2 Pattern B — SGLang, native distributed init<a class="headerlink" href="#22-pattern-b-sglang-native-distributed-init" title="Permanent link">&para;</a></h3>
+<p>SGLang needs no Ray. Every pod runs the same command with different arguments derived from the LWS variables:</p>
+<div class="highlight"><pre><span></span><code>--dist-init-addr $(LWS_LEADER_ADDRESS):5000
+--nnodes $(LWS_GROUP_SIZE)
+--node-rank $(LWS_WORKER_INDEX)
+</code></pre></div>
+<p>This is the cleanest of the four patterns and the one to imitate for a new engine.</p>
+<p>The upstream example is 2 replicas × 2 pods × 1 GPU with <code>--tp 2</code>, and it carries an explicit warning worth repeating: <strong>SGLang uses tensor parallelism across nodes</strong>, which is far chattier than pipeline parallelism, so a high-bandwidth interconnect is required. Contrast this with vLLM's example, which deliberately keeps TP inside a pod. Same API, opposite parallelism topology, very different network requirements — and a good reason to read <a href="../07_scheduling_placement_and_networking/">Module 7</a> before choosing an engine.</p>
+<h3 id="23-pattern-c-tensorrt-llm-with-mpi">2.3 Pattern C — TensorRT-LLM with MPI<a class="headerlink" href="#23-pattern-c-tensorrt-llm-with-mpi" title="Permanent link">&para;</a></h3>
+<p>The most involved integration, and the most instructive about what LWS lacks.</p>
+<ul>
+<li>Requires a <strong>custom image</strong> that downloads the model and carries a Python script to initialise MPI and start Triton.</li>
+<li>Uniquely requires <strong>RBAC</strong>: the example applies a Role and RoleBinding "because the script requires access to <code>kubectl</code> to determine when the workers are in a ready state."</li>
+<li>2 pods per replica, 8 GPUs per pod. Serves via <code>POST /v2/models/ensemble/generate</code>.</li>
+</ul>
+<p>That RBAC requirement is the notable part. MPI's launcher must know every host is up before <code>mpirun</code>, and LWS exposes no in-container signal for "the group is assembled." So the leader is given API access and polls pod readiness itself.</p>
+<p>Options if you hit this yourself, in increasing order of cleanliness: poll the API server (what the example does, and it means your inference pod has cluster credentials); have workers write a sentinel to a shared volume; or use an engine-native rendezvous that tolerates late joiners. The last is best where the engine supports it.</p>
+<div class="admonition bug">
+<p class="admonition-title">The TensorRT-LLM page has a copy-paste error</p>
+<p>Its port-forward command reads <code>kubectl port-forward svc/vllm-leader 8000:8000</code> — copied from the vLLM page. The Service in that example is not named <code>vllm-leader</code>. The page's <code>kubectl get pods</code> output also shows only two pods while the prose describes 8 GPUs per pod across 2 pods. Both are in <a href="../appendix_pr_opportunities/">Appendix B</a>.</p>
+</div>
+<h3 id="24-pattern-d-llamacpp-and-the-front-service-pattern">2.4 Pattern D — llama.cpp, and the front-Service pattern<a class="headerlink" href="#24-pattern-d-llamacpp-and-the-front-service-pattern" title="Permanent link">&para;</a></h3>
+<p>The llama.cpp example is the only <strong>CPU-only, kind-runnable</strong> one, which makes it the right starting point if you do not have accelerators. The leader loads the model and distributes layers; workers run <code>rpc-server</code> and do compute.</p>
+<p>Its real value is that it is the clearest illustration on the whole site of <strong>LWS's two-Service model</strong>:</p>
+<pre class="mermaid"><code>flowchart LR
+    CLIENT["client / clichat pod"]
+    CLIENT --&gt;|"ClusterIP"| FRONT["&lt;b&gt;Service llamacpp&lt;/b&gt;&lt;br&gt;user-created&lt;br&gt;selector: worker-index=0&lt;br&gt;&lt;i&gt;routes to the LEADER only&lt;/i&gt;"]
+    FRONT --&gt; L["leader pod"]
+    L &lt;--&gt;|"RPC"| W1["worker 1"]
+    L &lt;--&gt;|"RPC"| W2["worker 2"]
+    HEADLESS["&lt;b&gt;Service llamacpp-…&lt;/b&gt;&lt;br&gt;LWS-created headless&lt;br&gt;clusterIP: None&lt;br&gt;publishNotReadyAddresses: true&lt;br&gt;&lt;i&gt;intra-group DNS only&lt;/i&gt;"]
+    HEADLESS -.-&gt; L
+    HEADLESS -.-&gt; W1
+    HEADLESS -.-&gt; W2</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">LWS-created headless Service</th>
+<th style="text-align: left;">User-created front Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Purpose</td>
+<td style="text-align: left;">Intra-group DNS for rendezvous</td>
+<td style="text-align: left;">Ingress for client traffic</td>
+</tr>
+<tr>
+<td style="text-align: left;">Type</td>
+<td style="text-align: left;">Headless (<code>clusterIP: None</code>)</td>
+<td style="text-align: left;">ClusterIP / LoadBalancer</td>
+</tr>
+<tr>
+<td style="text-align: left;">Selector</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/name=&lt;lws&gt;</code></td>
+<td style="text-align: left;">Must include <strong><code>worker-index: "0"</code></strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Created by</td>
+<td style="text-align: left;">LWS</td>
+<td style="text-align: left;">You</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LWS does not create the front Service.</strong> You must create it, and its selector must include <code>worker-index: "0"</code> — otherwise traffic load-balances across workers that have no HTTP server, and you get intermittent connection refusals that look like a flaky backend.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Service</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-leader</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/worker-index</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0&quot;</span><span class="w">    </span><span class="c1"># ← the load-bearing line</span>
+<span class="w">  </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="w">      </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+</code></pre></div>
+<hr />
+<h2 id="part-3-probe-design">Part 3: Probe Design<a class="headerlink" href="#part-3-probe-design" title="Permanent link">&para;</a></h2>
+<p>Probes are where multi-host serving most often goes wrong, because Kubernetes' per-pod model does not match the group's actual health.</p>
+<h3 id="31-the-rules">3.1 The rules<a class="headerlink" href="#31-the-rules" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Probe</th>
+<th style="text-align: left;">Leader</th>
+<th style="text-align: left;">Workers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Readiness</strong></td>
+<td style="text-align: left;">Yes — must reflect <strong>group</strong> health, since the front Service routes on it</td>
+<td style="text-align: left;">Usually <strong>none</strong>. A worker has no endpoint, and its readiness is meaningless to a client</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Liveness</strong></td>
+<td style="text-align: left;">Careful — a failed liveness restarts the container, which under the default restart policy destroys the whole group</td>
+<td style="text-align: left;">Same, more so</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Startup</strong></td>
+<td style="text-align: left;">Strongly recommended — model loading can take many minutes</td>
+<td style="text-align: left;">Recommended</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-why-liveness-probes-are-dangerous-here">3.2 Why liveness probes are dangerous here<a class="headerlink" href="#32-why-liveness-probes-are-dangerous-here" title="Permanent link">&para;</a></h3>
+<p>A liveness probe failure restarts the container. <code>ContainerRestarted</code> sees <code>RestartCount &gt; 0</code>, and under <code>RecreateGroupOnPodRestart</code> the <strong>entire group</strong> is deleted and recreated (<a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §4.2). A transient hiccup on one worker therefore costs you a full group cold start — for a 405B model, that is minutes of weight loading across every pod.</p>
+<p>Guidance: prefer readiness probes on the leader, use generous <code>failureThreshold</code> on any liveness probe, and always pair a slow-loading model with a <code>startupProbe</code> so the liveness probe does not fire during load.</p>
+<h3 id="33-a-workable-leader-probe">3.3 A workable leader probe<a class="headerlink" href="#33-a-workable-leader-probe" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">startupProbe</span><span class="p">:</span><span class="w">                    </span><span class="c1"># generous: covers weight loading</span>
+<span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/health</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">failureThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120</span>
+<span class="w">  </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w">              </span><span class="c1"># up to 20 minutes</span>
+<span class="nt">readinessProbe</span><span class="p">:</span><span class="w">                  </span><span class="c1"># tight: the front Service routes on this</span>
+<span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/health</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">  </span><span class="nt">failureThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="nt">livenessProbe</span><span class="p">:</span><span class="w">                   </span><span class="c1"># very forgiving: restarting kills the group</span>
+<span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/health</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<span class="w">  </span><span class="nt">failureThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</code></pre></div>
+<p>The startup probe is what makes the other two safe: until it passes, neither the readiness nor the liveness probe runs at all.</p>
+<p>Note also that the LWS-created headless Service sets <code>publishNotReadyAddresses: true</code> (<a href="../03_group_lifecycle_and_identity/">Module 3</a>, §5), so a not-yet-ready leader is still DNS-resolvable by its workers. That is what allows a strict readiness probe on the leader without deadlocking rendezvous.</p>
+<hr />
+<h2 id="part-4-cold-start-and-weight-loading">Part 4: Cold Start and Weight Loading<a class="headerlink" href="#part-4-cold-start-and-weight-loading" title="Permanent link">&para;</a></h2>
+<p>Cold start is the dominant operational cost of LWS in production, and it compounds with everything else in these notes.</p>
+<pre class="mermaid"><code>flowchart LR
+    A["group scheduled&lt;br&gt;&lt;i&gt;gang: all-or-nothing&lt;/i&gt;"] --&gt; B["image pull&lt;br&gt;10-40 GB engine image"]
+    B --&gt; C["weight fetch&lt;br&gt;PVC / GCS FUSE / HF download"]
+    C --&gt; D["weight load into HBM&lt;br&gt;parallel across pods"]
+    D --&gt; E["rendezvous&lt;br&gt;collective init"]
+    E --&gt; F["readiness"]</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Stage</th>
+<th style="text-align: left;">Typical cost</th>
+<th style="text-align: left;">Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Image pull</td>
+<td style="text-align: left;">Minutes for a 20–40 GB engine image</td>
+<td style="text-align: left;">Pre-pull via DaemonSet; use image streaming where the platform offers it; keep the model <em>out</em> of the image</td>
+</tr>
+<tr>
+<td style="text-align: left;">Weight fetch</td>
+<td style="text-align: left;">Dominant for large models</td>
+<td style="text-align: left;"><code>volumeClaimTemplates</code> with a pre-populated ReadWriteMany volume (<a href="../07_scheduling_placement_and_networking/">Module 7</a>, §6), or a FUSE mount with a local SSD cache</td>
+</tr>
+<tr>
+<td style="text-align: left;">Weight load</td>
+<td style="text-align: left;">Parallel across pods, so it scales with group size rather than model size</td>
+<td style="text-align: left;"><code>/dev/shm</code> sized appropriately — the upstream TAS example uses <code>emptyDir</code> with <code>medium: Memory, sizeLimit: 15Gi</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Rendezvous</td>
+<td style="text-align: left;">Seconds, unless it is racing</td>
+<td style="text-align: left;">Retry in the worker script; do not reach for <code>LeaderReady</code> unless you must</td>
+</tr>
+</tbody>
+</table>
+<h3 id="41-where-cold-start-compounds">4.1 Where cold start compounds<a class="headerlink" href="#41-where-cold-start-compounds" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Rolling updates.</strong> Group-by-group rollout means cold start is paid <code>replicas</code> times. Twenty groups at five minutes each is a 100-minute rollout, before any <code>maxUnavailable</code> parallelism.</li>
+<li><strong><code>RecreateGroupOnPodRestart</code>.</strong> Any single container restart pays a full group cold start.</li>
+<li><strong><code>startupPolicy: LeaderReady</code>.</strong> Serializes leader load before worker load, adding the leader's full load time to every group.</li>
+<li><strong><code>maxSurge</code>.</strong> Reduces <em>availability</em> impact but not <em>duration</em> — the surge group still cold-starts.</li>
+</ul>
+<p>The single highest-leverage optimization is almost always <strong>getting the model out of the image and onto a fast, pre-warmed volume</strong>. The second is a <code>startupProbe</code> generous enough that nothing kills the pod mid-load.</p>
+<hr />
+<h2 id="part-5-composition-with-other-systems">Part 5: Composition with Other Systems<a class="headerlink" href="#part-5-composition-with-other-systems" title="Permanent link">&para;</a></h2>
+<h3 id="51-kueue-and-dynamic-workload-scheduler">5.1 Kueue and Dynamic Workload Scheduler<a class="headerlink" href="#51-kueue-and-dynamic-workload-scheduler" title="Permanent link">&para;</a></h3>
+<p>For scarce accelerator capacity, Kueue admission (<a href="../07_scheduling_placement_and_networking/">Module 7</a>, §4) is usually worth more than topology placement. A group that waits in a queue with a clear status is operationally far better than a group that is Pending against the scheduler with no visibility. DWS flex-start integration also lets a group wait for capacity that does not exist yet, rather than failing.</p>
+<h3 id="52-gateway-api-inference-extension">5.2 Gateway API Inference Extension<a class="headerlink" href="#52-gateway-api-inference-extension" title="Permanent link">&para;</a></h3>
+<p>Routing is explicitly out of LWS's scope. The Gateway API Inference Extension provides model-aware and prefix-cache-aware load balancing, and consumes LWS-managed pods as backends. The integration point is the front Service from §2.4.</p>
+<p>For DisaggregatedSet, routing must additionally be <strong>revision-aware</strong> — see <a href="../08_disaggregatedset/">Module 8</a>, §8. The per-<code>(slice, revision, role)</code> Services exist precisely so a load balancer can count backends per revision across role pools and split traffic proportionally. That counting is the load balancer's job, not LWS's.</p>
+<h3 id="53-llm-d">5.3 llm-d<a class="headerlink" href="#53-llm-d" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/llm-d/llm-d">llm-d</a> (CNCF sandbox) is the reference consumer both APIs are co-designed with: vLLM plus Gateway API Inference Extension, with P/D disaggregation and prefix caching. Several KEPs cite llm-d requirements directly. If you are proposing a DisaggregatedSet feature, "does llm-d need this?" is a question you will be asked.</p>
+<h3 id="54-confidential-serving">5.4 Confidential serving<a class="headerlink" href="#54-confidential-serving" title="Permanent link">&para;</a></h3>
+<p>If your threat model requires that the cloud operator cannot read the weights or the prompts, LWS is the orchestration layer <em>inside</em> a confidential trust boundary rather than a component of it. The composition looks like:</p>
+<ul>
+<li>Confidential GKE nodes or Confidential Containers provide the CPU TEE; NVIDIA CC mode brings the GPU inside the boundary.</li>
+<li><strong>LWS orchestrates the multi-host group</strong> on those nodes — it is entirely orthogonal to the TEE and needs no changes.</li>
+<li>Weight delivery becomes attested key release: encrypted weights on object storage, with the DEK unwrapped only into an attested pod's memory.</li>
+<li>TLS must terminate <strong>inside</strong> the pod, so the front Service must be L4 passthrough — an L7 load balancer would terminate TLS outside the trust boundary and void the guarantee.</li>
+</ul>
+<p>The one LWS-specific consideration is that per-pod attestation multiplies by group size: a 16-pod group is 16 attestations on the cold-start path, and they are on the critical path for weight decryption.</p>
+<p>Detailed treatment of TEEs, attestation, and confidential GPUs is out of scope here; see the companion notes on <a href="https://marinette101.github.io/llm-cc-in-k8s/">confidential computing for LLM serving on GKE</a>, whose Module 6 uses LWS as the orchestration layer in exactly this way.</p>
+<hr />
+<h2 id="part-6-integrating-a-new-engine">Part 6: Integrating a New Engine<a class="headerlink" href="#part-6-integrating-a-new-engine" title="Permanent link">&para;</a></h2>
+<p>A checklist, in the order the questions actually come up:</p>
+<ol>
+<li><strong>How does the engine learn its rank and world size?</strong> Map to <code>LWS_WORKER_INDEX</code> and <code>LWS_GROUP_SIZE</code>. If it wants a full host list rather than a head address, build it in the entrypoint from <code>LWS_LEADER_ADDRESS</code> and the naming scheme — worker <code>i</code> is <code>&lt;lws&gt;-&lt;group&gt;-&lt;i&gt;.&lt;subdomain&gt;</code>.</li>
+<li><strong>Does it need a rendezvous server, or is it peer-to-peer?</strong> Rendezvous → leader hosts it. Peer-to-peer → every pod needs the full host list.</li>
+<li><strong>Do workers tolerate the leader being absent at start?</strong> No → either retry in the script or use <code>startupPolicy: LeaderReady</code>, and accept the serialized cold start.</li>
+<li><strong>What is the parallelism topology?</strong> TP inside a pod and PP across pods (vLLM style) has very different network requirements from TP across pods (SGLang style). This determines whether you need exclusive topology and what <code>topologyKey</code> to use.</li>
+<li><strong>Does the leader serve HTTP?</strong> Then create a front Service with <code>worker-index: "0"</code> in the selector.</li>
+<li><strong>What group-level metric will you scale on?</strong> It must be published by the leader (<a href="../02_api_surface_anatomy/">Module 2</a>, §4).</li>
+<li><strong>Is the group prefill/decode disaggregated?</strong> Then it is a DisaggregatedSet, not two LWSes (<a href="../08_disaggregatedset/">Module 8</a>).</li>
+</ol>
+<p>Contributing a new example to <code>site/content/en/docs/examples/</code> is a genuinely valuable and well-scoped PR. The bar is: it works as written, it pins versions that are current, and it explains which LWS fields it exercises and why.</p>
+<hr />
+<h2 id="lab-integrate-an-engine-end-to-end">Lab: Integrate an Engine End to End<a class="headerlink" href="#lab-integrate-an-engine-end-to-end" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Scale</p>
+<p>Part A is CPU-only and runs on <code>kind</code> — start there regardless of what hardware you have, because it isolates the integration mechanics from GPU concerns. Parts B and C need real multi-host accelerator capacity and are marked unverified.</p>
+</div>
+<h3 id="part-a-llamacpp-on-kind">Part A — llama.cpp on kind<a class="headerlink" href="#part-a-llamacpp-on-kind" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>create<span class="w"> </span>cluster
+<span class="c1"># The upstream example installs LWS by running the e2e suite against the existing cluster:</span>
+<span class="nv">USE_EXISTING_CLUSTER</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="nv">KIND_CLUSTER_NAME</span><span class="o">=</span>kind<span class="w"> </span>make<span class="w"> </span>test-e2e
+./docs/examples/llamacpp/dev/tasks/run-in-kind
+</code></pre></div>
+<p>You should get a five-pod group (<code>…-0</code> through <code>…-0-4</code>) plus a <code>clichat</code> pod. Then dissect the two Services:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>svc
+kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>llamacpp<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.selector}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>&lt;lws-name&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.clusterIP}{&quot;\t&quot;}{.spec.publishNotReadyAddresses}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>endpointslices<span class="w"> </span>-l<span class="w"> </span>kubernetes.io/service-name<span class="o">=</span>llamacpp
+</code></pre></div>
+<p>Confirm §2.4: the user-created <code>llamacpp</code> Service selects <strong>only</strong> the leader, while the LWS-created headless Service covers all five pods. Then break it deliberately — remove <code>worker-index: "0"</code> from the front Service's selector, and watch requests start failing intermittently as they land on RPC workers with no HTTP server. That failure mode is worth seeing once.</p>
+<h3 id="part-a2-prove-the-abi">Part A2 — Prove the ABI<a class="headerlink" href="#part-a2-prove-the-abi" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;leader&gt;<span class="w"> </span>--<span class="w"> </span>env<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>LWS_
+kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;worker-2&gt;<span class="w"> </span>--<span class="w"> </span>env<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>LWS_
+</code></pre></div>
+<p>Confirm the leader has <code>LWS_WORKER_INDEX=0</code> and the worker has <code>2</code>, that both share <code>LWS_GROUP_SIZE=5</code>, and that <code>LWS_LEADER_ADDRESS</code> is identical on both.</p>
+<p>Now add a container env var that references one:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PEER_LIST</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$(LWS_LEADER_ADDRESS)&quot;</span>
+</code></pre></div>
+<p>and verify it expanded. Then read <code>AddLWSVariables</code> in <code>pkg/utils/pod/pod_utils.go</code> and explain why appending instead of prepending would break it.</p>
+<h3 id="part-b-vllm-multi-host-unverified-needs-2-8-gpu-nodes">Part B — vLLM multi-host (unverified, needs 2 × 8-GPU nodes)<a class="headerlink" href="#part-b-vllm-multi-host-unverified-needs-2-8-gpu-nodes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">HF_TOKEN</span><span class="o">=</span>&lt;your-hf-token&gt;
+curl<span class="w"> </span>https://raw.githubusercontent.com/kubernetes-sigs/lws/refs/heads/main/docs/examples/vllm/GPU/lws.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-s<span class="w"> </span><span class="p">|</span><span class="w"> </span>envsubst<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
+
+kubectl<span class="w"> </span>logs<span class="w"> </span>vllm-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;Loading model weights took&quot;</span>
+kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/vllm-leader<span class="w"> </span><span class="m">8080</span>:8080
+</code></pre></div>
+<p>Then instrument the cold start from §4 by timestamping the transitions:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span>involvedObject.name<span class="o">=</span>vllm-0<span class="w"> </span>--sort-by<span class="o">=</span>.lastTimestamp
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>vllm-0<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .status.conditions[*]}{.type}={.lastTransitionTime}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<p>Attribute the wall-clock time to image pull, weight fetch, weight load, and rendezvous. Whichever dominates is the one worth optimizing; guessing at this is how people spend a week on the wrong stage.</p>
+<h3 id="part-b2-measure-the-group-restart-cost">Part B2 — Measure the group-restart cost<a class="headerlink" href="#part-b2-measure-the-group-restart-cost" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nb">time</span><span class="w"> </span>kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>vllm-0-1<span class="w">     </span><span class="c1"># a worker, not the leader</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+<p>Measure until every pod is Ready again. That number is what one liveness-probe failure costs you, and it is the empirical argument for §3.2's advice.</p>
+<h3 id="part-c-write-a-new-engine-integration-unverified">Part C — Write a new engine integration (unverified)<a class="headerlink" href="#part-c-write-a-new-engine-integration-unverified" title="Permanent link">&para;</a></h3>
+<p>Pick an engine not in the upstream examples and write the integration from the §6 checklist. A useful deliverable is a manifest plus a short page explaining:</p>
+<ul>
+<li>Which of the four patterns it follows and why.</li>
+<li>The exact mapping from <code>LWS_*</code> to engine flags.</li>
+<li>Whether workers tolerate a late leader, and therefore which <code>startupPolicy</code> you chose.</li>
+<li>The parallelism topology and the resulting network requirement.</li>
+<li>The probe configuration and the reasoning behind each threshold.</li>
+</ul>
+<p>If it works as written and pins current versions, that is a publishable upstream PR.</p>
+<h3 id="checkpoint-questions">Checkpoint questions<a class="headerlink" href="#checkpoint-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The TensorRT-LLM example grants the pod RBAC so the leader can poll worker readiness. Design an LWS-native alternative. What would it look like as an API — a field, a condition, an injected variable? What breaks if the group is mid-recreation while a container reads it?</li>
+<li>A worker's process exits cleanly with status 0. Trace what happens under each of the three restart policies, and say which is correct for a TP shard.</li>
+<li>vLLM's example puts TP inside a pod and PP across pods; SGLang's puts TP across pods. Which needs <code>exclusive-topology</code>, at what <code>topologyKey</code>, and why?</li>
+</ul>
+<p>Continue to <a href="../10_operations_and_troubleshooting/">Module 10: Operations and Troubleshooting</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

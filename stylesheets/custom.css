@@ -1,0 +1,30 @@
+/* =====================================================================
+   Widescreen & Ultra-Wide Monitor Responsive Flex-Grid Adjustments
+   ===================================================================== */
+
+/* Dynamically expand the main layout grid to eliminate excessive side margins on wide displays */
+.md-grid {
+  max-width: 94% !important;
+  width: 94% !important;
+}
+
+/* Ensure data tables, Mermaid vector diagrams, and LaTeX math formulas benefit from flexible widescreen expansion */
+.md-typeset .md-content__inner {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+/* Allow comparative technical markdown tables to comfortably stretch and utilize wider viewport widths */
+.md-typeset table:not([class]) {
+  max-width: 100%;
+  display: inline-table;
+  width: 100%;
+}
+
+/* Ensure interactive Mermaid flowcharts expand smoothly without artificial width clamping */
+.md-typeset .mermaid {
+  text-align: center;
+  margin: 1.5em auto;
+  max-width: 100%;
+  overflow-x: auto;
+}

@@ -1,0 +1,1839 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/06_rollout_and_revisions/">
+      
+      
+        <link rel="prev" href="../05_pod_controller_and_failure_handling/">
+      
+      
+        <link rel="next" href="../07_scheduling_placement_and_networking/">
+      
+      
+        
+          <link rel="alternate" href="../../06_rollout_and_revisions/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>模块 6 - 滚动更新、版本与伸缩 - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#6" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              模块 6 - 滚动更新、版本与伸缩
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../06_rollout_and_revisions/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：「已更新」是什么意思
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：基础算术
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：五种情形
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：Partition 递减
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#surge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：Surge 回收
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：完整推演
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#partition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：作为用户旋钮的 partition
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七部分：作为用户旋钮的 partition">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 灰度
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-xpyd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 xPyD 比例保持
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-condition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 与 condition、截断的互动
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八部分：伸缩
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第八部分：伸缩">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-replicas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 通过 replicas 横向伸缩
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-size-kep-552" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 通过 size 纵向伸缩（KEP-552）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maxunavailablestatefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第九部分：MaxUnavailableStatefulSet 依赖
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：让算术可见
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：让算术可见">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 复现九阶段推演
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-surge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 明确观察 surge 回收
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 验证动作 (c)：不可用度记账
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 演练灰度下限
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 5 — 滚动中途伸缩，找到情形 4
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-maxunavailablestatefulset-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 6 — 验证 MaxUnavailableStatefulSet gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：「已更新」是什么意思
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：基础算术
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：五种情形
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：Partition 递减
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#surge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：Surge 回收
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：完整推演
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#partition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：作为用户旋钮的 partition
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七部分：作为用户旋钮的 partition">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 灰度
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-xpyd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 xPyD 比例保持
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-condition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 与 condition、截断的互动
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八部分：伸缩
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第八部分：伸缩">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-replicas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 通过 replicas 横向伸缩
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-size-kep-552" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 通过 size 纵向伸缩（KEP-552）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maxunavailablestatefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第九部分：MaxUnavailableStatefulSet 依赖
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：让算术可见
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：让算术可见">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 复现九阶段推演
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-surge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 明确观察 surge 回收
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 验证动作 (c)：不可用度记账
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 演练灰度下限
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 5 — 滚动中途伸缩，找到情形 4
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-maxunavailablestatefulset-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 6 — 验证 MaxUnavailableStatefulSet gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="6">模块 6：滚动更新、版本与伸缩<a class="headerlink" href="#6" title="Permanent link">&para;</a></h1>
+<p>更新一个 Deployment 很容易，因为它的副本可互换。更新一个 LWS 不容易，因为每个副本都是一个必须原子替换的多 Pod 集合体，而且拿掉一个组就意味着一次性把 <code>size</code> 张加速卡撤出服务。在「每组 8 卡」的部署上，一个粗心的 <code>maxUnavailable</code> 就是「平滑滚动」和「容量事故」之间的区别。</p>
+<p><code>rollingUpdateParameters()</code> 是一百来行算术，把整个问题归约成两个数字——一个 <strong>partition</strong> 和一个<strong>副本数</strong>——然后交给 StatefulSet 控制器。本模块逐行推导这两个数，再把上游那个示例完整地在真实代码上走一遍，证明推导是对的。</p>
+<p>覆盖内容：<strong>「已更新」是什么意思</strong>、<strong>基础算术</strong>、<strong>五种情形</strong>、<strong>partition 递减</strong>、<strong>surge 回收</strong>、<strong>完整的推演</strong>、<strong>作为用户灰度旋钮的 <code>partition</code></strong>、<strong>伸缩</strong>，以及 <strong><code>MaxUnavailableStatefulSet</code> 依赖</strong>。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源信息</p>
+<p>对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）、v0.9.0 核实。主要来源：<code>pkg/controllers/leaderworkerset_controller.go</code>，以及 KEP-511、KEP-552。</p>
+</div>
+<hr />
+<h2 id="_1">第一部分：「已更新」是什么意思<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<p>后面的一切都依赖一对按组的布尔值。<code>getReplicaStates(ctx, lws, stsReplicas, revisionKey) []replicaState</code> 构建一个按组索引、长度固定的切片：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">replicaState</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ready</span><span class="w">   </span><span class="kt">bool</span>
+<span class="w">    </span><span class="nx">updated</span><span class="w"> </span><span class="kt">bool</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>构建过程比看上去更讲究：</p>
+<ol>
+<li>leader Pod 按 <code>{name, worker-index: "0"}</code> 列举，用 <code>utils.SortByIndex</code> 依 <code>group-index</code> label 放进一个长度为 <code>stsReplicas</code> 的切片。越界或无法解析的索引会被<strong>丢弃</strong>，留下零值条目——读作 <code>{ready: false, updated: false}</code>。</li>
+<li>worker StatefulSet 按 <code>{name}</code> 列举，同样方式排序。</li>
+<li>对索引 <code>idx</code>，期望名字是 <code>fmt.Sprintf("%s-%d", lws.Name, idx)</code>。<strong>如果该槽位上的 Pod 名字对不上</strong>——或者 <code>Size &gt; 1</code> 时 StatefulSet 名字对不上——该槽位就是 <code>{false, false}</code>。这就是「尚未创建」和「正在重建」如何在不引入额外状态的情况下被表达出来。</li>
+<li>否则：</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="nx">leaderUpdated</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">revisionutils</span><span class="p">.</span><span class="nx">GetRevisionKey</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">sortedPods</span><span class="p">[</span><span class="nx">idx</span><span class="p">])</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">revisionKey</span>
+<span class="nx">leaderReady</span><span class="w">   </span><span class="o">:=</span><span class="w"> </span><span class="nx">podutils</span><span class="p">.</span><span class="nx">PodRunningAndReady</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">sortedPods</span><span class="p">[</span><span class="nx">idx</span><span class="p">])</span>
+<span class="k">if</span><span class="w"> </span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">Size</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">updated</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">leaderUpdated</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">revisionutils</span><span class="p">.</span><span class="nx">GetRevisionKey</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">sortedSts</span><span class="p">[</span><span class="nx">idx</span><span class="p">])</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">revisionKey</span>
+<span class="w">    </span><span class="nx">ready</span><span class="w">   </span><span class="p">=</span><span class="w"> </span><span class="nx">leaderReady</span><span class="w">   </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">statefulsetutils</span><span class="p">.</span><span class="nx">StatefulsetReady</span><span class="p">(</span><span class="nx">sortedSts</span><span class="p">[</span><span class="nx">idx</span><span class="p">])</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>一个组只有在其 leader Pod <strong>和</strong> worker StatefulSet <em>都</em>带当前 revision key 时才算<strong>已更新</strong>；只有在 leader Pod 处于 Running-and-Ready <strong>且</strong>下式成立时才算<strong>就绪</strong>：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">StatefulsetReady</span><span class="p">(</span><span class="nx">sts</span><span class="w"> </span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">*</span><span class="nx">sts</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">sts</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">AvailableReplicas</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">           </span><span class="nx">sts</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">CurrentRevision</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">sts</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">UpdateRevision</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>注意 <code>revisionKey</code>——<code>leaderworkerset.sigs.k8s.io/template-revision-hash</code> 的值——是「已更新」的<strong>唯一</strong>定义。整条滚动路径里没有任何模板比较。这个 label 会自动传播：LWS 控制器把它放到 leader StatefulSet 的 Pod 模板上，StatefulSet 控制器把它复制到新的 leader Pod，Pod 控制器再用 <em>leader Pod 的</em> key 盖到 worker StatefulSet 及其 Pod 模板上。</p>
+<hr />
+<h2 id="_2">第二部分：基础算术<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nx">maxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w">       </span><span class="p">=</span><span class="w"> </span><span class="nx">intstr</span><span class="p">.</span><span class="nx">GetScaledValueFromIntOrPercent</span><span class="p">(</span><span class="o">&amp;...</span><span class="nx">MaxSurge</span><span class="p">,</span><span class="w">       </span><span class="nb">int</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">),</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span><span class="w">   </span><span class="c1">// 向上取整</span>
+<span class="nx">maxUnavailable</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">intstr</span><span class="p">.</span><span class="nx">GetScaledValueFromIntOrPercent</span><span class="p">(</span><span class="o">&amp;...</span><span class="nx">MaxUnavailable</span><span class="p">,</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">),</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span><span class="w">  </span><span class="c1">// 向下取整</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">burstReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="nx">maxSurge</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">量</th>
+<th style="text-align: left;">规则</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>maxSurge</code></td>
+<td style="text-align: left;">百分比<strong>向上</strong>取整，然后钳到 <code>lwsReplicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>maxUnavailable</code></td>
+<td style="text-align: left;">百分比<strong>向下</strong>取整——正是这个取整让 5 副本的 <code>10%</code> 变成 0，从而踩到 webhook</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>burstReplicas</code></td>
+<td style="text-align: left;"><code>lwsReplicas + maxSurge</code>——leader StatefulSet 副本数的上限</td>
+</tr>
+</tbody>
+</table>
+<p>还有一个作用于<strong>每一条</strong>返回路径的延迟钳制：</p>
+<div class="highlight"><pre><span></span><code><span class="k">defer</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">stsPartition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">stsPartition</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">RolloutStrategy</span><span class="p">.</span><span class="nx">RollingUpdateConfiguration</span><span class="p">.</span><span class="nx">Partition</span><span class="p">)</span>
+<span class="p">}()</span>
+</code></pre></div>
+<p>这就是 KEP-511 那个用户可见的 <code>partition</code> 在充当<strong>下限</strong>。不管算法算出什么，partition 都不会低于用户设定的值。这一行就是整个灰度机制。</p>
+<hr />
+<h2 id="_3">第三部分：五种情形<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p><code>rollingUpdateParameters</code> 按顺序判断五种情形，命中第一个就返回。</p>
+<pre class="mermaid"><code>flowchart TD
+    C1{"情形 1&lt;br&gt;sts == nil？"}
+    C1 --&gt;|是| R1["返回 (0, lwsReplicas)&lt;br&gt;&lt;i&gt;全新 LWS；并行创建&lt;/i&gt;"]
+    C1 --&gt;|否| C2{"情形 2&lt;br&gt;刚刚创建了&lt;br&gt;新 revision？"}
+    C2 --&gt;|是| R2["partition = min(lwsReplicas, stsReplicas)&lt;br&gt;有待完成的扩容？→ (partition, lwsReplicas)&lt;br&gt;否则 → (partition, wantReplicas(lwsReplicas))"]
+    C2 --&gt;|否| C3{"情形 3&lt;br&gt;partition == 0 且&lt;br&gt;stsReplicas == lwsReplicas？"}
+    C3 --&gt;|是| R3["返回 (0, lwsReplicas)&lt;br&gt;&lt;i&gt;滚动完成&lt;/i&gt;"]
+    C3 --&gt;|"否，但&lt;br&gt;stsReplicas &amp;lt; lwsReplicas"| R3b["返回 (partition, lwsReplicas)&lt;br&gt;&lt;i&gt;冻结 partition，先扩完&lt;/i&gt;"]
+    C3 --&gt;|否| C4{"情形 4&lt;br&gt;replicas annotation !=&lt;br&gt;spec.replicas？"}
+    C4 --&gt;|是| R4["partition = min(partition, burstReplicas)&lt;br&gt;返回 (partition, wantReplicas(unready))"]
+    C4 --&gt;|否| R5["&lt;b&gt;情形 5——稳态滚动&lt;/b&gt;&lt;br&gt;rollingStep = maxUnavailable + maxSurge − (burst − stsReplicas)&lt;br&gt;partition = rollingUpdatePartition(states, …)&lt;br&gt;返回 (partition, wantReplicas(unready))"]</code></pre>
+<p><strong>情形 1</strong> 是全新 LWS。partition 为 0，因为 Pod 是并行创建的——没有什么需要拦住。</p>
+<p><strong>情形 2</strong> 在「刚切了新 ControllerRevision」的那次 reconcile 触发。<code>partition := min(lwsReplicas, stsReplicas)</code> 把 partition 设到<strong>所有现有组之上</strong>，于是什么都不更新；先把 burst 副本创建出来。如果 <code>stsReplicas &lt; lwsReplicas</code>——模板变更时还有待完成的扩容——它返回 <code>lwsReplicas</code>，让扩容直接用<em>新</em>模板完成，这比先造出旧 revision 的组再立刻替换要便宜。</p>
+<p><strong>情形 3</strong> 检测滚动已完成：<code>partition == 0 &amp;&amp; stsReplicas == lwsReplicas</code>。它也处理滚动中途的纯扩容：冻结 partition，让副本数长上去。</p>
+<p><strong>情形 4</strong> 是 <code>leaderworkerset.sigs.k8s.io/replicas</code> annotation 存在的意义所在。它在每次 apply 时被盖到 leader StatefulSet 上，因此是一份持久化的「上次 apply 时的 <code>spec.replicas</code> 值」。如果它与当前 <code>spec.replicas</code> 不符，说明有人在滚动中途伸缩了 LWS。对策是 <code>partition = min(partition, burstReplicas)</code>——把 partition 钳进新范围——然后继续。annotation 缺失或格式错误会<strong>硬报错返回</strong>，如果你曾手改过 leader StatefulSet，这点值得知道。</p>
+<p><strong>情形 5</strong> 是稳态，也就是第四部分。</p>
+<hr />
+<h2 id="partition">第四部分：Partition 递减<a class="headerlink" href="#partition" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nx">rollingStep</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">maxUnavailable</span>
+<span class="c1">// 必须始终尊重 maxUnavailable，</span>
+<span class="c1">// 否则在回收 burst 副本时就会违反它。</span>
+<span class="nx">rollingStep</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nx">burstReplicas</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">stsReplicas</span><span class="p">))</span>
+<span class="nx">partition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">rollingUpdatePartition</span><span class="p">(</span><span class="nx">states</span><span class="p">,</span><span class="w"> </span><span class="nx">stsReplicas</span><span class="p">,</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="nx">rollingStep</span><span class="p">),</span><span class="w"> </span><span class="nx">partition</span><span class="p">)</span>
+</code></pre></div>
+<p>因为 <code>burstReplicas - stsReplicas</code> 是<strong>尚未物化</strong>的 surge 容量，这个表达式可以化简为：</p>
+<div class="arithmatex">\[
+\text{rollingStep} = \text{maxUnavailable} + \text{已创建出来的 surge}
+\]</div>
+<p>这才是真正的洞见。surge 副本是额外的服务容量，所以每一个真实存在的 surge 副本，都允许你在不违反可用性预算的前提下多拿掉一个组。满 burst 时步长是 <code>maxUnavailable + maxSurge</code>；surge Pod 还没出现时，步长就只是 <code>maxUnavailable</code>。</p>
+<p>然后是函数本身，项目里最密的一段代码：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">rollingUpdatePartition</span><span class="p">(</span><span class="nx">states</span><span class="w"> </span><span class="p">[]</span><span class="nx">replicaState</span><span class="p">,</span><span class="w"> </span><span class="nx">stsReplicas</span><span class="p">,</span><span class="w"> </span><span class="nx">rollingStep</span><span class="p">,</span><span class="w"> </span><span class="nx">currentPartition</span><span class="w"> </span><span class="kt">int32</span><span class="p">)</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">continuousReadyReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">calculateContinuousReadyReplicas</span><span class="p">(</span><span class="nx">states</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">rollingStepPartition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">utils</span><span class="p">.</span><span class="nx">NonZeroValue</span><span class="p">(</span><span class="nx">stsReplicas</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">continuousReadyReplicas</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">rollingStep</span><span class="p">)</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">unavailable</span><span class="w"> </span><span class="kt">int32</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">rollingStepPartition</span><span class="p">);</span><span class="w"> </span><span class="nx">idx</span><span class="o">++</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">ready</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">unavailable</span><span class="o">++</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">partition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">rollingStepPartition</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unavailable</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">partition</span><span class="p">,</span><span class="w"> </span><span class="nx">stsReplicas</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nx">rollingStepPartition</span><span class="p">;</span><span class="w"> </span><span class="nx">idx</span><span class="o">--</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">ready</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">updated</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">partition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">break</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">partition</span><span class="p">,</span><span class="w"> </span><span class="nx">currentPartition</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>五步动作，各司其职：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">动作</th>
+<th style="text-align: left;">目的</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>a</strong></td>
+<td style="text-align: left;"><code>calculateContinuousReadyReplicas</code> <strong>从尾部往下</strong>数 <code>ready &amp;&amp; updated</code> 的组，遇到第一个不满足的就停</td>
+<td style="text-align: left;">确定高索引那一端已经完成了多少</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>b</strong></td>
+<td style="text-align: left;"><code>rollingStepPartition = stsReplicas − continuousReady − rollingStep</code></td>
+<td style="text-align: left;">把 partition 推到「已完成尾部」再往下一整步的位置</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>c</strong></td>
+<td style="text-align: left;">数出 <code>rollingStepPartition</code> <strong>以下</strong>未就绪的组数，加回去</td>
+<td style="text-align: left;">已经不健康的组<em>已经花掉了</em>可用性预算，不能重复花</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>d</strong></td>
+<td style="text-align: left;">从 <code>partition</code> <strong>向下</strong>走，只要该组已更新<strong>或</strong>已不就绪就继续，但不低于 <code>rollingStepPartition</code></td>
+<td style="text-align: left;">更新一个「已更新」或「已经挂了」的组是免费的——顺手拿下</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>e</strong></td>
+<td style="text-align: left;"><code>min(partition, currentPartition)</code></td>
+<td style="text-align: left;"><strong>单调性不变式：partition 只会向下移动</strong></td>
+</tr>
+</tbody>
+</table>
+<p>动作 (c) 是最容易被忽略的。没有它，一个有两个低索引组已崩溃、<code>maxUnavailable: 2</code> 的 LWS，会为了滚动再拿掉两个组，导致容量短缺四个组。</p>
+<p>动作 (e) 加上第二部分那个延迟的 <code>max(..., spec.partition)</code>，构成完整的不变式：</p>
+<blockquote>
+<p>partition 在一次滚动内<strong>单调不增</strong>，且<strong>永不越过用户设定的灰度下限</strong>。</p>
+</blockquote>
+<p>最后是驱动副本数的未就绪计数：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">calculateLWSUnreadyReplicas</span><span class="p">(</span><span class="nx">states</span><span class="w"> </span><span class="p">[]</span><span class="nx">replicaState</span><span class="p">,</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="w"> </span><span class="kt">int32</span><span class="p">)</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">unreadyCount</span><span class="w"> </span><span class="kt">int32</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="p">;</span><span class="w"> </span><span class="nx">idx</span><span class="o">++</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">states</span><span class="p">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">!</span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">ready</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">!</span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">updated</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">unreadyCount</span><span class="o">++</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">unreadyCount</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>它只扫 <code>[0, lwsReplicas)</code>——<strong>超出期望数量的 surge 副本永远不算未就绪</strong>，这正是 surge 回收能够终止的原因。</p>
+<hr />
+<h2 id="surge">第五部分：Surge 回收<a class="headerlink" href="#surge" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">calculateRollingUpdateReplicas</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">,</span><span class="w"> </span><span class="nx">maxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">maxUnavailable</span><span class="p">,</span><span class="w"> </span><span class="nx">unreadyReplicas</span><span class="w"> </span><span class="kt">int32</span><span class="p">)</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">burstReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">maxSurge</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">unreadyReplicas</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">requiredSurgeReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">utils</span><span class="p">.</span><span class="nx">NonZeroValue</span><span class="p">(</span><span class="nx">unreadyReplicas</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">maxUnavailable</span><span class="p">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">requiredSurgeReplicas</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">burstReplicas</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>两种状态：</p>
+<ul>
+<li><strong>还有很多组未就绪</strong>（<code>unready &gt; maxSurge</code>）：维持满 burst。每一个额外副本你都需要。</li>
+<li><strong>只剩少量组未就绪</strong>（<code>unready &lt;= maxSurge</code>）：只保留 <code>max(0, unready − maxUnavailable)</code> 个 surge 副本。剩下的未就绪组已经装得进 <code>maxUnavailable</code> 预算，surge 容量不再需要。</li>
+</ul>
+<p>因此 surge 是<strong>渐进</strong>回收的，不是最后一次性收掉——而且因为回收由未就绪计数驱动，如果滚动中途有组变得不健康，它还会缩了又涨。</p>
+<p>包装函数 <code>wantReplicas()</code> 在缩容时发出 <code>GroupsProgressing</code>/<code>Delete</code> 事件：一个是 <code>"deleting surge replica %s-%d"</code>，多个是 <code>"deleting surge replicas from %s-%d to %s-%d"</code>。这些事件是判断回收正在发生的最清晰信号。</p>
+<hr />
+<h2 id="_4">第六部分：完整推演<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<p>上游文档给了一张九阶段的表，参数是 <code>replicas: 4, maxUnavailable: 2, maxSurge: 2</code>。这里把它重列一遍，并在每一步补上从代码推导出的算术——那正是上游页面省略掉的部分。</p>
+<p>常量：<code>lwsReplicas = 4</code>、<code>maxSurge = 2</code>、<code>maxUnavailable = 2</code>、<code>burstReplicas = 6</code>。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: center;">Partition</th>
+<th style="text-align: center;">Replicas</th>
+<th style="text-align: center;">R0</th>
+<th style="text-align: center;">R1</th>
+<th style="text-align: center;">R2</th>
+<th style="text-align: center;">R3</th>
+<th style="text-align: center;">R4</th>
+<th style="text-align: center;">R5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>阶段 1</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>阶段 2</strong></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>阶段 3</strong></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>阶段 4</strong></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">⏳</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>阶段 5</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>阶段 6</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>阶段 7</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>阶段 8</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>阶段 9</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<p>✅ 已更新且就绪 · ❎ 未更新（但就绪） · ⏳ 更新中（未就绪）</p>
+<p><strong>阶段 1 → 2。</strong> 模板变了，<code>leaderWorkerSetUpdated</code> 为真 → <strong>情形 2</strong>。<code>partition = min(4, 4) = 4</code>。<code>stsReplicas &gt;= lwsReplicas</code>，所以副本数是 <code>wantReplicas(4)</code>：未就绪 <code>4 &gt; maxSurge 2</code> → 满 burst → <strong>6</strong>。partition 高于所有现有组，因此什么都没被拆；两个 surge 组 R4、R5 以新 revision 被创建出来。</p>
+<p><strong>阶段 2 → 3。</strong> 情形 5。<code>stsReplicas = 6</code>，surge 全部物化：<code>rollingStep = 2 + 2 − (6−6) = 4</code>。R5 未就绪，故 <code>continuousReadyReplicas = 0</code>。于是 <code>rollingStepPartition = 6 − 0 − 4 = 2</code>。R0、R1 就绪，所以 <code>unavailable = 0</code>、<code>partition = 2</code>。动作 (d) 检查 R2：就绪且<em>未</em>更新 → break。<strong>partition = 2。</strong> R2、R3 开始更新。</p>
+<p><strong>阶段 3 → 4。</strong> R4 变成 ready+updated；R5 仍未就绪，所以 <code>continuousReadyReplicas</code> 还是 0，<code>rollingStepPartition</code> 还是 2。动作 (d) 这次发现 R2 未就绪 → <code>partition = 2</code>，然后 <code>idx--</code> 落到 <code>rollingStepPartition</code> 以下，循环结束。<strong>partition 保持 2</strong>——正是上游那句注解「由于最后一个副本未就绪，Partition 不会变化」。</p>
+<p><strong>阶段 4 → 5。</strong> R5 变成 ready+updated。从尾部数：R5 ✅、R4 ✅、R3 未就绪 → 停，<code>continuousReadyReplicas = 2</code>。于是 <code>rollingStepPartition = 6 − 2 − 4 = 0</code>，空区间上的 <code>unavailable</code> 为 0，动作 (d) 在 R0（就绪、未更新）处立刻 break。<strong>partition = 0。</strong> R0、R1 开始更新。</p>
+<p><strong>阶段 5 → 6。</strong> R2、R3 完成。partition 不变，已经是 0。</p>
+<p><strong>阶段 6 → 7。</strong> 现在轮到副本数动。<code>calculateLWSUnreadyReplicas</code> 只扫 <code>[0, 4)</code>：R0、R1 未就绪 → <code>unready = 2</code>。因为 <code>2 &lt;= maxSurge 2</code>，<code>requiredSurgeReplicas = max(0, 2 − 2) = 0</code> → 副本数 <strong>4</strong>。两个 surge 副本被删除，发出 <code>deleting surge replicas from my-lws-4 to my-lws-5</code>。</p>
+<p>注意刚刚发生了什么：被删掉的两个组是<strong>已更新</strong>的那两个，而 R0、R1 还在更新中。这没问题——按定义索引 4 和 5 就在 <code>[0, lwsReplicas)</code> 之外，而 R0/R1 的槽位会由新 revision 填上。</p>
+<p><strong>阶段 7 → 9。</strong> R1 完成（<code>unready = 1</code>，仍 <code>&lt;= maxSurge</code>，<code>max(0, 1−2) = 0</code> → 副本数保持 4），然后是 R0。当 <code>unready = 0</code> 且 <code>partition == 0</code>、<code>stsReplicas == lwsReplicas</code> 时，情形 3 触发，<code>updateDone</code> 为真，<code>TruncateRevisions</code> 删掉旧的 ControllerRevision。</p>
+<div class="admonition tip">
+<p class="admonition-title">推理捷径</p>
+<p>如果只记一件事，就记动作 (a)：<strong>partition 锚定在「已更新且就绪」的尾部。</strong> 其余全是修正项。一次卡住的滚动，几乎总意味着尾部没有增长——某个高索引的组迟迟不就绪——于是 partition 无法下降。</p>
+</div>
+<hr />
+<h2 id="partition_1">第七部分：作为用户旋钮的 <code>partition</code><a class="headerlink" href="#partition_1" title="Permanent link">&para;</a></h2>
+<p>KEP-511 把 <code>rollingUpdateConfiguration.partition</code> 暴露出来，让用户能把滚动停在选定的边界上。<code>[0, partition)</code> 的组被冻结；<code>[partition, replicas)</code> 的组更新。</p>
+<h3 id="71">7.1 灰度<a class="headerlink" href="#71" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">  </span><span class="nt">rolloutStrategy</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">rollingUpdateConfiguration</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">partition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span><span class="w">      </span><span class="c1"># 只有第 8、9 组采用新模板</span>
+</code></pre></div>
+<p>改模板、等待、评估，然后把 <code>partition</code> 调低以扩大范围：8 → 5 → 0。</p>
+<h3 id="72-xpyd">7.2 xPyD 比例保持<a class="headerlink" href="#72-xpyd" title="Permanent link">&para;</a></h3>
+<p>KEP 的动机场景是用两个 LWS 做 prefill/decode 分离。滚动期间你希望 prefill:decode 的版本比例保持住——先把 prefill 全滚完再滚 decode，意味着新版 prefill 服务器把 KV cache 交给旧版 decode 服务器。让两个 LWS 的 partition 齐步走，就能在每个时刻保持比例。</p>
+<p>这正是 <code>DisaggregatedSet</code> 要正经解决的问题（<a href="../08_disaggregatedset/">模块 8</a>）；手工调 partition 是它出现之前大家的做法，而如果你的 role 不在 DisaggregatedSet 里，现在仍然只能这么做。</p>
+<h3 id="73-condition">7.3 与 condition、截断的互动<a class="headerlink" href="#73-condition" title="Permanent link">&para;</a></h3>
+<p>KEP-511 除了加字段还改了两件事，两件都容易踩：</p>
+<ul>
+<li><code>UpdateInProgress</code> 和 <code>Available</code> 是在<strong>索引 ≥ <code>partition</code></strong> 的组上计算的，不是所有组。一个被冻结且不健康的组不会让<em>滚动</em>看起来卡住。</li>
+<li><code>updateConditions</code> 返回的是 <code>allUpdateDone</code>——在<strong>所有</strong>副本上计算——而不是加窗后的值，而它才是 <code>TruncateRevisions</code> 的闸门。没有这一改，分区滚动会把那些被留住的组仍在运行的 revision 给回收掉。</li>
+</ul>
+<p>实际含义：<strong>只要 <code>partition &gt; 0</code>，两个 revision 都会保留。</strong> 那就是你的回滚路径，而它会在你设 <code>partition: 0</code> 且滚动完成的那一刻消失。</p>
+<div class="admonition warning">
+<p class="admonition-title">回滚只能靠手工重新 apply</p>
+<p>如<a href="../04_lws_reconciler_internals/">模块 4</a> 所述，LWS 在滚动完成后只保留一个 revision，且没有 <code>revisionHistoryLimit</code>。<code>kubectl rollout undo</code> 对 LWS 不起作用。把上一份 manifest 留在版本控制里，因为集群不会替你留。</p>
+</div>
+<hr />
+<h2 id="_5">第八部分：伸缩<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<p>有三件事常被统称为「伸缩」，但行为各不相同。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">改动</th>
+<th style="text-align: center;">切 revision？</th>
+<th style="text-align: center;">触发滚动？</th>
+<th style="text-align: left;">效果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>spec.replicas</code></td>
+<td style="text-align: center;">否</td>
+<td style="text-align: center;">否</td>
+<td style="text-align: left;">在当前 revision 上增删组</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderWorkerTemplate.size</code></td>
+<td style="text-align: center;"><strong>是</strong></td>
+<td style="text-align: center;"><strong>是</strong></td>
+<td style="text-align: left;">每个组按新的 Pod 数重建</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rolloutStrategy.*</code></td>
+<td style="text-align: center;">否</td>
+<td style="text-align: center;">否</td>
+<td style="text-align: left;">改变<em>下一次</em>滚动的行为</td>
+</tr>
+</tbody>
+</table>
+<h3 id="81-replicas">8.1 通过 <code>replicas</code> 横向伸缩<a class="headerlink" href="#81-replicas" title="Permanent link">&para;</a></h3>
+<p><code>spec.replicas</code> 被排除在 revision 补丁之外（<a href="../04_lws_reconciler_internals/">模块 4</a> §5.1），所以伸缩从不滚动任何东西。新组以当前 revision 创建；被移除的组从 leader 开始删，级联清理。</p>
+<p>HPA 通过 scale 子资源驱动它，用的是<a href="../02_api_surface_anatomy/">模块 2</a> §4 里那个只选 leader 的 selector。指标必须<strong>由 leader 发布且代表整个组</strong>。</p>
+<p>滚动<strong>期间</strong>伸缩由情形 4 处理，靠的是 leader StatefulSet 上的 <code>replicas</code> annotation。它能工作，但会让滚动算术更难推理；条件允许的话，先让滚动跑完。</p>
+<h3 id="82-size-kep-552">8.2 通过 <code>size</code> 纵向伸缩（KEP-552）<a class="headerlink" href="#82-size-kep-552" title="Permanent link">&para;</a></h3>
+<p><code>size</code> 可变。改它会改 Pod 模板上的 <code>leaderworkerset.sigs.k8s.io/size</code> annotation，进而改 revision hash，从而触发一次正常的逐组滚动。每个组都按新的 Pod 数重建。</p>
+<div class="admonition note">
+<p class="admonition-title">KEP-552 描述了一个从未被实现的 API</p>
+<p>这份 KEP 提议了一个取值为 <code>None</code> 和 <code>Recreate</code> 的 <code>ResizePolicy</code> 字段。<strong><code>grep -rn "ResizePolicy" api/ pkg/</code> 什么也搜不到。</strong> Implementation History 里记着 <code>2025-08-05: Implementation revised to avoid additions to the API surface</code>——最终落地的只是「<code>size</code> 可变，size annotation 自然触发滚动」。KEP 正文从未同步更新，所以它至今仍在描述一个不存在的字段。</p>
+<p>把 KEP 更新成实际落地的样子，是一个确实有用的文档 PR，而且很容易：证据就是一次 grep。这份 KEP 还写了一条明确的非目标——<strong>不做原地 resize</strong>——因为「它会带来更多复杂性，比如在运行时动态改变拓扑相关的环境变量」。</p>
+</div>
+<p>那条非目标才是重点。<code>LWS_GROUP_SIZE</code> 和 <code>TPU_WORKER_HOSTNAMES</code> 是准入时注入、进程启动时读取的；没有任何机制能在运行中的容器里更新它们，就算有，也没有哪个推理引擎会正确响应。因此组的 resize <em>必然</em>是重建。</p>
+<hr />
+<h2 id="maxunavailablestatefulset">第九部分：<code>MaxUnavailableStatefulSet</code> 依赖<a class="headerlink" href="#maxunavailablestatefulset" title="Permanent link">&para;</a></h2>
+<p><code>maxUnavailable &gt; 1</code> 的实现方式是把值透传给 leader StatefulSet 的 <code>rollingUpdate.maxUnavailable</code>，那是一个上游 Kubernetes 特性。</p>
+<p>该字段在 <strong>Kubernetes 1.35 升为 beta 并默认启用</strong>。更早的版本必须在 API server 和 controller manager 上显式打开该 gate；不打开的话 StatefulSet 控制器会忽略这个字段、一次只滚一个 Pod——于是你的 <code>maxUnavailable: 4</code> 会静默地表现为 1。</p>
+<div class="admonition danger">
+<p class="admonition-title">上游文档在这一点上自相矛盾</p>
+<ul>
+<li><code>site/content/en/docs/concepts/rollout-strategy/_index.md</code>：「<code>MaxUnavailable</code> 已在 Kubernetes 1.35 升为 Beta，意味着它默认启用。」</li>
+<li><code>site/content/en/docs/installation/_index.md</code>：「你必须启用 <code>MaxUnavailableStatefulSet</code> feature gate，它<strong>自 Kubernetes v1.24 起仍处于 alpha</strong>。」</li>
+</ul>
+<p>两页都随 v0.9.0 一起发布。把它们统一起来是个小而高价值的文档 PR——见<a href="../appendix_pr_opportunities/">附录 B</a>。<code>rollout-strategy</code> 那页是对的；<code>installation</code> 那页在 gate 毕业时没被更新。</p>
+<p>同一个 <code>installation</code> 页面还完全没提 <code>rollingUpdateConfiguration.partition</code> 是个用户可设的字段，把它当成了纯粹的控制器内部变量。</p>
+</div>
+<p>诊断方法很直接：如果你设了 <code>maxUnavailable: 4</code> 却观察到组严格一个一个更新，先查 gate，再去读上面那些算术。</p>
+<hr />
+<h2 id="_6">实验：让算术可见<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<p>本实验全部在 <code>kind</code> 上用一个简单容器跑。滚动算法与加速器完全正交，而用一个启动快的镜像能让状态迁移可观察，而不是干等十分钟。</p>
+<h3 id="1">步骤 1 — 复现九阶段推演<a class="headerlink" href="#1" title="Permanent link">&para;</a></h3>
+<p>部署 <code>replicas: 4, size: 2, maxUnavailable: 2, maxSurge: 2</code>，容器大约 20 秒才 Ready（<code>readinessProbe</code> 配 <code>initialDelaySeconds: 20</code> 很合适——长到能看清各阶段，短到不会让你睡着）。</p>
+<p>一个终端里：</p>
+<div class="highlight"><pre><span></span><code>watch<span class="w"> </span>-n1<span class="w"> </span><span class="s1">&#39;kubectl get lws my-lws -o jsonpath=&quot;P=$(kubectl get sts my-lws -o jsonpath={.spec.updateStrategy.rollingUpdate.partition}) R=$(kubectl get sts my-lws -o jsonpath={.spec.replicas})&quot;; echo; kubectl get pods -l leaderworkerset.sigs.k8s.io/worker-index=0 -o custom-columns=&quot;NAME:.metadata.name,REV:.metadata.labels.leaderworkerset\.sigs\.k8s\.io/template-revision-hash,READY:.status.conditions[?(@.type==\&quot;Ready\&quot;)].status&quot;&#39;</span>
+</code></pre></div>
+<p>另一个终端里触发滚动：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;replace&quot;,</span>
+<span class="s1">  &quot;path&quot;:&quot;/spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/image&quot;,</span>
+<span class="s1">  &quot;value&quot;:&quot;nginxinc/nginx-unprivileged:1.28&quot;}]&#39;</span>
+</code></pre></div>
+<p>记录每次迁移时的 <code>(partition, replicas)</code>，与第六部分的表对照。观察不一致的地方，推出是五种情形里的哪一个触发了、为什么——最常见的偏差是你的 Pod 就绪得比 reconcile 采样还快，把几个阶段压成了一个。</p>
+<h3 id="2-surge">步骤 2 — 明确观察 surge 回收<a class="headerlink" href="#2-surge" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span><span class="nv">reason</span><span class="o">=</span>GroupsProgressing<span class="w"> </span>-w<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>surge
+</code></pre></div>
+<p>你应该在阶段 7 看到 <code>deleting surge replicas from my-lws-4 to my-lws-5</code>。对照第五部分确认它为什么恰好发生在那一刻而不是更早：触发条件是 <code>unready &lt;= maxSurge</code>。</p>
+<h3 id="3-c">步骤 3 — 验证动作 (c)：不可用度记账<a class="headerlink" href="#3-c" title="Permanent link">&para;</a></h3>
+<p>在开始滚动之前，故意搞坏两个低索引的组：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;replace&quot;,</span>
+<span class="s1">  &quot;path&quot;:&quot;/spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/readinessProbe/exec/command&quot;,</span>
+<span class="s1">  &quot;value&quot;:[&quot;false&quot;]}]&#39;</span><span class="w">   </span><span class="c1"># 或者单独把组 0 和组 1 搞坏</span>
+</code></pre></div>
+<p>然后以 <code>maxUnavailable: 2, maxSurge: 0</code> 触发一次模板滚动，观察同时被拆掉的组有几个。没有动作 (c) 的话，会在已经坏掉的两个之上再拆两个；有了它，partition 被 <code>unavailable</code> 计数顶回去，滚动拆得更少。</p>
+<p>先手算出预期的 partition，再去看结果。</p>
+<h3 id="4">步骤 4 — 演练灰度下限<a class="headerlink" href="#4" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;rolloutStrategy&quot;:{&quot;rollingUpdateConfiguration&quot;:{&quot;partition&quot;:3}}}}&#39;</span>
+<span class="c1"># 改镜像</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/worker-index<span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="s1">&#39;NAME:.metadata.name,REV:.metadata.labels.leaderworkerset\.sigs\.k8s\.io/template-revision-hash&#39;</span>
+</code></pre></div>
+<p>应该只有组 3 带着新的 revision key。然后验证 §7.3 的截断互动：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws
+</code></pre></div>
+<p>两个 revision，会一直存在。把 <code>partition</code> 一路降到 0，看着滚动完成后第二个消失。</p>
+<h3 id="5-4">步骤 5 — 滚动中途伸缩，找到情形 4<a class="headerlink" href="#5-4" title="Permanent link">&para;</a></h3>
+<p>启动一次滚动，在它进行中：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>scale<span class="w"> </span>lws/my-lws<span class="w"> </span>--replicas<span class="o">=</span><span class="m">6</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.metadata.annotations.leaderworkerset\.sigs\.k8s\.io/replicas}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>观察这个 annotation 在下一次 apply 时从 <code>4</code> 变成 <code>6</code>。在那次 apply 落地之前，annotation 与 <code>spec.replicas</code> 不一致，情形 4 会钳制 partition。读一读情形 4 的分支，确认如果没有这个 annotation 会出什么问题——具体来说，为什么控制器不能直接拿 StatefulSet 当前的副本数去比。</p>
+<h3 id="6-maxunavailablestatefulset-gate">步骤 6 — 验证 <code>MaxUnavailableStatefulSet</code> gate<a class="headerlink" href="#6-maxunavailablestatefulset-gate" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>version<span class="w"> </span>--short
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.updateStrategy.rollingUpdate.maxUnavailable}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>在 LWS 上设 <code>maxUnavailable: 3</code>，确认值传到了 StatefulSet 上——不管 gate 开没开，它都会传到。然后触发滚动，数一数实际同时下线了几个组。如果是一个，说明 gate 没开，你就复现了那两页自相矛盾的上游文档所制造的困惑。</p>
+<h3 id="_7">检查点问题<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>为什么动作 (e) 用 <code>min</code> 而延迟钳制用 <code>max</code>？各自保护什么不变式？互换会坏在哪？</li>
+<li>阶段 7 里算法删掉了两个<em>已更新</em>的 surge 副本，而还剩两个<em>未更新</em>的组。为什么这不是容量倒退？</li>
+<li><code>calculateLWSUnreadyReplicas</code> 扫的是 <code>[0, lwsReplicas)</code> 而不是 <code>[0, len(states))</code>。请构造出「如果它扫整个切片」会得到的那个不终止的滚动。</li>
+</ul>
+<p>继续阅读<a href="../07_scheduling_placement_and_networking/">模块 7：调度、放置与网络</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

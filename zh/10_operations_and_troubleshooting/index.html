@@ -1,0 +1,2068 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/10_operations_and_troubleshooting/">
+      
+      
+        <link rel="prev" href="../09_inference_engine_integration/">
+      
+      
+        <link rel="next" href="../11_contributor_workflow/">
+      
+      
+        
+          <link rel="alternate" href="../../10_operations_and_troubleshooting/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>模块 10 - 运维与排障 - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#10" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              模块 10 - 运维与排障
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../10_operations_and_troubleshooting/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：安装
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：安装">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 前置条件
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 四条安装路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-disaggregatedset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 DisaggregatedSet 是随发的，但两条路径的开关不同
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：升级——真正的危险所在
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：升级——真正的危险所在">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-helm-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Helm 的 CRD 风险
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 通用规则：CRD 优先
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 升级 operator 不会滚动你的集群
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-050-060-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 0.5.0 → 0.6.0+ 的子组 annotation 变更
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：证书
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：指标
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：已知失效模式
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：已知失效模式">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-statefulsetpod-0-0-0-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 无限创建 StatefulSet——Pod 名叫 …-0-0-0-0
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-lws-51" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 LWS 名字超过约 51 个字符
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-maxunavailable-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 maxUnavailable 静默表现为 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 一个组每约 30 秒重启一次
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-pending" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 带独占拓扑的组永远 Pending
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 滚动永远完不成
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-webhook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.7 改名或证书出问题导致 webhook 失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：诊断决策树
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：诊断决策树">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 值得背下来的命令
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-managedfields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 读 managedFields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：兼容矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：把失败演练一遍
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：把失败演练一遍">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A 部分 — 安装与升级
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2 部分 — 复现 CRD 删除风险（破坏性）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B 部分 — 名字长度上限
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C 部分 — 证书故障
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D 部分 — 建立监控基线
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：安装
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：安装">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 前置条件
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 四条安装路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-disaggregatedset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 DisaggregatedSet 是随发的，但两条路径的开关不同
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：升级——真正的危险所在
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：升级——真正的危险所在">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-helm-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Helm 的 CRD 风险
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 通用规则：CRD 优先
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 升级 operator 不会滚动你的集群
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-050-060-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 0.5.0 → 0.6.0+ 的子组 annotation 变更
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：证书
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：指标
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：已知失效模式
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：已知失效模式">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-statefulsetpod-0-0-0-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 无限创建 StatefulSet——Pod 名叫 …-0-0-0-0
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-lws-51" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 LWS 名字超过约 51 个字符
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-maxunavailable-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 maxUnavailable 静默表现为 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 一个组每约 30 秒重启一次
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-pending" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 带独占拓扑的组永远 Pending
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 滚动永远完不成
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-webhook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.7 改名或证书出问题导致 webhook 失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：诊断决策树
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：诊断决策树">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 值得背下来的命令
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-managedfields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 读 managedFields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：兼容矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：把失败演练一遍
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：把失败演练一遍">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A 部分 — 安装与升级
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2 部分 — 复现 CRD 删除风险（破坏性）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B 部分 — 名字长度上限
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C 部分 — 证书故障
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D 部分 — 建立监控基线
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="10">模块 10：运维与排障<a class="headerlink" href="#10" title="Permanent link">&para;</a></h1>
+<p>生产上真正会咬人的失效模式，很少是 API 参考里写着的那些。而是：一次 Helm 升级删光了集群里所有 LeaderWorkerSet；一个 LWS 名字多了一个字符；一个静默表现为 1 的 <code>maxUnavailable</code>；以及一个每三十秒重启一次、任何单条日志都解释不清的组。</p>
+<p>本模块是前面各模块在运维侧的对应物：<strong>安装与升级风险</strong>、<strong>证书管理</strong>、<strong>指标</strong>、<strong>版本兼容矩阵</strong>、<strong>诊断决策树</strong>，以及<strong>已知失效模式及其根因</strong>。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源信息</p>
+<p>对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）、<strong>v0.9.0</strong> 核实。下文的版本字符串由 <code>make prepare-release-branch</code> 固定；照抄前请先确认当前发布版本。</p>
+</div>
+<hr />
+<h2 id="_1">第一部分：安装<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<h3 id="11">1.1 前置条件<a class="headerlink" href="#11" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">要求</th>
+<th style="text-align: left;">细节</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Kubernetes</td>
+<td style="text-align: left;"><strong>≥ 1.26</strong>。恰好 1.26 时必须手动启用 <code>StatefulSetStartOrdinal</code> feature gate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>MaxUnavailableStatefulSet</code> gate</td>
+<td style="text-align: left;"><code>maxUnavailable &gt; 1</code> 需要它。<strong>自 Kubernetes 1.35 起为 beta 且默认开启</strong>；更早版本必须手动开。不开的话，无论你怎么设，LWS 都会一次滚一个组</td>
+</tr>
+<tr>
+<td style="text-align: left;">容量</td>
+<td style="text-align: left;">至少一个有 1 CPU、1 GiB 的节点，供 controller-manager Deployment 使用</td>
+</tr>
+</tbody>
+</table>
+<p><code>StatefulSetStartOrdinal</code> 依赖既非可选也非表面文章——<a href="../03_group_lifecycle_and_identity/">模块 3</a> §1.3 解释了原因，下文 §5.1 讲了不满足时会发生什么。</p>
+<h3 id="12">1.2 四条安装路径<a class="headerlink" href="#12" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1 —— kubectl，最简单</span>
+<span class="nv">VERSION</span><span class="o">=</span>v0.9.0
+kubectl<span class="w"> </span>apply<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://github.com/kubernetes-sigs/lws/releases/download/<span class="nv">$VERSION</span>/manifests.yaml
+kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>available<span class="w"> </span>--timeout<span class="o">=</span>5m
+
+<span class="c1"># 2 —— 从 OCI registry 用 Helm</span>
+<span class="nv">CHART_VERSION</span><span class="o">=</span><span class="m">0</span>.9.0
+helm<span class="w"> </span>install<span class="w"> </span>lws<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="o">=</span><span class="nv">$CHART_VERSION</span><span class="w"> </span>--namespace<span class="w"> </span>lws-system<span class="w"> </span>--create-namespace<span class="w"> </span>--wait<span class="w"> </span>--timeout<span class="w"> </span>300s
+
+<span class="c1"># 3 —— 最新开发版</span>
+kubectl<span class="w"> </span>apply<span class="w"> </span>--server-side<span class="w"> </span>-k<span class="w"> </span>github.com/kubernetes-sigs/lws/config/default?ref<span class="o">=</span>main
+
+<span class="c1"># 4 —— 从源码，用你自己的镜像</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/kubernetes-sigs/lws.git<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>lws
+<span class="nv">IMAGE_REGISTRY</span><span class="o">=</span>&lt;registry&gt;/&lt;project&gt;<span class="w"> </span>make<span class="w"> </span>image-push<span class="w"> </span>deploy
+</code></pre></div>
+<p>路径 1 的 <code>--server-side</code> 不是可选的。CRD 大到超过了客户端 apply 所依赖的 <code>kubectl.kubernetes.io/last-applied-configuration</code> annotation 上限。</p>
+<p>想装到别的命名空间，得改 <code>config/default/kustomization.yaml</code> 里的 <code>namespace:</code>——没有对应的命令行参数。</p>
+<h3 id="13-disaggregatedset">1.3 DisaggregatedSet 是随发的，但两条路径的开关不同<a class="headerlink" href="#13-disaggregatedset" title="Permanent link">&para;</a></h3>
+<p>自 v0.9.0 起 DisaggregatedSet 随 LWS 一起发布。两条安装路径有差别：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">路径</th>
+<th style="text-align: center;">DS CRD</th>
+<th style="text-align: center;">DS 控制器 RBAC</th>
+<th style="text-align: center;">DS validating webhook</th>
+<th style="text-align: center;">editor/viewer/admin ClusterRole</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">kubectl / kustomize</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr>
+<td style="text-align: left;">Helm</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">需要 <code>--set enableDisaggregatedSet=true</code></td>
+<td style="text-align: center;">需要同一个开关</td>
+</tr>
+</tbody>
+</table>
+<p>如果你用 Helm 安装且漏了那个开关，DisaggregatedSet 对象会<strong>不经校验</strong>被接受——CRD 的结构化 schema 和 CEL 规则仍然生效，但<a href="../08_disaggregatedset/">模块 8</a> §9.1 里的一切（<code>partition</code> 禁令、放置冲突检查、scaler 名字长度检查）都静默缺席。验证方法：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>validatingwebhookconfiguration<span class="w"> </span>lws-validating-webhook-configuration<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .webhooks[*]}{.name}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<p>你应该看到 <code>vdisaggregatedset.kb.io</code> 与 <code>vleaderworkerset.kb.io</code> 并列。</p>
+<hr />
+<h2 id="_2">第二部分：升级——真正的危险所在<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<h3 id="21-helm-crd">2.1 Helm 的 CRD 风险<a class="headerlink" href="#21-helm-crd" title="Permanent link">&para;</a></h3>
+<div class="admonition danger">
+<p class="admonition-title">从 chart v0.7.0 或更早升级，可能删光集群里所有 LeaderWorkerSet</p>
+<p>v0.7.0 及更早的 chart 从 <code>templates/crds/</code> 渲染 CRD，使它成为 Helm release 的一部分。v0.8.0 把它挪到了 <code>crds/</code>。跨过这条边界的第一次 <code>helm upgrade</code> 会认为 CRD <strong>已从 release 中移除</strong>并删掉它——<strong>级联删除集群里每一个 LeaderWorkerSet 对象</strong>（上游 issue #880）。</p>
+<p>升级<strong>之前</strong>的一次性缓解：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>annotate<span class="w"> </span>crd<span class="w"> </span>leaderworkersets.leaderworkerset.x-k8s.io<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>helm.sh/resource-policy<span class="o">=</span>keep<span class="w"> </span>--overwrite
+</code></pre></div>
+<p>这件事记录在安装页和 chart README 里，但<strong>没有</strong>记在排障页——可以说是已知最具破坏性的失效模式，却归错了档。把它加到排障页是一个高价值的文档 PR（<a href="../appendix_pr_opportunities/">附录 B</a>）。</p>
+</div>
+<h3 id="22-crd">2.2 通用规则：CRD 优先<a class="headerlink" href="#22-crd" title="Permanent link">&para;</a></h3>
+<p>Helm 只在<strong>第一次</strong> <code>helm install</code> 时安装 <code>crds/</code>。它在 <code>helm upgrade</code> 或 <code>helm uninstall</code> 时既不更新也不删除它们。所以 CRD schema 变更和新增的 CRD <strong>不会</strong>仅靠 <code>helm upgrade</code> 进到集群。</p>
+<p>每一次都要用的正确顺序：</p>
+<div class="highlight"><pre><span></span><code><span class="nv">CHART_VERSION</span><span class="o">=</span><span class="m">0</span>.9.0
+helm<span class="w"> </span>pull<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span>--version<span class="o">=</span><span class="nv">$CHART_VERSION</span><span class="w"> </span>--untar
+kubectl<span class="w"> </span>apply<span class="w"> </span>--server-side<span class="w"> </span>--force-conflicts<span class="w"> </span>-f<span class="w"> </span>lws/crds<span class="w">     </span><span class="c1"># ← 永远先上 CRD</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>lws<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="o">=</span><span class="nv">$CHART_VERSION</span><span class="w"> </span>--namespace<span class="w"> </span>lws-system<span class="w"> </span>--wait<span class="w"> </span>--timeout<span class="w"> </span>300s
+</code></pre></div>
+<p>注意 v0.9.0 的 <code>lws/crds</code> 里有<strong>三个</strong>文件。上游页面那段 pre-v0.9.0 的升级片段只 apply 了 <code>disaggregatedset.x-k8s.io_disaggregatedsets.yaml</code>，漏了 chart 同样附带的 <code>disaggregatedsetrolescalers</code>。apply 整个目录就能避开这个问题。</p>
+<h3 id="23-operator">2.3 升级 operator 不会滚动你的集群<a class="headerlink" href="#23-operator" title="Permanent link">&para;</a></h3>
+<p>这是让人安心的另一半。如<a href="../04_lws_reconciler_internals/">模块 4</a> §5.3–5.4 所述：</p>
+<ul>
+<li><code>SetMatchesRevision</code> 击败序列化漂移，所以 operator 里 client-go 版本变化不会产生一个虚假的新 revision。</li>
+<li>从 ControllerRevision 之前的版本升级时，<code>NewRevision</code> 会收养遗留的 <code>template-revision-hash</code>，使新的 ControllerRevision <em>被打上</em>活 Pod 已经带着的那个 hash。</li>
+</ul>
+<p>两者存在的目的，正是让升级控制器不会重启集群里每一个模型服务器。任何升级之后都可以验证：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>&lt;lws&gt;
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>&lt;lws&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .items[*]}{.metadata.name}{&quot;\t&quot;}{.status.startTime}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<p>启动时间没变，就说明什么都没滚。</p>
+<h3 id="24-050-060-annotation">2.4 0.5.0 → 0.6.0+ 的子组 annotation 变更<a class="headerlink" href="#24-050-060-annotation" title="Permanent link">&para;</a></h3>
+<p>跨过这条边界升级的子组用户会经历一次 leader Pod 的滚动更新，因为 annotation key 从 <code>leaderworkerset.gke.io/subgroup-size</code> 改成了 <code>leaderworkerset.sigs.k8s.io/subgroup-size</code>（PR #434）。这是预期内的一次性事件，也有文档——但要为容量影响做好计划。</p>
+<hr />
+<h2 id="_3">第三部分：证书<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>webhook 需要一张服务证书。恰好有两种模式，由一个配置字段选择。</p>
+<pre class="mermaid"><code>flowchart TD
+    C{"internalCertManagement.enable"}
+    C --&gt;|"true（默认）"| I["&lt;b&gt;内置&lt;/b&gt;&lt;br&gt;cert-controller rotator&lt;br&gt;CA: lws-ca / org: lws&lt;br&gt;DNS: &amp;lt;svc&amp;gt;.&amp;lt;ns&amp;gt;.svc&lt;br&gt;按名字把 caBundle 打进&lt;br&gt;两个 webhook 配置"]
+    C --&gt;|"false"| E["&lt;b&gt;外部&lt;/b&gt;&lt;br&gt;certsReady 立即关闭&lt;br&gt;需要别的东西去填&lt;br&gt;webhook.certDir"]
+    E --&gt; CM["cert-manager&lt;br&gt;Certificate + Issuer&lt;br&gt;+ CA 注入补丁"]</code></pre>
+<p>内置模式是默认的，不需要额外组件。它用 <code>github.com/open-policy-agent/cert-controller</code> 的 rotator，CA 名 <code>lws-ca</code>、组织 <code>lws</code>、DNS 名 <code>&lt;webhookServiceName&gt;.&lt;namespace&gt;.svc</code>，并启用就绪检查（<a href="../04_lws_reconciler_internals/">模块 4</a> §1.2）。</p>
+<p>切到 cert-manager，两条路径都需要把内置管理<strong>关掉</strong>：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">路径</th>
+<th style="text-align: left;">步骤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Kustomize</td>
+<td style="text-align: left;">设 <code>internalCertManagement.enable: false</code>；在 <code>config/default/kustomization.yaml</code> 里注释掉 <code>../internalcert</code>；取消注释 <code>../certmanager</code>；取消注释所有 <code>CERTMANAGER</code> 段；<code>kubectl apply --server-side -k config/default</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Helm</td>
+<td style="text-align: left;">设 <code>internalCertManagement.enable: false</code> 和 <code>enableCertManager: true</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition bug">
+<p class="admonition-title">上游 cert-manager 页面有三个问题</p>
+<ol>
+<li>Helm 那节说要禁用 <strong><code>internalCertManager</code></strong>。实际字段是 <strong><code>internalCertManagement.enable</code></strong>（<code>api/config/v1alpha1/configuration_types.go</code>，默认 <code>true</code>）。照字面做完全不起作用。</li>
+<li>开头那句话语法就是坏的：「This page shows how you can a third party certificate authority solution like Cert Manager.」</li>
+<li>kustomize 步骤漏了 <code>webhookcainjection_patch.yaml</code> 和 <code>cainjection_in_leaderworkersets.yaml</code> 这个 CRD 补丁，而 <code>hack/e2e-test.sh</code> 在 <code>USE_CERT_MANAGER=true</code> 时两者都会加。文档化的手工流程<strong>比被测试的流程更不完整</strong>——这也强烈提示了修法：照着 e2e 脚本抄。</li>
+</ol>
+<p>三条都在<a href="../appendix_pr_opportunities/">附录 B</a>。</p>
+</div>
+<p>rotator 按<strong>名字</strong>把 <code>caBundle</code> 打进两个 webhook 配置：<code>lws-validating-webhook-configuration</code> 和 <code>lws-mutating-webhook-configuration</code>。如果你在 fork 里改了任何一个的名字，准入会 fail-closed（<code>failurePolicy: Fail</code>），且没有明显线索。</p>
+<hr />
+<h2 id="_4">第四部分：指标<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<p>指标端点是 <code>:8443</code>，始终 <code>SecureServing: true</code> 并带 <code>filters.WithAuthenticationAndAuthorization</code>。HTTP/2 被一个引用 GHSA-qppj-fm5r-hxr3 和 GHSA-4374-p667-p6c8 的 TLS mutator 无条件禁用——如果你在排查一个非要 h2 的抓取器，这点值得知道。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">路径</th>
+<th style="text-align: left;">步骤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Kustomize</td>
+<td style="text-align: left;">在 <code>config/default/kustomization.yaml</code> 里启用 prometheus，并取消注释各 <code>PROMETHEUS</code> 段</td>
+</tr>
+<tr>
+<td style="text-align: left;">Helm</td>
+<td style="text-align: left;"><code>enablePrometheus: true</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">带 TLS 校验</td>
+<td style="text-align: left;">另外还要 <code>internalCertManagement.enable: false</code> + cert-manager，并提供 <code>metrics.prometheusNamespace</code> 和 <code>metrics.serviceMonitor.tlsConfig</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition bug">
+<p class="admonition-title">文档里的那些 Helm 值在 chart 里并不存在</p>
+<p><code>metrics.prometheusNamespace</code> 和 <code>metrics.serviceMonitor</code> 都没有出现在 <code>charts/lws/values.yaml</code> 或 chart README 的参数表里。它们是未声明的默认值——也许靠透传能生效，但在 chart 自身里既不受支持也无文档。</p>
+<p>这一页还说要取消注释标记为 <code>PROMETHEUS-WITH-CERTS</code> 的段落，但 <code>config/default/kustomization.yaml</code> 里根本没有这个标记；真实标记是 <code>[WEBHOOK]</code>、<code>[CERTMANAGER]</code>、<code>[PROMETHEUS]</code>、<code>[METRICS]</code> 和 <code>[VOLCANO]</code>。而且资源实际在 <strong><code>config/components/prometheus/</code></strong>，另外还有一个独立的 <code>config/prometheus/</code>，页面里那句「启用 <code>prometheus</code>」并没有说清是哪一个。</p>
+<p>把这些值在 <code>values.yaml</code> 和 chart README 里声明出来，是一个具体、可控的「chart + 文档」PR。</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">完全没有 DisaggregatedSet 指标</p>
+<p>你能拿到的是 controller-runtime 的标准指标集——按控制器的 reconcile 次数、耗时、队列深度、错误率。<strong>没有 LWS 专有指标，也没有 DisaggregatedSet 专有指标。</strong> KEP-766、KEP-846 和 KEP-849 都把指标列为 Beta 毕业标准，所以这是一块动机充分、有 KEP 背书的工作（<a href="../08_disaggregatedset/">模块 8</a> §10）。</p>
+</div>
+<p>在此之前，从对象层面做监控：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;NS:.metadata.namespace,NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas,UPTODATE:.status.updatedReplicas&#39;</span>
+</code></pre></div>
+<p>对「<code>readyReplicas &lt; spec.replicas</code> 持续超过你的冷启动预算」和「<code>Available=False</code> 持续超过你的滚动预算」告警。</p>
+<hr />
+<h2 id="_5">第五部分：已知失效模式<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<h3 id="51-statefulsetpod-0-0-0-0">5.1 无限创建 StatefulSet——Pod 名叫 <code>…-0-0-0-0</code><a class="headerlink" href="#51-statefulsetpod-0-0-0-0" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>症状</strong></td>
+<td style="text-align: left;">Pod 名字越来越长；LWS 控制器陷入无限 reconcile 循环，「可能耗尽集群资源」</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>原因</strong></td>
+<td style="text-align: left;">集群忽略 <code>.spec.ordinals.start</code>——1.27 以下且没开 <code>StatefulSetStartOrdinal</code> gate。worker StatefulSet 产出一个看起来像 leader 的序号 0 Pod，它又去创建自己的 worker StatefulSet，如此递归</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>修法</strong></td>
+<td style="text-align: left;">Kubernetes ≥ 1.26 且开了 gate；≥ 1.27 默认就开</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>代码里的缓解</strong></td>
+<td style="text-align: left;"><code>PodReconciler.Reconcile</code> 第 6 步的防递归守卫（<a href="../03_group_lifecycle_and_identity/">模块 3</a> §1.3），它发出 <code>FailedCreate</code> 而不是递归下去</td>
+</tr>
+</tbody>
+</table>
+<p>注意上游排障页把原因写成「&lt; 1.27」、把修法写成「≥ 1.26」——自相矛盾的措辞，值得收紧。</p>
+<h3 id="52-lws-51">5.2 LWS 名字超过约 51 个字符<a class="headerlink" href="#52-lws-51" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>症状</strong></td>
+<td style="text-align: left;"><code>metadata.labels: Invalid value: "&lt;worker-sts-name&gt;-&lt;10-char-hash&gt;": must be no more than 63 characters</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>原因</strong></td>
+<td style="text-align: left;">StatefulSet 名字 57 字符上限（kubernetes/kubernetes#64023），叠加 LWS 的两级命名 <code>&lt;lws&gt;-&lt;groupIndex&gt;-&lt;workerIndex&gt;</code> 以及 StatefulSet 自己的 hash 后缀</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>真实上限</strong></td>
+<td style="text-align: left;"><strong><code>51 - int(replicas / 10)</code></strong> 个字符</td>
+</tr>
+</tbody>
+</table>
+<p>这个公式值得记牢：<strong>名字预算会随你扩容而缩水</strong>，因为更高的组索引是更长的字符串。一个在 <code>replicas: 5</code> 时能用的 LWS，可能在 <code>replicas: 100</code> 时失败。准入阶段没有任何东西校验这一点——失败会以一个 StatefulSet 事件的形式出现，离你创建的那个 LWS 很远。加一条 webhook 检查会是个有用的贡献。</p>
+<h3 id="53-maxunavailable-1">5.3 <code>maxUnavailable</code> 静默表现为 1<a class="headerlink" href="#53-maxunavailable-1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>症状</strong></td>
+<td style="text-align: left;">设了 <code>maxUnavailable: 4</code>，但组严格一个一个更新</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>原因</strong></td>
+<td style="text-align: left;"><code>MaxUnavailableStatefulSet</code> gate 没开（1.35 之前且未手动启用）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>诊断</strong></td>
+<td style="text-align: left;">无论 gate 开没开，值<strong>都会</strong>传到 StatefulSet 上，所以查 StatefulSet spec 什么也证明不了。要数实际并发更新的组数</td>
+</tr>
+</tbody>
+</table>
+<h3 id="54-30">5.4 一个组每约 30 秒重启一次<a class="headerlink" href="#54-30" title="Permanent link">&para;</a></h3>
+<p>几乎总是这三件事之一，按可能性递减：</p>
+<ol>
+<li><strong>liveness probe 在模型加载期间触发。</strong> 加一个 <code>startupProbe</code>（<a href="../09_inference_engine_integration/">模块 9</a> §3.2）。</li>
+<li><strong>worker 进程干净退出。</strong> <code>RecreateGroupOnPodRestart</code> 下任何容器重启都会摧毁整组。worker 必须永远阻塞。</li>
+<li><strong>UID 不匹配循环。</strong> <code>workerPodBelongsToLeader</code> 守卫（<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §4.3）就是为防它而存在的，但如果你真遇到了，把控制器日志抓下来——那会是一个真 bug。</li>
+</ol>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span><span class="nv">reason</span><span class="o">=</span>RecreateGroup<span class="w"> </span>--sort-by<span class="o">=</span>.lastTimestamp
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>&lt;pod&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .status.containerStatuses[*]}{.name}{&quot;\t&quot;}{.restartCount}{&quot;\t&quot;}{.lastState.terminated.reason}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<h3 id="55-pending">5.5 带独占拓扑的组永远 Pending<a class="headerlink" href="#55-pending" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>症状</strong></td>
+<td style="text-align: left;">leader Running，一个或多个 worker 无限期 Pending</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>原因</strong></td>
+<td style="text-align: left;">leader 占住了一个装不下整组的拓扑域（<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §6）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>修法</strong></td>
+<td style="text-align: left;">gang 调度（<a href="../07_scheduling_placement_and_networking/">模块 7</a> §3），或更粗的 <code>topologyKey</code>，或更小的 <code>size</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>诊断</strong></td>
+<td style="text-align: left;"><code>kubectl get sts &lt;组&gt; -o jsonpath='{.spec.template.spec.nodeSelector}'</code> 显示被钉住的域值</td>
+</tr>
+</tbody>
+</table>
+<p>那里如果是空值，说明 <code>topologyValueFromPod</code> 吞掉了一个不存在的 Node——见<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §6 记的两个缺陷。</p>
+<h3 id="56">5.6 滚动永远完不成<a class="headerlink" href="#56" title="Permanent link">&para;</a></h3>
+<p>倒着推 condition 算术（<a href="../04_lws_reconciler_internals/">模块 4</a> §6.3）。<code>Available</code> 需要<strong>同时</strong>满足 <code>readyNonBurstWorkerCount == spec.replicas</code> <strong>和</strong> <code>partitionedUpdatedAndReadyCount == partitionedCurrentNonBurstCount</code>。常见原因：</p>
+<ul>
+<li><code>partition</code> 停在了某个非零的灰度边界。查 <code>spec.rolloutStrategy.rollingUpdateConfiguration.partition</code>。</li>
+<li>某个高索引的组不就绪，于是「已更新且就绪的尾部」不增长，partition 下不去（<a href="../06_rollout_and_revisions/">模块 6</a> §4）。</li>
+<li>partition 以下某个被冻结的组不健康——它让第一个子句不满足，却不影响第二个。</li>
+</ul>
+<h3 id="57-webhook">5.7 改名或证书出问题导致 webhook 失败<a class="headerlink" href="#57-webhook" title="Permanent link">&para;</a></h3>
+<p>三个 webhook 都是 <code>failurePolicy: Fail</code>，意味着一个坏掉的 webhook 会阻塞<strong>所有</strong>匹配其对象选择器的 LWS 和 Pod 创建。检查：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>lws-webhook-server-cert
+kubectl<span class="w"> </span>get<span class="w"> </span>validatingwebhookconfiguration<span class="w"> </span>lws-validating-webhook-configuration<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.webhooks[0].clientConfig.caBundle}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">40</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>logs<span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;cert\|rotator&#39;</span>
+</code></pre></div>
+<p><code>caBundle</code> 为空说明 rotator 没能打上补丁——通常是 webhook 配置被改名了，或者缺少对 <code>*webhookconfigurations</code> 的 RBAC。</p>
+<hr />
+<h2 id="_6">第六部分：诊断决策树<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    S["出问题了"] --&gt; Q1{"Pod 存在吗？"}
+    Q1 --&gt;|"一个 Pod 都没有"| A1["查 LWS 对象：&lt;br&gt;事件、conditions、observedGeneration。&lt;br&gt;然后查 webhook——failurePolicy: Fail&lt;br&gt;会彻底阻断创建"]
+    Q1 --&gt;|"只有 leader"| A2["Pod 控制器。&lt;br&gt;startupPolicy: LeaderReady？&lt;br&gt;Size == 1？&lt;br&gt;revision 找不到 → 重排队？&lt;br&gt;防递归守卫触发了？"]
+    Q1 --&gt;|"名字失控 ...-0-0-0"| A3["§5.1 —— StatefulSetStartOrdinal"]
+    Q1 --&gt;|"部分 Pending"| A4{"设了 exclusive-topology？"}
+    A4 --&gt;|是| A5["§5.5 —— 域太小。&lt;br&gt;查 worker STS 的 nodeSelector"]
+    A4 --&gt;|否| A6["普通调度问题：&lt;br&gt;配额、污点、资源"]
+    Q1 --&gt;|"全 Running 但不 Ready"| A7["探针与引擎。&lt;br&gt;模块 9 §3"]
+    Q1 --&gt;|"反复重启"| A8["§5.4 —— 重启策略的爆炸半径"]
+    S --&gt; Q2{"滚动卡住？"}
+    Q2 --&gt;|是| A9["§5.6 —— condition 算术、&lt;br&gt;partition、就绪尾部"]
+    S --&gt; Q3{"HPA 不伸缩？"}
+    Q3 --&gt;|是| A10["hpaPodSelector 只匹配 leader。&lt;br&gt;指标是 leader 发布的吗？&lt;br&gt;模块 2 §4"]</code></pre>
+<h3 id="61">6.1 值得背下来的命令<a class="headerlink" href="#61" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 一条命令看清一个 LWS 的对象图</span>
+<span class="nv">LWS</span><span class="o">=</span>my-lws
+kubectl<span class="w"> </span>get<span class="w"> </span>lws,sts,svc,controllerrevision,pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span><span class="nv">$LWS</span>
+
+<span class="c1"># 每个组在哪个 revision 上？</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span><span class="nv">$LWS</span>,leaderworkerset.sigs.k8s.io/worker-index<span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="s1">&#39;NAME:.metadata.name,REV:.metadata.labels.leaderworkerset\.sigs\.k8s\.io/template-revision-hash,READY:.status.conditions[?(@.type==&quot;Ready&quot;)].status&#39;</span>
+
+<span class="c1"># 滚动位置</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span><span class="nv">$LWS</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;partition={.spec.updateStrategy.rollingUpdate.partition} replicas={.spec.replicas} annotated={.metadata.annotations.leaderworkerset\.sigs\.k8s\.io/replicas}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+
+<span class="c1"># Conditions</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span><span class="nv">$LWS</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .status.conditions[*]}{.type}={.status} ({.reason}){&quot;\n&quot;}{end}&#39;</span>
+
+<span class="c1"># 控制器对这个 LWS 说过的一切</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span>involvedObject.name<span class="o">=</span><span class="nv">$LWS</span><span class="w"> </span>--sort-by<span class="o">=</span>.lastTimestamp
+
+<span class="c1"># 控制器日志，按对象过滤</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>logs<span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="nv">$LWS</span>
+</code></pre></div>
+<h3 id="62-managedfields">6.2 读 <code>managedFields</code><a class="headerlink" href="#62-managedfields" title="Permanent link">&para;</a></h3>
+<p>由于 leader StatefulSet 是以 field manager <code>lws</code> 加 <code>Force: true</code> 做 Server-Side Apply 写入的（<a href="../04_lws_reconciler_internals/">模块 4</a> §4）：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span><span class="nv">$LWS</span><span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span>--show-managed-fields<span class="w"> </span><span class="p">|</span><span class="w"> </span>yq<span class="w"> </span><span class="s1">&#39;.metadata.managedFields&#39;</span>
+</code></pre></div>
+<p>任何由 <code>lws</code> 拥有的字段都会在下一次 reconcile 时被改回去。任何<strong>不</strong>属于它的字段都会保留。这就是「我手改的东西为什么消失了」的权威答案，十秒钟就能查完。</p>
+<hr />
+<h2 id="_7">第七部分：兼容矩阵<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">组件</th>
+<th style="text-align: left;">版本</th>
+<th style="text-align: left;">来源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">LWS</td>
+<td style="text-align: left;">v0.9.0</td>
+<td style="text-align: left;">写作时的最新发布</td>
+</tr>
+<tr>
+<td style="text-align: left;">Kubernetes</td>
+<td style="text-align: left;"><strong>≥ 1.26</strong></td>
+<td style="text-align: left;">硬下限；1.26 需手动开 <code>StatefulSetStartOrdinal</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>maxUnavailable &gt; 1</code> 所需的 Kubernetes</td>
+<td style="text-align: left;">≥ 1.35 默认开启，更早需开 gate</td>
+<td style="text-align: left;"><code>MaxUnavailableStatefulSet</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Go</td>
+<td style="text-align: left;"><strong>1.26.0</strong></td>
+<td style="text-align: left;"><code>go.mod</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s.io/api</code></td>
+<td style="text-align: left;"><strong>v0.36.3</strong></td>
+<td style="text-align: left;"><code>go.mod</code>；同时也固定了 code-generator</td>
+</tr>
+<tr>
+<td style="text-align: left;">Volcano（gang 调度）</td>
+<td style="text-align: left;">v1.12.1</td>
+<td style="text-align: left;">仅 e2e；被测试过的版本</td>
+</tr>
+<tr>
+<td style="text-align: left;">cert-manager</td>
+<td style="text-align: left;">v1.17.0</td>
+<td style="text-align: left;">仅 e2e；被测试过的版本</td>
+</tr>
+<tr>
+<td style="text-align: left;">Kueue（TAS 示例）</td>
+<td style="text-align: left;">0.16.1</td>
+<td style="text-align: left;">上游 TAS 示例</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">API 参考文档是对着 Kubernetes 1.28 生成的</p>
+<p><code>hack/genref/config.yaml</code> 把 <code>k8s.io/api...</code> 类型映射到 <strong>v1.28</strong> 的 Kubernetes API 参考，而项目构建用的是 <code>k8s.io/api v0.36.3</code>。因此 <code>site/content/en/docs/reference/*.v1.md</code> 里每一个指向核心类型的交叉链接都指向 1.28 的文档。把这个配置值升上去是一个一行的 PR。</p>
+</div>
+<hr />
+<h2 id="_8">实验：把失败演练一遍<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
+<p>本实验的意义是：在一个你不介意搞坏的集群里，刻意把每种失效模式都见一次——这样当你在生产里遇到它时，是几秒钟认出来，而不是几小时。</p>
+<div class="admonition warning">
+<p class="admonition-title">用一次性集群</p>
+<p>A2 部分会<strong>刻意销毁 LeaderWorkerSet 对象</strong>。别在你在乎的地方跑它。</p>
+</div>
+<h3 id="a">A 部分 — 安装与升级<a class="headerlink" href="#a" title="Permanent link">&para;</a></h3>
+<p>用 Helm 装 v0.9.0，然后验证 §1.3 的 DisaggregatedSet 开关：</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>lws<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="o">=</span><span class="m">0</span>.9.0<span class="w"> </span>--namespace<span class="w"> </span>lws-system<span class="w"> </span>--create-namespace<span class="w"> </span>--wait
+kubectl<span class="w"> </span>get<span class="w"> </span>validatingwebhookconfiguration<span class="w"> </span>lws-validating-webhook-configuration<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .webhooks[*]}{.name}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<p><code>vdisaggregatedset.kb.io</code> 应当<strong>不存在</strong>。现在创建一个在某个 role 上带 <code>partition: 5</code> 的 DisaggregatedSet——<a href="../08_disaggregatedset/">模块 8</a> §9.1 说它必须被拒绝——观察它被<strong>接受</strong>了。然后带 <code>--set enableDisaggregatedSet=true</code> 重装，确认同一个对象现在被拒绝。</p>
+<p>这就是那个开关的全部理由，两条命令演示完毕。</p>
+<h3 id="a2-crd">A2 部分 — 复现 CRD 删除风险（破坏性）<a class="headerlink" href="#a2-crd" title="Permanent link">&para;</a></h3>
+<p>在一次性集群上装 chart v0.7.0，创建一个 LeaderWorkerSet，然后<strong>不带</strong> resource-policy annotation 升级到 v0.8.0。看着 CRD 和每一个 LWS 对象一起消失。</p>
+<p>然后先打上 annotation 再重做一遍：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>annotate<span class="w"> </span>crd<span class="w"> </span>leaderworkersets.leaderworkerset.x-k8s.io<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>helm.sh/resource-policy<span class="o">=</span>keep<span class="w"> </span>--overwrite
+</code></pre></div>
+<p>见过一次之后，你再也不会跳过这一步——而且你手里就有了 §2.1 那个排障页 PR 的素材。</p>
+<h3 id="b">B 部分 — 名字长度上限<a class="headerlink" href="#b" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 恰好 51 个字符</span>
+kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
+<span class="s">apiVersion: leaderworkerset.x-k8s.io/v1</span>
+<span class="s">kind: LeaderWorkerSet</span>
+<span class="s">metadata:</span>
+<span class="s">  name: aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeff</span>
+<span class="s">spec:</span>
+<span class="s">  replicas: 2</span>
+<span class="s">  leaderWorkerTemplate:</span>
+<span class="s">    size: 2</span>
+<span class="s">    workerTemplate: { spec: { containers: [{ name: c, image: nginxinc/nginx-unprivileged:1.27 }] } }</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<p>它应该被接受。现在把它扩到 100 副本，按 <code>51 - int(replicas/10)</code> 公式看着高索引的组失败。找到那个错误：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span><span class="nv">reason</span><span class="o">=</span>FailedCreate<span class="w"> </span>--sort-by<span class="o">=</span>.lastTimestamp
+</code></pre></div>
+<p>注意这个错误离你创建的那个对象有多远——一个关于 label 值的 StatefulSet 事件，完全没提到 LWS。然后勾勒一下你会加的 webhook 校验：确切的界是多少？它需要依赖 <code>replicas</code> 吗？</p>
+<h3 id="c">C 部分 — 证书故障<a class="headerlink" href="#c" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>delete<span class="w"> </span>secret<span class="w"> </span>lws-webhook-server-cert
+kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>logs<span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span>-f<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;cert\|rotator&#39;</span>
+</code></pre></div>
+<p>看着 rotator 把它重新生成出来。然后来点真的：改掉 webhook 配置的名字，观察<strong>所有</strong> LWS 创建现在都以 webhook 错误失败——<code>failurePolicy: Fail</code> 在起作用。然后恢复它。</p>
+<h3 id="d">D 部分 — 建立监控基线<a class="headerlink" href="#d" title="Permanent link">&para;</a></h3>
+<p>部署三个处于不同状态的 LWS：一个健康、一个设了 <code>partition</code> 处于滚动中、一个 readiness probe 是坏的。然后写一条能把三者区分开的命令：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas,UPTODATE:.status.updatedReplicas,AVAIL:.status.conditions[?(@.type==&quot;Available&quot;)].status,UPD:.status.conditions[?(@.type==&quot;UpdateInProgress&quot;)].status&#39;</span>
+</code></pre></div>
+<p>确认 <code>maxSurge</code> 滚动期间 <code>status.replicas</code> 超过 <code>spec.replicas</code>，确认 <code>Available</code> 和 <code>UpdateInProgress</code> 的行为与<a href="../04_lws_reconciler_internals/">模块 4</a> §6.3 的预测一致，确认被冻结的灰度会无限期停在 <code>Progressing</code>。</p>
+<p>这条命令，加上对「<code>readyReplicas &lt; spec.replicas</code> 持续」的告警，在 LWS 专有指标出现之前，是一份够用的监控基线。</p>
+<h3 id="_9">检查点问题<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li>名字上限是 <code>51 - int(replicas/10)</code>。请从 StatefulSet 的 57 字符上限和 LWS 的两级命名方案把它推导出来。每一个字符都花在哪了？</li>
+<li>不管 gate 开没开，<code>maxUnavailable</code> 都会传到 StatefulSet 上。设计一个诊断方法，把「gate 没开」和「因为就绪尾部的关系，滚动本来就该一次一个组」区分开。</li>
+<li>Helm 不升级 CRD。基于这一点，给一个跑着 200 个 LeaderWorkerSet、横跨 30 个命名空间的集群写出正确的升级 runbook。</li>
+</ul>
+<p>继续阅读<a href="../11_contributor_workflow/">模块 11：贡献者工作流</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

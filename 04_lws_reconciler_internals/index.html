@@ -1,0 +1,2093 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/04_lws_reconciler_internals/">
+      
+      
+        <link rel="prev" href="../03_group_lifecycle_and_identity/">
+      
+      
+        <link rel="next" href="../05_pod_controller_and_failure_handling/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/04_lws_reconciler_internals/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 4 - The LeaderWorkerSet Reconciler - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-4-the-leaderworkerset-reconciler" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 4 - The LeaderWorkerSet Reconciler
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/04_lws_reconciler_internals/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-manager-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Manager Wiring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: Manager Wiring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-what-gets-registered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 What gets registered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-certificate-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Certificate management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-watches-and-the-second-watch-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Watches and the second watch path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-the-vestigial-field-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 The vestigial field index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-reconcile-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Reconcile Loop
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: The Reconcile Loop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-event-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Event vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-constructing-the-leader-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Constructing the Leader StatefulSet
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: Constructing the Leader StatefulSet">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-what-gets-stamped-onto-the-pod-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 What gets stamped onto the pod template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-metadata-merging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Metadata merging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-the-statefulset-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 The StatefulSet spec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-pvc-forwarding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 PVC forwarding
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-server-side-apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Server-Side Apply
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-controllerrevision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: ControllerRevision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: ControllerRevision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-what-is-hashed-and-what-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 What is hashed — and what is not
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-hashing-and-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Hashing and naming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-change-detection-and-the-equality-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Change detection and the equality cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-revision-adoption-on-operator-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Revision adoption on operator upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-lookup-restore-and-truncation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Lookup, restore, and truncation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-status-and-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Status and Conditions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: Status and Conditions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-the-three-status-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The three status fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-the-condition-counters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 The condition counters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-condition-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Condition selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-instrument-the-reconciler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Instrument the Reconciler
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Instrument the Reconciler">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-read-the-field-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Read the field manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-prove-that-scaling-does-not-cut-a-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Prove that scaling does not cut a revision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-observe-the-two-counting-schemes-diverge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Observe the two counting schemes diverge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-strand-a-revision-with-partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Strand a revision with partition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-trigger-the-serialization-drift-path-reading-exercise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Trigger the serialization-drift path (reading exercise)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-manager-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Manager Wiring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: Manager Wiring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-what-gets-registered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 What gets registered
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-certificate-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Certificate management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-watches-and-the-second-watch-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Watches and the second watch path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-the-vestigial-field-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 The vestigial field index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-reconcile-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Reconcile Loop
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: The Reconcile Loop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-event-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Event vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-constructing-the-leader-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Constructing the Leader StatefulSet
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: Constructing the Leader StatefulSet">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-what-gets-stamped-onto-the-pod-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 What gets stamped onto the pod template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-metadata-merging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Metadata merging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-the-statefulset-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 The StatefulSet spec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-pvc-forwarding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 PVC forwarding
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-server-side-apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Server-Side Apply
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-controllerrevision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: ControllerRevision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: ControllerRevision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-what-is-hashed-and-what-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 What is hashed — and what is not
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-hashing-and-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Hashing and naming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-change-detection-and-the-equality-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Change detection and the equality cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-revision-adoption-on-operator-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Revision adoption on operator upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-lookup-restore-and-truncation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Lookup, restore, and truncation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-status-and-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Status and Conditions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: Status and Conditions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-the-three-status-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The three status fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-the-condition-counters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 The condition counters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-condition-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Condition selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-instrument-the-reconciler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Instrument the Reconciler
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Instrument the Reconciler">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-read-the-field-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Read the field manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-prove-that-scaling-does-not-cut-a-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Prove that scaling does not cut a revision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-observe-the-two-counting-schemes-diverge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Observe the two counting schemes diverge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-strand-a-revision-with-partition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Strand a revision with partition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-trigger-the-serialization-drift-path-reading-exercise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Trigger the serialization-drift path (reading exercise)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-4-the-leaderworkerset-reconciler">Module 4: The LeaderWorkerSet Reconciler<a class="headerlink" href="#module-4-the-leaderworkerset-reconciler" title="Permanent link">&para;</a></h1>
+<p>This is the module where the abstractions stop and the code starts. <code>pkg/controllers/leaderworkerset_controller.go</code> is about 970 lines and does five things: it maintains a ControllerRevision history, it computes rollout parameters, it server-side-applies one StatefulSet, it reconciles a headless Service, and it computes status. Everything else in LWS is downstream of those five.</p>
+<p>This module covers <strong>how the manager is wired</strong>, <strong>the twelve-step reconcile</strong>, <strong>how the leader StatefulSet is constructed</strong>, <strong>Server-Side Apply and field managers</strong>, <strong>ControllerRevision in full</strong>, and <strong>the status and condition arithmetic</strong> — which is subtler than it looks and is the source of most "why does <code>kubectl get lws</code> say that" questions.</p>
+<p>The rollout arithmetic itself is deferred to <a href="../06_rollout_and_revisions/">Module 6</a>; here we treat <code>rollingUpdateParameters()</code> as a function that returns a partition and a replica count.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06), release v0.9.0. Primary sources: <code>cmd/main.go</code>, <code>pkg/controllers/leaderworkerset_controller.go</code>, <code>pkg/utils/revision/revision_utils.go</code>, <code>pkg/controllers/metadata.go</code>, <code>pkg/cert/cert.go</code>.</p>
+</div>
+<hr />
+<h2 id="part-1-manager-wiring">Part 1: Manager Wiring<a class="headerlink" href="#part-1-manager-wiring" title="Permanent link">&para;</a></h2>
+<h3 id="11-what-gets-registered">1.1 What gets registered<a class="headerlink" href="#11-what-gets-registered" title="Permanent link">&para;</a></h3>
+<p><code>cmd/main.go</code> registers five schemes unconditionally — client-go's, <code>leaderworkerset/v1</code>, <code>disaggregatedset/v1</code>, the <code>config</code> API, and <strong><code>scheduling.volcano.sh/v1beta1</code></strong>. Volcano types are in the scheme even when gang scheduling is disabled, which is worth knowing because it means the binary depends on Volcano's API module regardless.</p>
+<p>Startup order is deliberate:</p>
+<pre class="mermaid"><code>flowchart TD
+    A["parse flags + load --config&lt;br&gt;strict decoding"] --&gt; B["ctrl.NewManager"]
+    B --&gt; C["SetupIndexes(fieldIndexer)&lt;br&gt;&lt;i&gt;error logged, NOT fatal&lt;/i&gt;"]
+    C --&gt; D{"internalCertManagement.enable?"}
+    D --&gt;|"true"| E["cert.CertsManager(...)&lt;br&gt;rotator populates certDir,&lt;br&gt;closes certsReady when done"]
+    D --&gt;|"false"| F["close(certsReady) immediately&lt;br&gt;external issuer assumed"]
+    E --&gt; G["go setupControllers()&lt;br&gt;&lt;b&gt;blocks on &amp;lt;-certsReady&lt;/b&gt;"]
+    F --&gt; G
+    G --&gt; H["LeaderWorkerSetReconciler"]
+    G --&gt; I["DisaggregatedSetReconciler"]
+    G --&gt; J["SchedulerProvider (if configured)"]
+    G --&gt; K["PodReconciler(sp)"]
+    G --&gt; L["webhooks&lt;br&gt;&lt;i&gt;skipped if ENABLE_WEBHOOKS=false&lt;/i&gt;"]
+    B --&gt; M["healthz + readyz = healthz.Ping"]
+    M --&gt; N["mgr.Start(SetupSignalHandler())"]</code></pre>
+<p>The <code>&lt;-certsReady</code> block is the important part: no controller and no webhook is registered until the serving certificate exists. This is what prevents the API server from routing admission requests to a webhook that cannot yet complete a TLS handshake.</p>
+<h3 id="12-certificate-management">1.2 Certificate management<a class="headerlink" href="#12-certificate-management" title="Permanent link">&para;</a></h3>
+<p>"cert-manager mode" is not a mode in the code. It is simply <code>internalCertManagement.enable: false</code>, which closes the channel immediately and assumes something external populates <code>webhook.certDir</code>.</p>
+<p>Internal mode uses <code>github.com/open-policy-agent/cert-controller</code>'s rotator with:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">CA name / org</td>
+<td style="text-align: left;"><code>lws-ca</code> / <code>lws</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DNS name</td>
+<td style="text-align: left;"><code>&lt;webhookServiceName&gt;.&lt;namespace&gt;.svc</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Patched configurations</td>
+<td style="text-align: left;"><code>lws-validating-webhook-configuration</code>, <code>lws-mutating-webhook-configuration</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Readiness check</td>
+<td style="text-align: left;">Enabled</td>
+</tr>
+</tbody>
+</table>
+<p>The rotator patches the <code>caBundle</code> into both webhook configurations by name. If you rename a webhook configuration in a fork, this silently stops working — the rotator will not find the object and admission will fail closed (<code>failurePolicy: Fail</code>).</p>
+<h3 id="13-watches-and-the-second-watch-path">1.3 Watches and the second watch path<a class="headerlink" href="#13-watches-and-the-second-watch-path" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">r</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetReconciler</span><span class="p">)</span><span class="w"> </span><span class="nx">SetupWithManager</span><span class="p">(</span><span class="nx">mgr</span><span class="w"> </span><span class="nx">ctrl</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">ctrl</span><span class="p">.</span><span class="nx">NewControllerManagedBy</span><span class="p">(</span><span class="nx">mgr</span><span class="p">).</span>
+<span class="w">        </span><span class="nx">For</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">{}).</span>
+<span class="w">        </span><span class="nx">Owns</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">{}).</span>
+<span class="w">        </span><span class="nx">Owns</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">corev1</span><span class="p">.</span><span class="nx">Service</span><span class="p">{}).</span>
+<span class="w">        </span><span class="nx">Watches</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">{},</span><span class="w"> </span><span class="nx">handler</span><span class="p">.</span><span class="nx">EnqueueRequestsFromMapFunc</span><span class="p">(</span><span class="nx">enqueueLWSRequests</span><span class="p">)).</span>
+<span class="w">        </span><span class="nx">Complete</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The fourth line is the one that catches people. <code>Owns(&amp;appsv1.StatefulSet{})</code> only fires for StatefulSets whose controller reference points at a LeaderWorkerSet — which is the <strong>leader</strong> StatefulSet only. Worker StatefulSets are owned by leader <em>Pods</em> (<a href="../03_group_lifecycle_and_identity/">Module 3</a>), so they are invisible to <code>Owns</code>.</p>
+<p><code>enqueueLWSRequests</code> closes the gap by mapping any object carrying the <code>leaderworkerset.sigs.k8s.io/name</code> label to a reconcile request for that LWS in the same namespace. Without it, a worker StatefulSet becoming ready would not update <code>status.readyReplicas</code> until some other event happened to trigger a reconcile.</p>
+<div class="admonition note">
+<p class="admonition-title">A recent fix worth reading</p>
+<p>Commit <code>743f15f</code> — "fix: ignore unrelated StatefulSets in LeaderWorkerSet watch mapper (#957)" — hardened this mapper. It is a good short read if you want to see the shape of a well-scoped controller bug fix in this project.</p>
+</div>
+<h3 id="14-the-vestigial-field-index">1.4 The vestigial field index<a class="headerlink" href="#14-the-vestigial-field-index" title="Permanent link">&para;</a></h3>
+<p><code>SetupIndexes</code> registers exactly one index:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">indexer</span><span class="p">.</span><span class="nx">IndexField</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">{},</span><span class="w"> </span><span class="nx">lwsOwnerKey</span><span class="w"> </span><span class="cm">/* &quot;.metadata.controller&quot; */</span><span class="p">,</span>
+<span class="w">    </span><span class="kd">func</span><span class="p">(</span><span class="nx">rawObj</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">Object</span><span class="p">)</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">owner</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">GetControllerOf</span><span class="p">(</span><span class="nx">rawObj</span><span class="p">.(</span><span class="o">*</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">))</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">owner</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">owner</span><span class="p">.</span><span class="nx">APIVersion</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">apiGVStr</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">owner</span><span class="p">.</span><span class="nx">Kind</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;LeaderWorkerSet&quot;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">owner</span><span class="p">.</span><span class="nx">Name</span><span class="p">}</span>
+<span class="w">    </span><span class="p">})</span>
+</code></pre></div>
+<p><strong><code>lwsOwnerKey</code> is never used in a <code>client.MatchingFields</code> query anywhere in the core control plane.</strong> Every lookup goes through label selectors instead. The index costs memory in the informer cache and buys nothing. Either wiring it up or removing it is a small, self-contained contribution — see <a href="../appendix_pr_opportunities/">Appendix B</a>.</p>
+<p>Note also that <code>SetupIndexes</code>' error is logged but does <strong>not</strong> call <code>os.Exit</code>. A failed index registration leaves the manager running in a partially-initialised state, which is arguably the wrong choice for a startup-time failure.</p>
+<hr />
+<h2 id="part-2-the-reconcile-loop">Part 2: The Reconcile Loop<a class="headerlink" href="#part-2-the-reconcile-loop" title="Permanent link">&para;</a></h2>
+<p><code>Reconcile</code> is twelve steps in a fixed order. Reading them in order is the fastest way to understand the controller.</p>
+<pre class="mermaid"><code>flowchart TD
+    S1["1 · Get LWS (IgnoreNotFound)"]
+    S2{"2 · DeletionTimestamp set?"}
+    S3["3 · getLeaderStatefulSet"]
+    S4{"4 · leader STS terminating?"}
+    S5["5 · getOrCreateRevisionIfNonExist"]
+    S6["6 · getUpdatedRevision → CreateRevision"]
+    S7["7 · rollingUpdateParameters&lt;br&gt;→ (partition, replicas)"]
+    S8["8 · SSAWithStatefulset"]
+    S9["9 · emit rollout events"]
+    S10["10 · reconcileHeadlessServices"]
+    S11["11 · updateStatus"]
+    S12{"12 · updateDone?"}
+    S13["TruncateRevisions"]
+    DONE["return"]
+
+    S1 --&gt; S2
+    S2 --&gt;|yes| DONE
+    S2 --&gt;|no| S3 --&gt; S4
+    S4 --&gt;|yes| RQ["RequeueAfter 5s"]
+    S4 --&gt;|no| S5 --&gt; S6 --&gt; S7 --&gt; S8 --&gt; S9 --&gt; S10 --&gt; S11 --&gt; S12
+    S12 --&gt;|yes| S13 --&gt; DONE
+    S12 --&gt;|no| DONE</code></pre>
+<p>Three of these deserve individual attention.</p>
+<p><strong>Step 2 — no finalizers.</strong> <code>if lws.DeletionTimestamp != nil { return }</code>. There is no cleanup logic at all; owner references and Kubernetes garbage collection handle everything. If you are tempted to add a finalizer in a PR, be ready to justify why GC is insufficient.</p>
+<p><strong>Step 4 — the drain backoff.</strong> If the leader StatefulSet itself is terminating, the reconciler returns <code>ctrl.Result{RequeueAfter: 5 * time.Second}</code> rather than trying to recreate it. Applying a StatefulSet that is mid-deletion produces a confusing partial state; backing off is simpler and correct.</p>
+<p><strong>Step 5 — revision adoption on upgrade.</strong> <code>getOrCreateRevisionIfNonExist</code> handles two cases at once: a brand-new LWS with no revisions, and an LWS created by a <em>pre-ControllerRevision</em> version of the controller, whose leader StatefulSet already carries a <code>template-revision-hash</code> label computed by the old scheme. In the second case the new controller must adopt the existing hash rather than compute a fresh one, or every LWS in the cluster would roll on operator upgrade. §4.4 explains the mechanism.</p>
+<h3 id="21-event-vocabulary">2.1 Event vocabulary<a class="headerlink" href="#21-event-vocabulary" title="Permanent link">&para;</a></h3>
+<p>Reading the event stream is often faster than reading logs. The reconciler emits:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Reason</th>
+<th style="text-align: left;">Action</th>
+<th style="text-align: left;">When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>CreatingRevision</code></td>
+<td style="text-align: left;">Create</td>
+<td style="text-align: left;">A new ControllerRevision was cut</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>GroupsProgressing</code></td>
+<td style="text-align: left;">Create</td>
+<td style="text-align: left;">The leader StatefulSet was created for the first time</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>GroupsUpdating</code></td>
+<td style="text-align: left;">Update</td>
+<td style="text-align: left;">The partition moved: <code>"Updating replica %d"</code> or <code>"Updating replicas %d to %d (inclusive)"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>FailedCreate</code> / <code>FailedUpdate</code></td>
+<td style="text-align: left;">Create / Update</td>
+<td style="text-align: left;">The SSA patch failed</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>GroupsUpdating</code> message distinguishes a single-group step (<code>oldPartition-1 == partition</code>) from a multi-group step, which is a quick way to see whether <code>maxUnavailable &gt; 1</code> is actually taking effect.</p>
+<hr />
+<h2 id="part-3-constructing-the-leader-statefulset">Part 3: Constructing the Leader StatefulSet<a class="headerlink" href="#part-3-constructing-the-leader-statefulset" title="Permanent link">&para;</a></h2>
+<p><code>constructLeaderStatefulSetApplyConfiguration(lws, partition, replicas, revisionKey)</code> builds an <strong>apply configuration</strong>, not a StatefulSet object. The template is <code>leaderWorkerTemplate.leaderTemplate</code> if non-nil, else a deep copy of <code>workerTemplate</code>, round-tripped through <code>runtime.DefaultUnstructuredConverter</code> into a <code>PodTemplateSpecApplyConfiguration</code>.</p>
+<h3 id="31-what-gets-stamped-onto-the-pod-template">3.1 What gets stamped onto the pod template<a class="headerlink" href="#31-what-gets-stamped-onto-the-pod-template" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Kind</th>
+<th style="text-align: left;">Key</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Label</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/worker-index</code></td>
+<td style="text-align: left;"><code>"0"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Label</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/name</code></td>
+<td style="text-align: left;"><code>lws.Name</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Label</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/template-revision-hash</code></td>
+<td style="text-align: left;"><code>revisionKey</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotation</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/size</code></td>
+<td style="text-align: left;"><code>strconv.Itoa(int(*Size))</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotation</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/exclusive-topology</code></td>
+<td style="text-align: left;">copied from the LWS annotation if non-empty</td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotation</td>
+<td style="text-align: left;"><code>subgroup-policy-type</code>, <code>subgroup-size</code>, <code>subgroup-exclusive-topology</code></td>
+<td style="text-align: left;">when <code>SubGroupPolicy != nil</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotation</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/subdomainPolicy</code></td>
+<td style="text-align: left;">only when <code>UniquePerReplica</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>worker-index: "0"</code> label is what makes the leader StatefulSet's selector work, and what the pod webhook keys off to take the leader branch.</p>
+<h3 id="32-metadata-merging">3.2 Metadata merging<a class="headerlink" href="#32-metadata-merging" title="Permanent link">&para;</a></h3>
+<p><code>pkg/controllers/metadata.go</code> is eight lines and worth quoting because its precedence rule matters:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">merged</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span>
+<span class="nx">maps</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">merged</span><span class="p">,</span><span class="w"> </span><span class="nx">userMetadata</span><span class="p">)</span>
+<span class="nx">maps</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">merged</span><span class="p">,</span><span class="w"> </span><span class="nx">controllerMetadata</span><span class="p">)</span><span class="w">   </span><span class="c1">// controller keys WIN</span>
+<span class="c1">// returns nil when both are empty</span>
+</code></pre></div>
+<p>STS labels are <code>lws.Labels</code> plus <code>{name, template-revision-hash}</code>; STS annotations are <code>lws.Annotations</code> plus <code>{replicas}</code>. Because controller keys are copied second, a user who sets <code>leaderworkerset.sigs.k8s.io/name</code> on their LWS cannot corrupt the controller's own labels. Returning <code>nil</code> for the empty case avoids emitting an empty map into the apply configuration, which would otherwise cause SSA to claim ownership of an empty field.</p>
+<h3 id="33-the-statefulset-spec">3.3 The StatefulSet spec<a class="headerlink" href="#33-the-statefulset-spec" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">(</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Namespace</span><span class="p">).</span><span class="nx">WithSpec</span><span class="p">(</span><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">StatefulSetSpec</span><span class="p">().</span>
+<span class="w">    </span><span class="nx">WithServiceName</span><span class="p">(</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Name</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">WithReplicas</span><span class="p">(</span><span class="nx">replicas</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">WithPodManagementPolicy</span><span class="p">(</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">ParallelPodManagement</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">WithTemplate</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">podTemplateApplyConfiguration</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">WithUpdateStrategy</span><span class="p">(</span><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">StatefulSetUpdateStrategy</span><span class="p">().</span>
+<span class="w">        </span><span class="nx">WithType</span><span class="p">(</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSetUpdateStrategyType</span><span class="p">(</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">RolloutStrategy</span><span class="p">.</span><span class="nx">Type</span><span class="p">)).</span>
+<span class="w">        </span><span class="nx">WithRollingUpdate</span><span class="p">(</span><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">RollingUpdateStatefulSetStrategy</span><span class="p">().</span>
+<span class="w">            </span><span class="nx">WithMaxUnavailable</span><span class="p">(</span><span class="nx">stsMaxUnavailable</span><span class="p">).</span><span class="nx">WithPartition</span><span class="p">(</span><span class="nx">partition</span><span class="p">))).</span>
+<span class="w">    </span><span class="nx">WithSelector</span><span class="p">(</span><span class="nx">metaapplyv1</span><span class="p">.</span><span class="nx">LabelSelector</span><span class="p">().</span><span class="nx">WithMatchLabels</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">SetNameLabelKey</span><span class="p">:</span><span class="w">     </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">WorkerIndexLabelKey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0&quot;</span><span class="p">})))</span>
+</code></pre></div>
+<p>Four things to note:</p>
+<ol>
+<li><strong><code>replicas</code> is the rollout-adjusted value</strong>, not <code>*lws.Spec.Replicas</code>. During a <code>maxSurge</code> rollout it is <code>spec.replicas + surge</code>. This is why <code>status.replicas</code> — which is read straight off the StatefulSet — can exceed <code>spec.replicas</code>.</li>
+<li><strong><code>podManagementPolicy: Parallel</code>.</strong> Leader pods are created simultaneously, not in ordinal order. Requirement R1 from <a href="../01_multihost_inference_problem_space/">Module 1</a>.</li>
+<li><strong>The leader StatefulSet deliberately does not set <code>.spec.ordinals</code>.</strong> It starts at 0. Only the <em>worker</em> StatefulSet sets <code>WithStart(1)</code>.</li>
+<li><strong>The nested <code>maxUnavailable</code> is not the user's <code>maxUnavailable</code>:</strong></li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="nx">stsMaxUnavailableInt</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="nx">lwsMaxUnavailable</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">lwsMaxSurge</span><span class="p">)</span><span class="w">  </span><span class="c1">// maxSurge already clamped to &lt;= replicas</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">stsMaxUnavailableInt</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">stsMaxUnavailableInt</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>The value handed to the StatefulSet is the <em>sum</em> of the LWS's <code>maxUnavailable</code> and <code>maxSurge</code>, floored at 1. LWS drives group ordering itself via the partition; the StatefulSet's own <code>maxUnavailable</code> just needs to be permissive enough not to be the binding constraint. The <code>&lt; 1</code> clamp guards the <code>replicas: 0</code> case and the <code>maxUnavailable=0 &amp;&amp; maxSurge=0</code> combination that the webhook should have rejected. Percentages are rounded <strong>down</strong> for <code>maxUnavailable</code> and <strong>up</strong> for <code>maxSurge</code>.</p>
+<h3 id="34-pvc-forwarding">3.4 PVC forwarding<a class="headerlink" href="#34-pvc-forwarding" title="Permanent link">&para;</a></h3>
+<p><code>controllerutils.GetPVCApplyConfiguration(lws)</code> translates <code>volumeClaimTemplates</code> into apply configurations, forwarding only:</p>
+<ul>
+<li><code>accessModes</code></li>
+<li><code>storageClassName</code></li>
+<li><code>volumeMode</code></li>
+<li><code>resources.{requests,limits}</code></li>
+</ul>
+<p><strong>Silently dropped</strong>: <code>selector</code>, <code>dataSource</code>, <code>dataSourceRef</code>, and any labels or annotations on the PVC template. <code>persistentVolumeClaimRetentionPolicy</code> is forwarded verbatim. If you are cloning volumes from snapshots, this is where your <code>dataSource</code> disappears.</p>
+<hr />
+<h2 id="part-4-server-side-apply">Part 4: Server-Side Apply<a class="headerlink" href="#part-4-server-side-apply" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nx">obj</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">runtime</span><span class="p">.</span><span class="nx">DefaultUnstructuredConverter</span><span class="p">.</span><span class="nx">ToUnstructured</span><span class="p">(</span><span class="nx">leaderStatefulSetApplyConfig</span><span class="p">)</span>
+<span class="nx">patch</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">unstructured</span><span class="p">.</span><span class="nx">Unstructured</span><span class="p">{</span><span class="nx">Object</span><span class="p">:</span><span class="w"> </span><span class="nx">obj</span><span class="p">}</span>
+<span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">Patch</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">patch</span><span class="p">,</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">Apply</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">client</span><span class="p">.</span><span class="nx">PatchOptions</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">FieldManager</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;lws&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">Force</span><span class="p">:</span><span class="w">        </span><span class="nx">ptr</span><span class="p">.</span><span class="nx">To</span><span class="p">[</span><span class="kt">bool</span><span class="p">](</span><span class="kc">true</span><span class="p">),</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>Three properties fall out of this:</p>
+<ul>
+<li><strong>Field manager <code>"lws"</code>.</strong> Every field the controller sets is attributed to this manager in <code>metadata.managedFields</code>. <code>kubectl get sts my-lws -o yaml --show-managed-fields</code> shows you exactly which fields the controller owns and which it has left to you.</li>
+<li><strong><code>Force: true</code>.</strong> Conflicts are resolved in the controller's favour. If you <code>kubectl edit</code> the leader StatefulSet's replica count, the next reconcile takes it back without complaint. This is correct — the LWS is the source of truth — but it means manual StatefulSet edits are not a supported debugging technique.</li>
+<li><strong>Declarative removal.</strong> Because it is an apply rather than a patch, a field the controller <em>stops</em> setting is removed from the object. This is why the <code>mergeMetadata</code> <code>nil</code>-for-empty behaviour matters.</li>
+</ul>
+<p><code>setControllerReferenceWithStatefulSet</code> (defined in <code>pod_controller.go</code>, despite being used here) injects the owner reference into the apply configuration with <code>BlockOwnerDeletion(true)</code> and <code>Controller(true)</code>.</p>
+<p>There is a <code>//nolint</code> and a TODO in the code noting that <code>client.Apply()</code> is the modern replacement for <code>client.Apply</code> as a patch type. Migrating it is a plausible small PR, but check whether the controller-runtime version in <code>go.mod</code> supports the new API first.</p>
+<hr />
+<h2 id="part-5-controllerrevision">Part 5: ControllerRevision<a class="headerlink" href="#part-5-controllerrevision" title="Permanent link">&para;</a></h2>
+<p>KEP-238 introduced ControllerRevision so that a rollout has a stable notion of "the old template" and so that a group's workers can be built from the same template as their leader even after the LWS spec has moved on. <code>pkg/utils/revision/revision_utils.go</code> is adapted from upstream's <code>pkg/controller/history</code>.</p>
+<h3 id="51-what-is-hashed-and-what-is-not">5.1 What is hashed — and what is not<a class="headerlink" href="#51-what-is-hashed-and-what-is-not" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">clone</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">DeepCopy</span><span class="p">()</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">clone</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">NetworkConfig</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w">          </span><span class="c1">// upgrade compatibility</span>
+<span class="w">    </span><span class="nx">subdomainPolicy</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">SubdomainShared</span>
+<span class="w">    </span><span class="nx">clone</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">NetworkConfig</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">NetworkConfig</span><span class="p">{</span><span class="nx">SubdomainPolicy</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">subdomainPolicy</span><span class="p">}</span>
+<span class="p">}</span>
+<span class="nx">specCopy</span><span class="p">[</span><span class="s">&quot;networkConfig&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">networkConfig</span>
+<span class="nx">specCopy</span><span class="p">[</span><span class="s">&quot;leaderWorkerTemplate&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">template</span>
+<span class="nx">networkConfig</span><span class="p">[</span><span class="s">&quot;$patch&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;replace&quot;</span>
+<span class="nx">template</span><span class="p">[</span><span class="s">&quot;$patch&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;replace&quot;</span>
+<span class="nx">objCopy</span><span class="p">[</span><span class="s">&quot;spec&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">specCopy</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">json</span><span class="p">.</span><span class="nx">Marshal</span><span class="p">(</span><span class="nx">objCopy</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Included in the revision</th>
+<th style="text-align: left;">Excluded</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>spec.leaderWorkerTemplate</code> (both templates, <code>size</code>, <code>restartPolicy</code>, <code>subGroupPolicy</code>, <code>volumeClaimTemplates</code>)</td>
+<td style="text-align: left;"><code>spec.replicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.networkConfig</code></td>
+<td style="text-align: left;"><code>spec.rolloutStrategy</code> — including <code>partition</code>, <code>maxSurge</code>, <code>maxUnavailable</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>spec.startupPolicy</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>All metadata</strong> — labels and annotations, so changing <code>exclusive-topology</code> does <strong>not</strong> cut a revision</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>status</code></td>
+</tr>
+</tbody>
+</table>
+<p>This exclusion list is the answer to a very common question: <strong>scaling and rollout-knob edits never create a revision and never trigger a rolling update.</strong> Changing <code>replicas</code> from 2 to 5 adds three groups at the current revision. Changing <code>maxSurge</code> changes how the <em>next</em> rollout behaves and does nothing immediately.</p>
+<p>It also means the <code>exclusive-topology</code> annotation is not versioned. Changing it affects only pods created afterwards, with no rollout to propagate it — a sharp edge worth knowing before you debug why half your groups are placed differently.</p>
+<p>The <code>"$patch": "replace"</code> markers ensure that restoring a revision <strong>replaces</strong> those subtrees rather than strategic-merging into them. Without that, removing a container from the template would not be undone by a rollback.</p>
+<h3 id="52-hashing-and-naming">5.2 Hashing and naming<a class="headerlink" href="#52-hashing-and-naming" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">hf</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">fnv</span><span class="p">.</span><span class="nx">New32</span><span class="p">()</span>
+<span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">revision</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Raw</span><span class="p">)</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">hf</span><span class="p">.</span><span class="nx">Write</span><span class="p">(</span><span class="nx">revision</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Raw</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">revision</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Object</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">deepHashObject</span><span class="p">(</span><span class="nx">hf</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Object</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">rand</span><span class="p">.</span><span class="nx">SafeEncodeString</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprint</span><span class="p">(</span><span class="nx">hf</span><span class="p">.</span><span class="nx">Sum32</span><span class="p">()))</span>
+</code></pre></div>
+<p>FNV-32 over the marshalled patch, then <code>rand.SafeEncodeString</code> to map it into an alphabet with no accidentally-offensive substrings. Names are <code>fmt.Sprintf("%s-%s-%v", prefix, hash, revisionNumber)</code>, with the prefix truncated to 220 bytes to stay under the 253-byte name limit. The trailing revision number is what prevents a collision when an identical <code>prefix-hash</code> reappears in history — for example, when you roll back to a template you previously used.</p>
+<div class="admonition note">
+<p class="admonition-title">A latent bug in <code>hashRevision</code></p>
+<p><code>deepHashObject</code> calls <code>hasher.Reset()</code> before writing, so if both <code>Data.Raw</code> and <code>Data.Object</code> were populated, the <code>Raw</code> bytes would be silently discarded. In practice only <code>Raw</code> is ever set, so the path is unreachable — but it is exactly the kind of thing that becomes a real bug the day someone adds an <code>Object</code> producer.</p>
+</div>
+<h3 id="53-change-detection-and-the-equality-cache">5.3 Change detection and the equality cache<a class="headerlink" href="#53-change-detection-and-the-equality-cache" title="Permanent link">&para;</a></h3>
+<p><code>getUpdatedRevision</code> cuts a candidate revision from the live spec and compares:</p>
+<div class="highlight"><pre><span></span><code><span class="k">return</span><span class="w"> </span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Equal</span><span class="p">(</span><span class="nx">lhs</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Raw</span><span class="p">,</span><span class="w"> </span><span class="nx">rhs</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Raw</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">       </span><span class="nx">apiequality</span><span class="p">.</span><span class="nx">Semantic</span><span class="p">.</span><span class="nx">DeepEqual</span><span class="p">(</span><span class="nx">lhs</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Object</span><span class="p">,</span><span class="w"> </span><span class="nx">rhs</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Object</span><span class="p">)</span>
+</code></pre></div>
+<p>If the bytes differ, it does <strong>not</strong> immediately declare an update. It first calls <code>SetMatchesRevision(lws, currentRevision, revision, r.revisionEqualityCache)</code>, which re-applies the <em>existing</em> revision onto the LWS, re-derives a patch using the <em>current</em> serializer, and compares again.</p>
+<p>This exists to defeat <strong>serialization drift</strong>. Upgrading the operator can change how client-go marshals a pod template — the classic example being <code>"creationTimestamp": null</code> appearing or disappearing — producing byte-different but semantically identical patches. Without this check, every LWS in the cluster would roll on every operator upgrade. The code cites <code>kubernetes/kubernetes#135017</code>.</p>
+<p>The result is memoized in an LRU of 10,000 entries keyed by:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">revisionEqualityCacheKey</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">lwsUID</span><span class="w">                  </span><span class="nx">types</span><span class="p">.</span><span class="nx">UID</span>
+<span class="w">    </span><span class="nx">lwsGeneration</span><span class="w">           </span><span class="kt">int64</span>
+<span class="w">    </span><span class="nx">revisionResourceVersion</span><span class="w"> </span><span class="kt">string</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Only <strong>positive</strong> results are cached, so a genuine template change is never masked by a stale cache entry.</p>
+<h3 id="54-revision-adoption-on-operator-upgrade">5.4 Revision adoption on operator upgrade<a class="headerlink" href="#54-revision-adoption-on-operator-upgrade" title="Permanent link">&para;</a></h3>
+<p><code>NewRevision</code> has a subtlety that is easy to read past:</p>
+<blockquote>
+<p><code>cr.Name</code> always uses the freshly-computed hash, but <code>cr.Labels[RevisionKey]</code> uses the <strong>passed-in</strong> <code>revisionKey</code> when it is non-empty.</p>
+</blockquote>
+<p>That is the upgrade path. An LWS created by a pre-ControllerRevision operator has a <code>template-revision-hash</code> already stamped on its leader StatefulSet, computed by the old scheme. <code>getOrCreateRevisionIfNonExist</code> passes that legacy hash in, so the new ControllerRevision is <em>labelled</em> with the hash the live pods already carry. The result: upgrading the operator does not roll the fleet.</p>
+<h3 id="55-lookup-restore-and-truncation">5.5 Lookup, restore, and truncation<a class="headerlink" href="#55-lookup-restore-and-truncation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Function</th>
+<th style="text-align: left;">Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>GetRevisionKey(obj)</code></td>
+<td style="text-align: left;">Reads <code>labels["leaderworkerset.sigs.k8s.io/template-revision-hash"]</code>; <code>""</code> for nil labels. Used uniformly on Pods, StatefulSets, and ControllerRevisions</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>GetRevision(ctx, c, lws, key)</code></td>
+<td style="text-align: left;">Lists by <code>{name, template-revision-hash}</code>; <code>""</code> key returns <code>(nil, nil)</code>; more than one match logs an error and returns the highest revision</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ListRevisions</code></td>
+<td style="text-align: left;">Includes objects whose controller ref is nil <strong>or</strong> matches the parent UID — orphans are adopted</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ApplyRevision(lws, rev)</code></td>
+<td style="text-align: left;"><code>strategicpatch.StrategicMergePatch</code> of the revision onto an encoded LWS; this is how the pod controller builds worker StatefulSets from the pod's revision</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TruncateRevisions(ctx, c, lws, key)</code></td>
+<td style="text-align: left;">Deletes every revision whose key differs from the current one</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">There is no <code>revisionHistoryLimit</code></p>
+<p>LWS keeps exactly <strong>one</strong> revision. <code>TruncateRevisions</code> runs only when <code>updateDone</code> is true — partition is 0 and every desired replica is updated and ready — but when it runs it deletes everything else.</p>
+<p>The practical consequence: <strong><code>kubectl rollout undo</code> has nothing to undo.</strong> Once a rollout completes, the previous template is gone from the cluster. Rollback means re-applying the old manifest yourself. Adding a <code>revisionHistoryLimit</code> field would be a genuinely useful API contribution, and it has precedent in Deployment and StatefulSet — but it is an API change and therefore needs a KEP.</p>
+</div>
+<hr />
+<h2 id="part-6-status-and-conditions">Part 6: Status and Conditions<a class="headerlink" href="#part-6-status-and-conditions" title="Permanent link">&para;</a></h2>
+<p><code>updateStatus(ctx, lws, revisionKey)</code> is where most user-visible confusion originates, because it maintains <strong>two different counting schemes</strong> simultaneously.</p>
+<h3 id="61-the-three-status-fields">6.1 The three status fields<a class="headerlink" href="#61-the-three-status-fields" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Replicas</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">sts</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span><span class="w">          </span><span class="c1">// from a fresh Get of the leader STS</span>
+<span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ObservedGeneration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Generation</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">HPAPodSelector</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span><span class="w">                     </span><span class="c1">// computed exactly once</span>
+<span class="w">    </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">HPAPodSelector</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="cm">/* name=&lt;lws&gt;,worker-index=0 */</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>status.replicas</code> is read straight off the leader StatefulSet, so it <strong>includes surge replicas</strong>. The <code>HPAPodSelector</code> guard means it is computed on the first status update and never recomputed — cheap, and safe only because the LWS name is immutable.</p>
+<h3 id="62-the-condition-counters">6.2 The condition counters<a class="headerlink" href="#62-the-condition-counters" title="Permanent link">&para;</a></h3>
+<p><code>updateConditions</code> lists leader pods by <code>{name, worker-index: "0"}</code> and, for each, <code>Get</code>s the worker StatefulSet of the same name. That <code>Get</code> is skipped entirely when <code>noWorkerSts := *Size == 1</code>.</p>
+<p>Six counters are maintained:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Counter</th>
+<th style="text-align: left;">Predicate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>readyCount</code></td>
+<td style="text-align: left;"><code>(noWorkerSts \|\| StatefulsetReady(sts)) &amp;&amp; PodRunningAndReady(pod)</code> → <code>status.readyReplicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>updatedCount</code></td>
+<td style="text-align: left;"><code>(noWorkerSts \|\| GetRevisionKey(sts) == revisionKey) &amp;&amp; GetRevisionKey(pod) == revisionKey</code> → <code>status.updatedReplicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>partitionedCurrentNonBurstCount</code></td>
+<td style="text-align: left;">groups with <code>lwsPartition &lt;= index &lt; *spec.Replicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>partitionedUpdatedNonBurstCount</code></td>
+<td style="text-align: left;">the same window, additionally updated</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>partitionedUpdatedAndReadyCount</code></td>
+<td style="text-align: left;">the same window, updated <strong>and</strong> ready</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>readyNonBurstWorkerCount</code></td>
+<td style="text-align: left;">the same window, ready</td>
+</tr>
+</tbody>
+</table>
+<p>The first two feed the status fields and <strong>count burst replicas</strong>. The last four are windowed to <code>[partition, spec.replicas)</code> and therefore <strong>exclude</strong> burst replicas. That is the discrepancy: <code>status.readyReplicas</code> can report a number that the condition logic does not consider.</p>
+<h3 id="63-condition-selection">6.3 Condition selection<a class="headerlink" href="#63-condition-selection" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">partitionedUpdatedNonBurstCount</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">partitionedCurrentNonBurstCount</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">conditions</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="nx">UpdateInProgress</span><span class="p">,</span><span class="w"> </span><span class="nx">Progressing</span><span class="p">}</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nx">readyNonBurstWorkerCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">          </span><span class="nx">partitionedUpdatedAndReadyCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">partitionedCurrentNonBurstCount</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">conditions</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="nx">Available</span><span class="p">}</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">conditions</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="nx">Progressing</span><span class="p">}</span>
+<span class="p">}</span>
+<span class="nx">updateDone</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">(</span><span class="nx">lwsPartition</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">partitionedUpdatedAndReadyCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Condition</th>
+<th style="text-align: left;">Reason</th>
+<th style="text-align: left;">Message</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Available</code></td>
+<td style="text-align: left;"><code>AllGroupsReady</code></td>
+<td style="text-align: left;">"All replicas are ready"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>UpdateInProgress</code></td>
+<td style="text-align: left;"><code>GroupsUpdating</code></td>
+<td style="text-align: left;">"Rolling Upgrade is in progress"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Progressing</code></td>
+<td style="text-align: left;"><code>GroupsProgressing</code></td>
+<td style="text-align: left;">"Replicas are progressing"</td>
+</tr>
+</tbody>
+</table>
+<p><code>setCondition</code> enforces mutual exclusivity through an <code>exclusiveConditionTypes</code> table: <code>Available</code> is flipped to <code>False</code> when either <code>Progressing</code> or <code>UpdateInProgress</code> becomes <code>True</code>. Note that <code>Progressing</code> and <code>UpdateInProgress</code> are <strong>not</strong> mutually exclusive and coexist during a rollout. <code>setConditions</code> also stamps <code>observedGeneration</code> on every stored condition.</p>
+<p><code>updateDone</code> is the trigger for revision truncation in step 12. Note it requires <code>lwsPartition == 0</code> — so if you leave <code>partition</code> set at a non-zero canary boundary, the old revision is never garbage collected. That is intentional and useful: a paused canary keeps its rollback target.</p>
+<div class="admonition tip">
+<p class="admonition-title">Debugging <code>Available</code> never becoming true</p>
+<p>Work the predicate backwards. <code>Available</code> needs <em>both</em> <code>readyNonBurstWorkerCount == spec.replicas</code> <strong>and</strong> <code>partitionedUpdatedAndReadyCount == partitionedCurrentNonBurstCount</code>. The first is about the whole LWS; the second is about the partition window. A non-zero <code>partition</code> narrows the second condition but not the first — so a canary that has updated its window successfully but whose <em>frozen</em> groups are unhealthy will sit at <code>Progressing</code> forever, which is the right answer but not an obvious one.</p>
+</div>
+<hr />
+<h2 id="lab-instrument-the-reconciler">Lab: Instrument the Reconciler<a class="headerlink" href="#lab-instrument-the-reconciler" title="Permanent link">&para;</a></h2>
+<p>This lab runs entirely on <code>kind</code>. The goal is to see each mechanism from Parts 4–6 directly, and to reproduce the two most confusing behaviours.</p>
+<h3 id="step-1-read-the-field-manager">Step 1 — Read the field manager<a class="headerlink" href="#step-1-read-the-field-manager" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span>--show-managed-fields<span class="w"> </span><span class="p">|</span><span class="w"> </span>yq<span class="w"> </span><span class="s1">&#39;.metadata.managedFields&#39;</span>
+</code></pre></div>
+<p>Identify which entry has <code>manager: lws</code>, and enumerate the fields it owns. Then take one it does <em>not</em> own and set it by hand:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;minReadySeconds&quot;:30}}&#39;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.minReadySeconds}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>It persists, because <code>lws</code> never claims that field. Now try one it does own:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>scale<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>--replicas<span class="o">=</span><span class="m">99</span>
+sleep<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.replicas}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p><code>Force: true</code> takes it straight back. Both outcomes follow from the SSA semantics in Part 4.</p>
+<h3 id="step-2-prove-that-scaling-does-not-cut-a-revision">Step 2 — Prove that scaling does not cut a revision<a class="headerlink" href="#step-2-prove-that-scaling-does-not-cut-a-revision" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws
+<span class="nv">REV_BEFORE</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws<span class="w"> </span>-o<span class="w"> </span>name<span class="k">)</span>
+
+kubectl<span class="w"> </span>scale<span class="w"> </span>lws/my-lws<span class="w"> </span>--replicas<span class="o">=</span><span class="m">4</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;rolloutStrategy&quot;:{&quot;rollingUpdateConfiguration&quot;:{&quot;maxSurge&quot;:1}}}}&#39;</span>
+kubectl<span class="w"> </span>annotate<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>leaderworkerset.sigs.k8s.io/exclusive-topology<span class="o">=</span>kubernetes.io/hostname<span class="w"> </span>--overwrite
+
+kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws<span class="w"> </span>-o<span class="w"> </span>name
+</code></pre></div>
+<p>The revision list should be <strong>unchanged</strong> after all three edits, and no pods should have restarted. Confirm the exclusion list in §5.1 accounts for each of them. Then change the container image and watch a new revision appear.</p>
+<h3 id="step-3-observe-the-two-counting-schemes-diverge">Step 3 — Observe the two counting schemes diverge<a class="headerlink" href="#step-3-observe-the-two-counting-schemes-diverge" title="Permanent link">&para;</a></h3>
+<p>Set <code>maxSurge: 1</code> and trigger a rollout, then poll:</p>
+<div class="highlight"><pre><span></span><code><span class="k">while</span><span class="w"> </span>true<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;{.spec.replicas}{&quot;\t&quot;}{.status.replicas}{&quot;\t&quot;}{.status.readyReplicas}{&quot;\t&quot;}{.status.updatedReplicas}{&quot;\n&quot;}&#39;</span>
+<span class="w">  </span>sleep<span class="w"> </span><span class="m">2</span>
+<span class="k">done</span>
+</code></pre></div>
+<p>You should see <code>status.replicas</code> exceed <code>spec.replicas</code> mid-rollout. Simultaneously watch the conditions:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .status.conditions[*]}{.type}={.status} {end}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>Confirm that <code>Progressing</code> and <code>UpdateInProgress</code> are both <code>True</code> at the same time, and that <code>Available</code> is <code>False</code>. Map each observation to a specific line in §6.2 and §6.3.</p>
+<h3 id="step-4-strand-a-revision-with-partition">Step 4 — Strand a revision with <code>partition</code><a class="headerlink" href="#step-4-strand-a-revision-with-partition" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;rolloutStrategy&quot;:{&quot;rollingUpdateConfiguration&quot;:{&quot;partition&quot;:2}}}}&#39;</span>
+<span class="c1"># now change the image</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;replace&quot;,&quot;path&quot;:&quot;/spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/image&quot;,&quot;value&quot;:&quot;nginxinc/nginx-unprivileged:1.28&quot;}]&#39;</span>
+
+kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws
+</code></pre></div>
+<p><strong>Two</strong> revisions should now exist and stay that way, because <code>updateDone</code> requires <code>partition == 0</code>. Set <code>partition: 0</code>, wait for the rollout to complete, and watch <code>TruncateRevisions</code> delete the old one. Then confirm §5.5's claim: there is now no way to roll back from within the cluster.</p>
+<h3 id="step-5-trigger-the-serialization-drift-path-reading-exercise">Step 5 — Trigger the serialization-drift path (reading exercise)<a class="headerlink" href="#step-5-trigger-the-serialization-drift-path-reading-exercise" title="Permanent link">&para;</a></h3>
+<p>You cannot easily reproduce this without two operator versions, so read <code>SetMatchesRevision</code> in <code>pkg/utils/revision/revision_utils.go</code> and answer:</p>
+<ul>
+<li>What exactly is compared, and why is comparing <code>Data.Raw</code> bytes alone insufficient?</li>
+<li>Why are only <em>positive</em> results cached in the LRU? What would break if negatives were cached too?</li>
+<li>The cache key includes <code>lwsGeneration</code> and <code>revisionResourceVersion</code>. What incorrect behaviour would you get if it included only the LWS UID?</li>
+</ul>
+<p>Continue to <a href="../05_pod_controller_and_failure_handling/">Module 5: Pod Controller and Failure Handling</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

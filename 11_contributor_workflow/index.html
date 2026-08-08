@@ -1,0 +1,2204 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/11_contributor_workflow/">
+      
+      
+        <link rel="prev" href="../10_operations_and_troubleshooting/">
+      
+      
+        <link rel="next" href="../appendix_glossary/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/11_contributor_workflow/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 11 - The Contributor Workflow - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-11-the-contributor-workflow" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 11 - The Contributor Workflow
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/11_contributor_workflow/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-repo-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Repo Layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-make-targets-that-matter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Make Targets That Matter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: The Make Targets That Matter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-daily-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The daily loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-make-verify-is-the-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 make verify is the gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-pinned-tool-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Pinned tool versions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-the-three-test-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: The Three Test Tiers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: The Three Test Tiers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-unit-tests-the-table-idiom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Unit tests — the table idiom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-integration-tests-envtest-and-the-trap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Integration tests — envtest, and the trap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-the-ginkgo-table-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 The Ginkgo table convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-the-wrapper-builder-idiom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 The wrapper builder idiom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-e2e" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 e2e
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-linting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Linting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: Linting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-golangciyaml-is-remarkably-minimal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 .golangci.yaml is remarkably minimal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-kal-rules-that-constrain-api-prs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The KAL rules that constrain API PRs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-codespell-blocks-prs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Codespell blocks PRs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-what-ci-actually-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: What CI Actually Runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-the-kep-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: The KEP Process
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: The KEP Process">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-kepyaml-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 kep.yaml schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-what-good-looks-like" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 What good looks like
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-the-gap-between-kep-and-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 The gap between KEP and code
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-governance-and-getting-a-pr-merged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: Governance and Getting a PR Merged
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: Governance and Getting a PR Merged">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-who-approves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Who approves
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-the-pr-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 The PR template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-where-to-talk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Where to talk
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-the-most-valuable-documentation-pr-in-the-repo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 The most valuable documentation PR in the repo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-release-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Release Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-land-a-first-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Land a First PR
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Land a First PR">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-set-up-and-prove-the-toolchain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Set up and prove the toolchain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-pick-a-first-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Pick a first PR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-write-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Write it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-open-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Open it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-repo-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Repo Layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-make-targets-that-matter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Make Targets That Matter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: The Make Targets That Matter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-daily-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The daily loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-make-verify-is-the-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 make verify is the gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-pinned-tool-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Pinned tool versions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-the-three-test-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: The Three Test Tiers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: The Three Test Tiers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-unit-tests-the-table-idiom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Unit tests — the table idiom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-integration-tests-envtest-and-the-trap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Integration tests — envtest, and the trap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-the-ginkgo-table-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 The Ginkgo table convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-the-wrapper-builder-idiom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 The wrapper builder idiom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-e2e" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 e2e
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-linting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Linting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: Linting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-golangciyaml-is-remarkably-minimal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 .golangci.yaml is remarkably minimal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-kal-rules-that-constrain-api-prs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The KAL rules that constrain API PRs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-codespell-blocks-prs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Codespell blocks PRs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-what-ci-actually-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: What CI Actually Runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-the-kep-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: The KEP Process
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: The KEP Process">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-kepyaml-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 kep.yaml schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-what-good-looks-like" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 What good looks like
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-the-gap-between-kep-and-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 The gap between KEP and code
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-governance-and-getting-a-pr-merged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: Governance and Getting a PR Merged
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: Governance and Getting a PR Merged">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-who-approves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Who approves
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-the-pr-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 The PR template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-where-to-talk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Where to talk
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-the-most-valuable-documentation-pr-in-the-repo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 The most valuable documentation PR in the repo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-release-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Release Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-land-a-first-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Land a First PR
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Land a First PR">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-set-up-and-prove-the-toolchain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Set up and prove the toolchain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-pick-a-first-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Pick a first PR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-write-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Write it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-open-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Open it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-11-the-contributor-workflow">Module 11: The Contributor Workflow<a class="headerlink" href="#module-11-the-contributor-workflow" title="Permanent link">&para;</a></h1>
+<p>Everything up to here was about understanding LWS. This module is about changing it: the repo layout, the <code>make</code> targets that gate CI, the three test tiers and their conventions, the linters, the codegen chain, the KEP process, the release mechanics, and who has to approve your PR.</p>
+<p>It is written for the specific situation of having read the preceding ten modules and wanting to open a first PR. The single most useful fact in it: <strong><code>make verify</code> is the pre-submit gate</strong>, and running it before you push saves a review cycle every time.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06). Tool versions are pinned in the <code>Makefile</code> and <code>Makefile-deps.mk</code>; check them before assuming.</p>
+</div>
+<hr />
+<h2 id="part-1-repo-layout">Part 1: Repo Layout<a class="headerlink" href="#part-1-repo-layout" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>api/                   ← API types. Changing anything here triggers the full codegen chain.
+  leaderworkerset/v1/    LeaderWorkerSet — the only tree KAL lints
+  disaggregatedset/v1/   DisaggregatedSet + DisaggregatedSetRoleScaler
+  config/v1alpha1/       Configuration (the controller&#39;s own config file format)
+cmd/main.go            ← manager wiring, flags, startup ordering
+pkg/
+  controllers/           leaderworkerset_controller.go, pod_controller.go, metadata.go
+  controllers/disaggregatedset/   planner.go, executor.go, *_manager.go
+  webhooks/              LWS + pod webhooks; disaggregatedset/ subpackage
+  utils/                 revision/, pod/, statefulset/, controller/, accelerators/, disaggregatedset/
+  schedulerprovider/     the gang-scheduling interface + volcano provider
+  config/, cert/, version/
+client-go/             ← GENERATED. Never hand-edit.
+config/                ← kustomize: crd/ default/ manager/ rbac/ webhook/ internalcert/
+                          certmanager/ components/{prometheus,volcano}
+charts/lws/            ← Helm chart; crds/ is generated by `make crds`
+keps/                  ← one directory per KEP: README.md + kep.yaml
+site/                  ← Hugo + Docsy documentation site
+test/                  ← wrappers/ testutils/ integration/ e2e/
+hack/                  ← codegen, e2e harness, chart push, TOC, KAL builder config
+</code></pre></div>
+<p>Three rules that follow from the layout:</p>
+<ol>
+<li><strong><code>client-go/</code> and every <code>zz_generated.*.go</code> are generated.</strong> <code>make verify</code> regenerates and diffs them; a hand edit fails CI.</li>
+<li><strong>KAL only lints <code>api/leaderworkerset/*</code>.</strong> <code>api/disaggregatedset/</code> and <code>api/config/</code> are unlinted — see <a href="../02_api_surface_anatomy/">Module 2</a>, §8.2.</li>
+<li><strong>There are exactly two <code>OWNERS</code> files.</strong> No per-package ownership, so every non-site PR needs one of four root approvers.</li>
+</ol>
+<hr />
+<h2 id="part-2-the-make-targets-that-matter">Part 2: The Make Targets That Matter<a class="headerlink" href="#part-2-the-make-targets-that-matter" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">GNU sed is mandatory</p>
+<p>The Makefile hard-errors if <code>sed --version</code> is not GNU: <em>"!!! GNU sed is required. If on OS X, use 'brew install gnu-sed'."</em> It prefers <code>gsed</code> when present. macOS contributors hit this on the first command.</p>
+</div>
+<h3 id="21-the-daily-loop">2.1 The daily loop<a class="headerlink" href="#21-the-daily-loop" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Target</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>make manifests</code></td>
+<td style="text-align: left;"><code>controller-gen</code> → CRDs into <code>config/crd/bases</code>, RBAC into <code>config/rbac</code>, webhook config into <code>config/webhook</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>make generate</code></td>
+<td style="text-align: left;">deepcopy + <code>hack/update-codegen.sh</code> (clientset, listers, informers, apply configurations) + API reference docs + Helm CRDs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>make fmt</code> / <code>make vet</code></td>
+<td style="text-align: left;"><code>go fmt</code> / <code>go vet</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make test</code></strong></td>
+<td style="text-align: left;">envtest-backed unit tests over <code>./api/... ./pkg/... ./cmd/...</code> with coverage</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make test-integration</code></strong></td>
+<td style="text-align: left;">Ginkgo against <code>./test/integration/...</code> with envtest</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make test-e2e</code></strong></td>
+<td style="text-align: left;"><code>hack/e2e-test.sh</code> — creates a kind cluster, builds and loads the image, deploys, runs Ginkgo</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make lint</code></strong></td>
+<td style="text-align: left;"><code>golangci-lint run --timeout 15m0s</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make lint-api</code></strong></td>
+<td style="text-align: left;">the custom-built kube-api-linter binary</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make verify</code></strong></td>
+<td style="text-align: left;"><strong>the pre-submit gate</strong> — see below</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-make-verify-is-the-gate">2.2 <code>make verify</code> is the gate<a class="headerlink" href="#22-make-verify-is-the-gate" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>gomod-verify lint lint-api fmt-verify toc-verify manifests generate prepare-release-branch
+  → git --no-pager diff --exit-code config/components api client-go site/ charts/
+  → fail if any untracked files appear in those paths
+</code></pre></div>
+<p>It regenerates everything and then requires the working tree to be clean. Two consequences that catch people:</p>
+<ul>
+<li><strong>Forgetting <code>make generate</code> after an API change fails CI</strong>, because the regenerated <code>client-go/</code> differs from what you committed.</li>
+<li><strong>Hand-editing a version string fails CI.</strong> <code>prepare-release-branch</code> rewrites version strings in <code>README.md</code>, <code>site/hugo.toml</code>, <code>charts/lws/README.md</code>, <code>site/content/en/docs/installation/_index.md</code>, and <code>charts/lws/Chart.yaml</code>. If you edited one by hand, the regeneration reverts it and the diff fails.</li>
+</ul>
+<p>Run <code>make verify</code> before every push. It is slower than CI feedback but much faster than a round trip.</p>
+<h3 id="23-pinned-tool-versions">2.3 Pinned tool versions<a class="headerlink" href="#23-pinned-tool-versions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Tool</th>
+<th style="text-align: left;">Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Go</td>
+<td style="text-align: left;"><strong>1.26.0</strong> (from <code>go.mod</code> — the single source of truth)</td>
+</tr>
+<tr>
+<td style="text-align: left;">controller-gen</td>
+<td style="text-align: left;">v0.17.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">kustomize</td>
+<td style="text-align: left;">v5.2.1 (reinstalled if the wrong version is present)</td>
+</tr>
+<tr>
+<td style="text-align: left;">golangci-lint</td>
+<td style="text-align: left;">v2.12.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">kube-api-linter</td>
+<td style="text-align: left;">pinned by commit in <code>hack/.custom-gcl.yaml</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">envtest Kubernetes</td>
+<td style="text-align: left;"><strong>1.36.0</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">kind node image</td>
+<td style="text-align: left;"><code>kindest/node:v1.36.1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">helm</td>
+<td style="text-align: left;">v3.19.0 · yq v4.45.1 · hugo v0.152.2 (extended) · genref v0.28.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">Volcano (e2e)</td>
+<td style="text-align: left;">v1.12.1 · cert-manager (e2e) v1.17.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">code-generator</td>
+<td style="text-align: left;">tracks <code>k8s.io/api</code> → <strong>v0.36.3</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Everything installs into <code>./bin</code>. The KAL binary is <strong>built, not downloaded</strong> (<code>make golangci-lint-kal</code> compiles it from <code>hack/.custom-gcl.yaml</code>), so the first <code>make lint-api</code> takes a while.</p>
+<hr />
+<h2 id="part-3-the-three-test-tiers">Part 3: The Three Test Tiers<a class="headerlink" href="#part-3-the-three-test-tiers" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart LR
+    U["&lt;b&gt;Unit&lt;/b&gt; · pkg/**/_test.go&lt;br&gt;plain Go table tests&lt;br&gt;cmp.Diff assertions&lt;br&gt;no cluster"]
+    I["&lt;b&gt;Integration&lt;/b&gt; · test/integration/&lt;br&gt;Ginkgo + envtest&lt;br&gt;real apiserver + etcd&lt;br&gt;&lt;b&gt;no kubelet, no webhooks&lt;/b&gt;"]
+    E["&lt;b&gt;e2e&lt;/b&gt; · test/e2e/&lt;br&gt;Ginkgo + kind&lt;br&gt;full cluster, real pods"]
+    U --&gt; I --&gt; E
+    U -.-&gt;|"seconds"| U
+    I -.-&gt;|"minutes"| I
+    E -.-&gt;|"tens of minutes"| E</code></pre>
+<h3 id="31-unit-tests-the-table-idiom">3.1 Unit tests — the table idiom<a class="headerlink" href="#31-unit-tests-the-table-idiom" title="Permanent link">&para;</a></h3>
+<p>Plain Go, no Ginkgo, <code>cmp.Diff</code> for assertions:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">TestGenGroupUniqueKey</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">tests</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">name</span><span class="w">        </span><span class="kt">string</span>
+<span class="w">        </span><span class="nx">podName</span><span class="w">     </span><span class="kt">string</span>
+<span class="w">        </span><span class="nx">namespace</span><span class="w">   </span><span class="kt">string</span>
+<span class="w">        </span><span class="nx">expectedKey</span><span class="w"> </span><span class="kt">string</span>
+<span class="w">    </span><span class="p">}{</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;same namespace, pod name&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">podName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;test-sample&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">namespace</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;default&quot;</span><span class="p">,</span>
+<span class="w">         </span><span class="nx">expectedKey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;95e88034e460983f51a9952fe128729fbc0663b5&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">tc</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">tests</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">t</span><span class="p">.</span><span class="nx">Run</span><span class="p">(</span><span class="nx">tc</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nx">key</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">genGroupUniqueKey</span><span class="p">(</span><span class="nx">tc</span><span class="p">.</span><span class="nx">namespace</span><span class="p">,</span><span class="w"> </span><span class="nx">tc</span><span class="p">.</span><span class="nx">podName</span><span class="p">)</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">diff</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cmp</span><span class="p">.</span><span class="nx">Diff</span><span class="p">(</span><span class="nx">tc</span><span class="p">.</span><span class="nx">expectedKey</span><span class="p">,</span><span class="w"> </span><span class="nx">key</span><span class="p">);</span><span class="w"> </span><span class="nx">diff</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;unexpected key %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">diff</span><span class="p">)</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">})</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Note the <strong>golden hash values</strong>. If you change <code>genGroupUniqueKey</code>'s input ordering or hashing, these break loudly — by design, because that value is an affinity key and changing it would silently re-place every group.</p>
+<p>Testify is a direct dependency but used sparingly; <code>cmp.Diff</code> is the house style.</p>
+<p>The DisaggregatedSet planner is the best target for unit tests in the whole project: it is a pure function of four integer vectors, and <code>planner_test.go</code> is 38 KB of table tests including a full-sequence assertion. A rollout-algorithm change should come with entries there.</p>
+<h3 id="32-integration-tests-envtest-and-the-trap">3.2 Integration tests — envtest, and the trap<a class="headerlink" href="#32-integration-tests-envtest-and-the-trap" title="Permanent link">&para;</a></h3>
+<p><code>test/integration/</code> runs a real apiserver and etcd, a real <code>ctrl.NewManager</code>, and the actual reconcilers — but <strong>no kubelet and no admission webhooks</strong>.</p>
+<p>That second omission is the single most common trap for an API PR:</p>
+<div class="admonition danger">
+<p class="admonition-title">Integration tests run without the defaulting webhook</p>
+<p><code>wrappers.BuildLeaderWorkerSet</code> carries the comment <em>"Manually set this for we didn't enable webhook in controller tests"</em> and explicitly populates <code>RolloutStrategy</code>, <code>StartupPolicy</code>, and <code>NetworkConfig</code> — the fields the defaulting webhook would otherwise fill.</p>
+<p><strong>If you add a defaulted API field, you must add it to the wrapper too.</strong> Otherwise an unset pointer nil-panics inside the reconciler, and the failure looks like a controller bug rather than a test-fixture gap.</p>
+</div>
+<p>The suite also has a real bug worth fixing:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">BinaryAssetsDirectory</span><span class="p">:</span><span class="w"> </span><span class="nx">filepath</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="s">&quot;..&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;..&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;..&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;bin&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;k8s&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;1.28.3-%s-%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">runtime</span><span class="p">.</span><span class="nx">GOOS</span><span class="p">,</span><span class="w"> </span><span class="nx">runtime</span><span class="p">.</span><span class="nx">GOARCH</span><span class="p">)),</span>
+</code></pre></div>
+<p>Hardcoded <strong>1.28.3</strong>, while the Makefile sets <code>ENVTEST_K8S_VERSION = 1.36.0</code>. Running via <code>make test-integration</code> is unaffected because <code>KUBEBUILDER_ASSETS</code> wins — but the comment says this path exists "if you want to run the tests directly without call the makefile target", and that path is broken. Small, safe PR.</p>
+<h3 id="33-the-ginkgo-table-convention">3.3 The Ginkgo table convention<a class="headerlink" href="#33-the-ginkgo-table-convention" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">var</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ginkgo</span><span class="p">.</span><span class="nx">Describe</span><span class="p">(</span><span class="s">&quot;LeaderWorkerSet controller&quot;</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">type</span><span class="w"> </span><span class="nx">update</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">lwsUpdateFn</span><span class="w">       </span><span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">checkLWSState</span><span class="w">     </span><span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">checkLWSCondition</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">Client</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">,</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kd">type</span><span class="w"> </span><span class="nx">testCase</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">makeLeaderWorkerSet</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">nsName</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">wrappers</span><span class="p">.</span><span class="nx">LeaderWorkerSetWrapper</span>
+<span class="w">        </span><span class="nx">updates</span><span class="w">             </span><span class="p">[]</span><span class="o">*</span><span class="nx">update</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">ginkgo</span><span class="p">.</span><span class="nx">DescribeTable</span><span class="p">(</span><span class="s">&quot;leaderWorkerSet creating or updating&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="kd">func</span><span class="p">(</span><span class="nx">tc</span><span class="w"> </span><span class="o">*</span><span class="nx">testCase</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nx">ns</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">corev1</span><span class="p">.</span><span class="nx">Namespace</span><span class="p">{</span><span class="nx">ObjectMeta</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">ObjectMeta</span><span class="p">{</span><span class="nx">GenerateName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;lws-ns-&quot;</span><span class="p">}}</span>
+<span class="w">            </span><span class="c1">// …</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nx">ginkgo</span><span class="p">.</span><span class="nx">Entry</span><span class="p">(</span><span class="s">&quot;scale up number of groups&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">testCase</span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="nx">ginkgo</span><span class="p">.</span><span class="nx">Entry</span><span class="p">(</span><span class="s">&quot;scale down to 0&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">testCase</span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>Each entry gets a <strong>fresh generated namespace</strong>. The <code>updates</code> slice models a sequence of mutations with assertions between them, which is the right shape for testing a rollout.</p>
+<p>Note that Ginkgo is imported <strong>qualified</strong> (<code>ginkgo.Describe</code>) in test bodies while the suite files use dot-imports. Both styles coexist; match the file you are editing.</p>
+<h3 id="34-the-wrapper-builder-idiom">3.4 The wrapper builder idiom<a class="headerlink" href="#34-the-wrapper-builder-idiom" title="Permanent link">&para;</a></h3>
+<p>This is the pattern to imitate whenever you add a field:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">LeaderWorkerSetWrapper</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">w</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="p">)</span><span class="w"> </span><span class="nx">Obj</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">w</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">w</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="p">)</span><span class="w"> </span><span class="nx">Replica</span><span class="p">(</span><span class="nx">count</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">w</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ptr</span><span class="p">.</span><span class="nx">To</span><span class="p">[</span><span class="kt">int32</span><span class="p">](</span><span class="nb">int32</span><span class="p">(</span><span class="nx">count</span><span class="p">))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">w</span>
+<span class="p">}</span>
+
+<span class="c1">// Nested optional structs are lazily allocated by the setter — copy this</span>
+<span class="c1">// convention when your field lives under a new pointer sub-struct.</span>
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">w</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="p">)</span><span class="w"> </span><span class="nx">SubGroupType</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">SubGroupPolicyType</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">w</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">SubGroupPolicy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">w</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">SubGroupPolicy</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">SubGroupPolicy</span><span class="p">{}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">w</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">SubGroupPolicy</span><span class="p">.</span><span class="nx">Type</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">t</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">w</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Two constructors: <code>BuildBasicLeaderWorkerSet(name, ns)</code> for a bare object, and <code>BuildLeaderWorkerSet(nsName)</code> for the realistic one most entries use.</p>
+<p>Supporting packages:</p>
+<ul>
+<li><strong><code>test/testutils/util.go</code></strong> — 40+ cluster-state helpers: <code>MustCreateLws</code>, <code>CreateLeaderPods</code>, <code>CreateLeaderPodsWithInjectFn</code> (the escape hatch for arbitrary pod mutation), <code>SetLeaderPodsToReady(start, end)</code>, <code>SetStatefulsetToUnReady</code>, <code>UpdateWorkerTemplateImage</code>, <code>ValidatePodExclusivePlacementTerms</code>, and so on.</li>
+<li><strong><code>test/testutils/validators.go</code></strong> — <code>Expect*</code> assertions with <code>Eventually</code> inside: <code>ExpectValidLeaderStatefulSet</code>, <code>ExpectLeaderWorkerSetAvailable</code>, <code>ExpectStatefulsetPartitionEqualTo</code>, <code>ExpectRevisions(…, numRevisions)</code>, <code>ValidateEvent</code>.</li>
+</ul>
+<p>Before writing a helper, grep these two files. They almost certainly already have it.</p>
+<h3 id="35-e2e">3.5 e2e<a class="headerlink" href="#35-e2e" title="Permanent link">&para;</a></h3>
+<p><code>hack/e2e-test.sh</code> is the whole harness:</p>
+<div class="highlight"><pre><span></span><code>trap cleanup EXIT
+startup → pull_upgrade_images → kind_load → deploy_cert_manager
+        → deploy_gang_scheduler → lws_deploy → run_tests
+</code></pre></div>
+<p>Notable behaviours:</p>
+<ul>
+<li><code>lws_deploy</code> <strong>writes <code>config/manager/controller_manager_config.yaml</code> on the fly</strong>, adding <code>internalCertManagement.enable: false</code> for the cert-manager variant and <code>gangSchedulingManagement.schedulerProvider</code> for the Volcano variant. For Volcano it also appends the <code>podgroups</code> RBAC rule if absent.</li>
+<li>The cert-manager variant adds <code>cainjection_in_leaderworkersets.yaml</code>, <code>webhookcainjection_patch.yaml</code>, and <code>cert_metrics_manager_patch.yaml</code> — <strong>more than the upstream cert-manager documentation describes</strong> (<a href="../10_operations_and_troubleshooting/">Module 10</a>, §3).</li>
+<li><code>run_tests</code> selects the gang-scheduling suite with a <strong>literal Ginkgo description string</strong> (<code>--focus=</code> in one branch, <code>--skip=</code> in the other). Renaming that <code>Describe</code> breaks both branches silently.</li>
+<li><code>cleanup</code> collects controller logs, pod lists, Volcano logs, and <code>kind export logs</code> into <code>$ARTIFACTS</code> — the first place to look when e2e fails in CI.</li>
+</ul>
+<p>Variants: <code>make test-e2e-cert-manager</code>, <code>make test-e2e-gang-scheduling-volcano</code>, <code>make test-e2e-upgrade</code> (installs <code>LWS_UPGRADE_FROM_VERSION</code>, runs a <code>before</code> phase, upgrades, runs an <code>after</code> phase).</p>
+<p>To iterate quickly against an existing cluster:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">USE_EXISTING_CLUSTER</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="nv">KIND_CLUSTER_NAME</span><span class="o">=</span>kind<span class="w"> </span>make<span class="w"> </span>test-e2e
+</code></pre></div>
+<hr />
+<h2 id="part-4-linting">Part 4: Linting<a class="headerlink" href="#part-4-linting" title="Permanent link">&para;</a></h2>
+<h3 id="41-golangciyaml-is-remarkably-minimal">4.1 <code>.golangci.yaml</code> is remarkably minimal<a class="headerlink" href="#41-golangciyaml-is-remarkably-minimal" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2&quot;</span>
+<span class="nt">linters</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
+<span class="w">  </span><span class="nt">enable</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unparam</span>
+<span class="nt">formatters</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enable</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">goimports</span>
+</code></pre></div>
+<p>That is the entire configuration. <code>default: none</code> disables even golangci-lint's standard set, so the <strong>only</strong> enabled linter is <code>unparam</code> — unused function parameters and always-same-value returns — plus the <code>goimports</code> formatter. No <code>errcheck</code>, no <code>staticcheck</code>, no <code>unused</code>. <code>go vet</code> runs separately as a Makefile prerequisite.</p>
+<p>In practice, <code>make lint</code> failures are almost always <code>unparam</code> or import ordering. And <code>unparam</code> explains several of the dead-parameter findings in <a href="../08_disaggregatedset/">Module 8</a>, §10.1 — they survive only because of explicit <code>//nolint:unparam</code> comments.</p>
+<h3 id="42-the-kal-rules-that-constrain-api-prs">4.2 The KAL rules that constrain API PRs<a class="headerlink" href="#42-the-kal-rules-that-constrain-api-prs" title="Permanent link">&para;</a></h3>
+<p>Covered in <a href="../02_api_surface_anatomy/">Module 2</a>, §8.2. The one that catches nearly everyone:</p>
+<blockquote>
+<p><strong><code>commentstart</code></strong> — a field's doc comment must begin with the <strong>serialized</strong> (JSON) field name. <code>// Replicas is …</code> on <code>json:"replicas"</code> fails; <code>// replicas is …</code> passes.</p>
+</blockquote>
+<p>Also enabled: <code>conditions</code>, <code>conflictingmarkers</code>, <code>duplicatemarkers</code>, <code>jsontags</code>, <code>nodurations</code>, <code>nofloats</code>, <code>nonullable</code>, <code>notimestamp</code>, <code>statusoptional</code>, <code>statussubresource</code>, <code>uniquemarkers</code>, <code>nophase</code>. Explicitly disabled pending discussion: <code>integers</code>, <code>maxlength</code>, <code>nobools</code>, <code>nomaps</code>, <code>optionalfields</code>, <code>optionalorrequired</code>, <code>requiredfields</code>, <code>ssatags</code>.</p>
+<p>The disabled list is worth reading before an API PR. The linter will not stop you adding a <code>bool</code> or a <code>map</code>, but a reviewer may — those are Kubernetes API conventions regardless of tooling.</p>
+<h3 id="43-codespell-blocks-prs">4.3 Codespell blocks PRs<a class="headerlink" href="#43-codespell-blocks-prs" title="Permanent link">&para;</a></h3>
+<p><code>.github/workflows/codespell.yaml</code> runs on every push and pull request with <code>check_filenames: true</code>. Spelling failures block the PR, and this surprises people. The ignore list is short: <code>complies, ro, NotIn, notin, implementors, AfterAll, afterall</code>.</p>
+<hr />
+<h2 id="part-5-what-ci-actually-runs">Part 5: What CI Actually Runs<a class="headerlink" href="#part-5-what-ci-actually-runs" title="Permanent link">&para;</a></h2>
+<p><strong>Only three GitHub Actions workflows exist.</strong> Everything heavier runs in <strong>Prow</strong>, configured out-of-tree in <code>kubernetes/test-infra</code> and therefore invisible in this repository.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Workflow</th>
+<th style="text-align: left;">Trigger</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>codespell.yaml</code></td>
+<td style="text-align: left;">push + PR</td>
+<td style="text-align: left;">Spell check including filenames. Blocks on failure</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>test_coverage.yaml</code></td>
+<td style="text-align: left;">push + PR</td>
+<td style="text-align: left;"><code>go test -race -covermode=atomic ./pkg/... ./cmd/...</code> → Coveralls. Note it <strong>excludes <code>./api/...</code></strong>, unlike <code>make test</code>, and needs no envtest assets</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>trivy.yaml</code></td>
+<td style="text-align: left;">push to main + PR</td>
+<td style="text-align: left;"><code>make build</code>, docker build, then Trivy with <strong><code>severity: CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN</code></strong> and <code>exit-code: 1</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Trivy fails on <em>any</em> severity</p>
+<p>Including <code>LOW</code> and <code>UNKNOWN</code>. This is why the commit log has a steady stream of dependency bumps whose only purpose is unblocking CI — "Bump golang.org/x/text to fix CVE-…", "chore: unblock CI".</p>
+<p>If your PR fails Trivy on a CVE in a transitive dependency you did not touch, that is normal. Rebase on main first; someone has often already bumped it.</p>
+</div>
+<p><code>cloudbuild.yaml</code> is the postsubmit publisher: <code>make image-push helm-chart-push</code> into <code>us-central1-docker.pkg.dev/k8s-staging-images/lws</code>.</p>
+<p>Dependabot runs weekly on gomod with a <code>kubernetes</code> group for <code>k8s.io/*</code> and <code>sigs.k8s.io/*</code>, and <strong>ignores major/minor for <code>k8s.io/*</code></strong> (patches and security only) — so Kubernetes library bumps are deliberate, human decisions.</p>
+<hr />
+<h2 id="part-6-the-kep-process">Part 6: The KEP Process<a class="headerlink" href="#part-6-the-kep-process" title="Permanent link">&para;</a></h2>
+<p>Non-trivial features need a KEP. The corpus is in <code>keps/</code>, one directory per KEP with <code>README.md</code> and <code>kep.yaml</code>.</p>
+<h3 id="61-kepyaml-schema">6.1 <code>kep.yaml</code> schema<a class="headerlink" href="#61-kepyaml-schema" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;human-readable&gt;</span>
+<span class="nt">kep-number</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;matches the directory number&gt;</span>
+<span class="nt">authors</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span>
+<span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">provisional | implementable | implemented | deferred | rejected | withdrawn | replaced</span>
+<span class="nt">creation-date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">YYYY-MM-DD</span>
+<span class="nt">reviewers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span>
+<span class="nt">approvers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span>
+<span class="nt">see-also</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># optional</span>
+<span class="nt">replaces</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># optional</span>
+<span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">alpha | beta | stable</span>
+<span class="nt">latest-milestone</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vX.Y.Z&quot;</span>
+<span class="nt">milestone</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">alpha</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vX.Y.Z&quot;</span>
+<span class="w">  </span><span class="nt">beta</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vX.Y.Z&quot;</span>
+<span class="w">  </span><span class="nt">stable</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vX.Y.Z&quot;</span>
+<span class="c1"># PRR:</span>
+<span class="nt">feature-gates</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;GateName&gt;</span>
+<span class="nt">disable-supported</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># required at alpha</span>
+<span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">             </span><span class="c1"># required at beta</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Read the existing corpus before writing one</p>
+<p>The 15 KEPs in <code>keps/</code> are the best available guide to what a reviewer expects, and they also demonstrate the failure modes. Several have unfilled placeholders in a <code>status: implementable</code> document; several describe APIs that were never built (KEP-552's <code>ResizePolicy</code>, KEP-407's <code>PodGroupPerReplica</code> gate); one has a <code>kep-number</code> that does not match its directory.</p>
+<p>Those are all fixable in a documentation PR — and fixing one is a good way to read a KEP closely enough to write your own.</p>
+</div>
+<h3 id="62-what-good-looks-like">6.2 What good looks like<a class="headerlink" href="#62-what-good-looks-like" title="Permanent link">&para;</a></h3>
+<p>The strongest KEPs in the corpus share a shape:</p>
+<ul>
+<li><strong>KEP-766</strong> — an "Alternatives" section that genuinely explains why the chosen design is necessary, not just why the others are worse. Its Alternative 4 discussion is why the entire DisaggregatedSet planner exists.</li>
+<li><strong>KEP-849</strong> — a pitfalls list where every item is a real bug someone hit, with the mitigation and the reasoning (<a href="../08_disaggregatedset/">Module 8</a>, §7.6).</li>
+<li><strong>KEP-820</strong> — a "Why No <code>Failed</code> Before" section giving the historical context for an absence, which is much harder to write than a list of features.</li>
+</ul>
+<p>The pattern: explain the constraint, not just the design.</p>
+<h3 id="63-the-gap-between-kep-and-code">6.3 The gap between KEP and code<a class="headerlink" href="#63-the-gap-between-kep-and-code" title="Permanent link">&para;</a></h3>
+<p>A recurring theme in these notes, and a real hazard when reading a KEP as documentation:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">KEP</th>
+<th style="text-align: left;">Says</th>
+<th style="text-align: left;">Code has</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">407</td>
+<td style="text-align: left;">Feature gate <code>PodGroupPerReplica</code>; three provider interfaces</td>
+<td style="text-align: left;">No gate; only <code>SchedulerProvider</code>; a config field instead</td>
+</tr>
+<tr>
+<td style="text-align: left;">552</td>
+<td style="text-align: left;">A <code>ResizePolicy</code> field</td>
+<td style="text-align: left;">No such field — <code>size</code> is simply mutable</td>
+</tr>
+<tr>
+<td style="text-align: left;">766</td>
+<td style="text-align: left;"><code>RolloutStrategy</code> is not propagated to child LWSes</td>
+<td style="text-align: left;">It is propagated (inertly)</td>
+</tr>
+<tr>
+<td style="text-align: left;">820</td>
+<td style="text-align: left;"><code>maxGroupRestarts</code>, a <code>Failed</code> condition</td>
+<td style="text-align: left;">Nothing implemented</td>
+</tr>
+<tr>
+<td style="text-align: left;">849</td>
+<td style="text-align: left;"><code>Replicas *int32</code>; selector written once</td>
+<td style="text-align: left;">Non-pointer with a default; rewritten each reconcile</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Always check the code.</strong> Every one of these divergences is also a documentation PR waiting to be written.</p>
+<hr />
+<h2 id="part-7-governance-and-getting-a-pr-merged">Part 7: Governance and Getting a PR Merged<a class="headerlink" href="#part-7-governance-and-getting-a-pr-merged" title="Permanent link">&para;</a></h2>
+<h3 id="71-who-approves">7.1 Who approves<a class="headerlink" href="#71-who-approves" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>/OWNERS
+  approvers:  ahg-g, kerthcet, edwinhr716, yankay
+  reviewers:  ahg-g, ardaguclu, hasB4K, kerthcet, edwinhr716, yankay
+  emeritus_approvers: liurupeng
+
+/site/OWNERS
+  approvers: ahg-g, edwinhr716, kerthcet
+</code></pre></div>
+<p>There are <strong>no per-package OWNERS files</strong>. Every non-site PR needs an approval from one of four people. The practical implication: <strong>review bandwidth, not disagreement, is usually the rate limiter.</strong> A small, obviously-correct PR with a clear description merges much faster than a large one, and that is a strong argument for splitting work.</p>
+<p>Note <code>SECURITY_CONTACTS</code> still lists <code>liurupeng</code>, who is <code>emeritus_approvers</code> in <code>OWNERS</code> — likely stale, and a trivial PR.</p>
+<h3 id="72-the-pr-template">7.2 The PR template<a class="headerlink" href="#72-the-pr-template" title="Permanent link">&para;</a></h3>
+<p><code>.github/PULL_REQUEST_TEMPLATE.md</code> requires:</p>
+<ul>
+<li>A <code>/kind</code> label: <code>bug</code>, <code>cleanup</code>, <code>documentation</code>, or <code>feature</code>; optionally <code>api-change</code>, <code>deprecation</code>, <code>failing-test</code>, <code>flake</code>, <code>regression</code>.</li>
+<li>"What this PR does / why we need it."</li>
+<li><code>Fixes #&lt;issue&gt;</code>.</li>
+<li>A <code>```release-note</code> block — write <code>NONE</code> if not user-facing.</li>
+</ul>
+<p>Issue templates: <code>BUG_REPORT.md</code>, <code>CLEANUP.md</code>, <code>ENHANCEMENT.md</code>, <code>NEW_RELEASE.md</code>, <code>SUPPORT.md</code>.</p>
+<h3 id="73-where-to-talk">7.3 Where to talk<a class="headerlink" href="#73-where-to-talk" title="Permanent link">&para;</a></h3>
+<p>There is a genuine inconsistency here:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Source</th>
+<th style="text-align: left;">Slack</th>
+<th style="text-align: left;">Mailing list</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>CONTRIBUTING.md</code> and <code>README.md</code></td>
+<td style="text-align: left;"><code>#sig-apps</code></td>
+<td style="text-align: left;"><code>kubernetes-sig-apps</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>site/content/en/docs/contribution guidelines/</code></td>
+<td style="text-align: left;"><code>C071WA7R9LY</code></td>
+<td style="text-align: left;"><code>wg-serving</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both cannot be canonical. <code>#sig-apps</code> is the safer default since LWS is a SIG-Apps project, but reconciling the two is itself a small PR — and asking which is correct is a reasonable first message.</p>
+<h3 id="74-the-most-valuable-documentation-pr-in-the-repo">7.4 The most valuable documentation PR in the repo<a class="headerlink" href="#74-the-most-valuable-documentation-pr-in-the-repo" title="Permanent link">&para;</a></h3>
+<p><strong><code>CONTRIBUTING.md</code> is entirely boilerplate.</strong> It is the unmodified Kubernetes template, down to a leftover HTML comment:</p>
+<div class="highlight"><pre><span></span><code>&lt;!--- If your repo has certain guidelines for contribution, put them here ahead of the general k8s resources --&gt;
+</code></pre></div>
+<p>It mentions nothing about <code>make test</code>, <code>make lint</code>, <code>make verify</code>, envtest, the wrapper conventions, the KEP process, or GNU sed. Every one of those is something a first-time contributor needs and currently has to discover by failing.</p>
+<p><code>RELEASE.md</code> has the same problem and is actively wrong — it still says "The Kubernetes <strong>Template Project</strong> is released on an as-needed basis" and describes a <code>git tag -s</code> flow that does not match the real mechanics in <code>make artifacts</code>, <code>make prepare-release-branch</code>, <code>cloudbuild.yaml</code>, and <code>hack/cherry_pick_pull.sh</code>.</p>
+<p>Writing a real developer-setup section in <code>CONTRIBUTING.md</code> is arguably the highest-leverage contributor PR available. It requires no design discussion, helps everyone who comes after, and — usefully — you are exactly the right person to write it right after having learned it all the hard way.</p>
+<hr />
+<h2 id="part-8-release-mechanics">Part 8: Release Mechanics<a class="headerlink" href="#part-8-release-mechanics" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Target</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>make artifacts</code></td>
+<td style="text-align: left;">Sets the manager image, rebuilds <code>artifacts/</code>, <code>kustomize build config/default -o artifacts/manifests.yaml</code>, <code>yq</code>-patches <code>charts/lws/values.yaml</code> to the release repo/tag, <code>helm package</code>, renames to <code>lws-chart-$(GIT_TAG).tgz</code>, then reverts values.yaml</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>make prepare-release-branch</code></td>
+<td style="text-align: left;">The version-bump automation. <code>sed</code>s version strings in <code>README.md</code>, <code>site/hugo.toml</code>, <code>charts/lws/README.md</code>, <code>site/content/en/docs/installation/_index.md</code>, and <code>yq</code>s <code>charts/lws/Chart.yaml</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>make crds</code></td>
+<td style="text-align: left;">Regenerates the three Helm CRD files from <code>kustomize build config/default</code> through <code>yq</code>, with a <code>test -s</code> guard per file</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hack/cherry_pick_pull.sh</code></td>
+<td style="text-align: left;">Release-branch backports</td>
+</tr>
+</tbody>
+</table>
+<p>Because <code>make verify</code> runs <code>prepare-release-branch</code> and then diffs, <strong>any hand-edited version string in those five files fails CI</strong>. That is worth repeating because it is a confusing failure: you edited a README, and CI complains about <code>charts/</code>.</p>
+<hr />
+<h2 id="lab-land-a-first-pr">Lab: Land a First PR<a class="headerlink" href="#lab-land-a-first-pr" title="Permanent link">&para;</a></h2>
+<p>The goal is a merged upstream PR. Everything here is chosen to be small, obviously correct, and verifiable — the properties that get a PR merged quickly.</p>
+<h3 id="step-1-set-up-and-prove-the-toolchain">Step 1 — Set up and prove the toolchain<a class="headerlink" href="#step-1-set-up-and-prove-the-toolchain" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/kubernetes-sigs/lws<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>lws
+go<span class="w"> </span>version<span class="w">                </span><span class="c1"># must be 1.26.x</span>
+sed<span class="w"> </span>--version<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w">   </span><span class="c1"># must say GNU; on macOS: brew install gnu-sed</span>
+
+make<span class="w"> </span><span class="nb">test</span><span class="w">                 </span><span class="c1"># downloads envtest assets on first run</span>
+make<span class="w"> </span>lint
+make<span class="w"> </span>lint-api<span class="w">             </span><span class="c1"># builds the KAL binary; slow the first time</span>
+make<span class="w"> </span>verify<span class="w">               </span><span class="c1"># the gate — must be clean on a fresh checkout</span>
+</code></pre></div>
+<p>If <code>make verify</code> is not clean on an unmodified checkout, stop and investigate. That is a bug in itself and worth reporting.</p>
+<h3 id="step-2-pick-a-first-pr">Step 2 — Pick a first PR<a class="headerlink" href="#step-2-pick-a-first-pr" title="Permanent link">&para;</a></h3>
+<p>From <a href="../appendix_pr_opportunities/">Appendix B</a>, the documentation tier. Good candidates, all evidenced in these notes:</p>
+<ol>
+<li><strong><code>concepts/_index.md</code> documents <code>SubGroupType: LeaderOnly</code></strong>, which does not exist. The real value is <code>LeaderExcluded</code>, with the opposite meaning (<a href="../03_group_lifecycle_and_identity/">Module 3</a>, §6.2). Highest user impact of any doc fix.</li>
+<li><strong>The <code>MaxUnavailableStatefulSet</code> contradiction</strong> between <code>rollout-strategy</code> and <code>installation</code> (<a href="../06_rollout_and_revisions/">Module 6</a>, §9).</li>
+<li><strong>Four missing keys</strong> in the labels/annotations reference (<a href="../02_api_surface_anatomy/">Module 2</a>, §6.2).</li>
+<li><strong><code>cert_manager.md</code> says <code>internalCertManager</code></strong>, the real field is <code>internalCertManagement.enable</code> (<a href="../10_operations_and_troubleshooting/">Module 10</a>, §3).</li>
+<li><strong>The Helm CRD deletion hazard is missing from the troubleshooting page</strong> (<a href="../10_operations_and_troubleshooting/">Module 10</a>, §2.1).</li>
+</ol>
+<p>Pick one. Do not batch them — one focused PR reviews faster than five bundled ones, and mixing unrelated fixes gives a reviewer a reason to ask for a split.</p>
+<h3 id="step-3-write-it">Step 3 — Write it<a class="headerlink" href="#step-3-write-it" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>fix-subgroup-type-docs
+<span class="c1"># edit site/content/en/docs/concepts/_index.md</span>
+make<span class="w"> </span>verify<span class="w">        </span><span class="c1"># yes, even for a docs change — toc-verify and codespell run here</span>
+</code></pre></div>
+<p>Then verify the claim against the code and put the citation <strong>in the PR description</strong>:</p>
+<div class="highlight"><pre><span></span><code>grep<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;LeaderExcluded\|LeaderOnly&quot;</span><span class="w"> </span>api/leaderworkerset/v1/leaderworkerset_types.go
+</code></pre></div>
+<p>A reviewer who can verify your claim in one command approves in one pass. A reviewer who has to go find the evidence themselves does not.</p>
+<h3 id="step-4-open-it">Step 4 — Open it<a class="headerlink" href="#step-4-open-it" title="Permanent link">&para;</a></h3>
+<p>Fill the template completely:</p>
+<p><div class="highlight"><pre><span></span><code>/kind documentation
+
+<span class="gs">**What this PR does / why we need it**</span>:
+The concepts page documents a <span class="sb">`SubGroupType: LeaderOnly`</span> value that does not exist
+in the API. The actual enum value is <span class="sb">`LeaderExcluded`</span>
+(api/leaderworkerset/v1/leaderworkerset_types.go:243), and its semantics are the
+inverse of what the page describes: the leader is excluded from all subgroups,
+rather than having one created exclusively for it.
+
+<span class="gs">**Which issue(s) this PR fixes**</span>:
+Fixes #&lt;number, if one exists&gt;
+
+```release-note
+NONE
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>Then, on the PR: confirm codespell passes, respond to review promptly, and expect approval from one of the four root approvers.
+
+### Step 5 — A second PR with code
+
+Once the first is merged, take a small code change with a test. Good candidates from these notes:
+
+| Change | Where | Why it is small |
+| :--- | :--- | :--- |
+| Fix the hardcoded envtest `1.28.3` | `test/integration/controllers/suite_test.go` | One line; the correct value is already in the Makefile |
+| Remove dead code in the DS subsystem | `pkg/utils/disaggregatedset/utils.go` | `NumRequiredRoles` has zero references; grep proves it |
+| Fix the nil-deref ordering in the LWS validator | `pkg/webhooks/leaderworkerset_webhook.go` | Move one read below the existing nil check; add a table-test entry |
+| Fix the topology error message | `pkg/controllers/pod_controller.go` | Interpolates the value instead of the key |
+
+For each, the workflow is the same: write the fix, add or extend a table test, run `make test` and `make verify`, and cite the evidence in the description.
+
+### Step 6 — Read a KEP closely enough to critique it
+
+Pick KEP-820 and verify its second premise for yourself ([Module 5](05_pod_controller_and_failure_handling.md), §7.3):
+
+```bash
+grep -n &quot;PublishNotReadyAddresses&quot; pkg/utils/controller/controller_utils.go
+grep -n &quot;PublishNotReadyAddresses&quot; test/testutils/validators.go
+</code></pre></div></p>
+<p>Then comment on the KEP with what you found. That is a substantive contribution that costs nothing, improves a live proposal, and is a good first interaction with the maintainers — much better than opening with a large PR.</p>
+<h3 id="checkpoint-questions">Checkpoint questions<a class="headerlink" href="#checkpoint-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>make verify</code> runs <code>prepare-release-branch</code> and then diffs. Why does that mean you can never hand-edit a version string in <code>README.md</code>?</li>
+<li>Integration tests run without the defaulting webhook. If you add a defaulted pointer field to <code>LeaderWorkerSetSpec</code> and forget the wrapper, where exactly does the panic occur, and why does the stack trace point at the controller rather than the test?</li>
+<li>Trivy fails on <code>LOW</code> and <code>UNKNOWN</code> severities. Argue both sides of whether that is the right policy for this project.</li>
+</ul>
+<hr />
+<p>Continue to <a href="../appendix_glossary/">Appendix A: Glossary</a>, <a href="../appendix_pr_opportunities/">Appendix B: PR Opportunity Backlog</a>, and <a href="../appendix_reading_list/">Appendix C: Reading List</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

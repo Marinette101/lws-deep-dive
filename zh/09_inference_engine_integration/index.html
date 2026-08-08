@@ -1,0 +1,1966 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/09_inference_engine_integration/">
+      
+      
+        <link rel="prev" href="../08_disaggregatedset/">
+      
+      
+        <link rel="next" href="../10_operations_and_troubleshooting/">
+      
+      
+        
+          <link rel="alternate" href="../../09_inference_engine_integration/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>模块 9 - 推理引擎集成 - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#9" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              模块 9 - 推理引擎集成
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../09_inference_engine_integration/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#abi-lws_" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：作为 ABI 的 LWS_* 契约
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：作为 ABI 的 LWS_* 契约">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 让它成为 ABI 的三条性质
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-entrypoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 通用的 entrypoint 形状
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-lws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 LWS 没给你的东西
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：四种引擎接法
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：四种引擎接法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-a-vllm-ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 模式 A —— vLLM 配 Ray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-b-sglang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 模式 B —— SGLang，原生分布式初始化
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-c-tensorrt-llm-mpi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 模式 C —— TensorRT-LLM 配 MPI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-d-llamacpp-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 模式 D —— llama.cpp，以及前置 Service 模式
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：探针设计
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：探针设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 规则
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-liveness-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 为什么这里的 liveness probe 很危险
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-leader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 一份可用的 leader 探针配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：冷启动与权重加载
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第四部分：冷启动与权重加载">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 冷启动在哪里复合
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：与其他系统的组合
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：与其他系统的组合">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-kueue-dynamic-workload-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Kueue 与 Dynamic Workload Scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-gateway-api-inference-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Gateway API Inference Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-llm-d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 llm-d
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 机密计算服务
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：接入一个新引擎
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：端到端接一个引擎
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：端到端接一个引擎">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-kind-llamacpp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A 部分 — kind 上的 llama.cpp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2 部分 — 验证 ABI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-vllm-unverified-2-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B 部分 — vLLM 多机（unverified，需要 2 台 8 卡节点）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B2 部分 — 测量组重启的代价
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C 部分 — 写一个新的引擎集成（unverified）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#abi-lws_" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：作为 ABI 的 LWS_* 契约
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：作为 ABI 的 LWS_* 契约">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 让它成为 ABI 的三条性质
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-entrypoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 通用的 entrypoint 形状
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-lws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 LWS 没给你的东西
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：四种引擎接法
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：四种引擎接法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-a-vllm-ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 模式 A —— vLLM 配 Ray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-b-sglang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 模式 B —— SGLang，原生分布式初始化
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-c-tensorrt-llm-mpi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 模式 C —— TensorRT-LLM 配 MPI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-d-llamacpp-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 模式 D —— llama.cpp，以及前置 Service 模式
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：探针设计
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：探针设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 规则
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-liveness-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 为什么这里的 liveness probe 很危险
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-leader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 一份可用的 leader 探针配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：冷启动与权重加载
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第四部分：冷启动与权重加载">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 冷启动在哪里复合
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：与其他系统的组合
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：与其他系统的组合">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-kueue-dynamic-workload-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Kueue 与 Dynamic Workload Scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-gateway-api-inference-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Gateway API Inference Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-llm-d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 llm-d
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 机密计算服务
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：接入一个新引擎
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：端到端接一个引擎
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：端到端接一个引擎">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-kind-llamacpp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A 部分 — kind 上的 llama.cpp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-abi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2 部分 — 验证 ABI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-vllm-unverified-2-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B 部分 — vLLM 多机（unverified，需要 2 台 8 卡节点）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B2 部分 — 测量组重启的代价
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C 部分 — 写一个新的引擎集成（unverified）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="9">模块 9：推理引擎集成<a class="headerlink" href="#9" title="Permanent link">&para;</a></h1>
+<p>LWS 不知道 LLM 是什么。它创建 Pod、给它们命名、注入三个环境变量、保证它们能互相解析。所有让这一组 Pod <em>真正服务一个模型</em>的事情，都发生在容器镜像内部——在一段读取这些变量、并把它们翻译成引擎自己那套分布式运行时所需参数的启动脚本里。</p>
+<p>那次翻译就是全部的集成面，而本模块讲的是如何正确完成它。覆盖：<strong>作为 ABI 的 <code>LWS_*</code> 契约</strong>、<strong>上游四种引擎接法</strong>（vLLM/Ray、SGLang、TensorRT-LLM/MPI、llama.cpp）、<strong>多机引擎的探针设计</strong>、<strong>前置 Service 模式</strong>、<strong>冷启动与权重加载</strong>，以及<strong>它如何与机密计算服务组合</strong>。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源信息</p>
+<p>对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）核实。引擎示例取自 <code>site/content/en/docs/examples/</code> 和 <code>docs/examples/</code>。引擎侧的参数变化很快——在从这里或上游示例里照抄命令之前，务必查阅引擎自己的当前文档，上游好几个示例固定的是旧版本。</p>
+</div>
+<hr />
+<h2 id="abi-lws_">第一部分：作为 ABI 的 <code>LWS_*</code> 契约<a class="headerlink" href="#abi-lws_" title="Permanent link">&para;</a></h2>
+<p>三个变量，由 mutating webhook 注入到<strong>每个 Pod</strong> 的<strong>每个容器和 init 容器</strong>（<a href="../03_group_lifecycle_and_identity/">模块 3</a> §4.3）：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">变量</th>
+<th style="text-align: left;">值</th>
+<th style="text-align: left;">映射到</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>LWS_LEADER_ADDRESS</code></td>
+<td style="text-align: left;"><code>&lt;lws&gt;-&lt;groupIndex&gt;.&lt;subdomain&gt;.&lt;namespace&gt;</code></td>
+<td style="text-align: left;">rendezvous / head node / master 地址</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LWS_GROUP_SIZE</code></td>
+<td style="text-align: left;"><code>leaderWorkerTemplate.size</code></td>
+<td style="text-align: left;">world size、<code>nnodes</code>、cluster size</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LWS_WORKER_INDEX</code></td>
+<td style="text-align: left;">leader 为 <code>0</code>，worker 为 <code>1..size-1</code></td>
+<td style="text-align: left;">rank、<code>node_rank</code>、「我是不是 head」</td>
+</tr>
+</tbody>
+</table>
+<p>其余一切——Pod 名、组索引、子组索引——只以 label 或 annotation 形式存在，容器需要的话得用 Downward API 暴露。</p>
+<h3 id="11-abi">1.1 让它成为 ABI 的三条性质<a class="headerlink" href="#11-abi" title="Permanent link">&para;</a></h3>
+<p><strong>它在进程启动前就可用。</strong> webhook 在准入时运行，所以变量在 kubelet 拉镜像之前就已经在 Pod spec 里了。没有发现步骤、没有 init 容器轮询、没有竞态。</p>
+<p><strong>它跨重建保持稳定。</strong> 组索引来自 StatefulSet 序号，所以 <code>vllm-1</code> 永远是组 1。重建出来的组拿到同样的名字和同样的地址。</p>
+<p><strong>它支持变量展开。</strong> 因为 <code>addEnvVarsIfNotExists</code> 会<strong>前置</strong>这三个变量，用户自定义变量可以引用它们：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RAY_ADDRESS</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$(LWS_LEADER_ADDRESS):6379&quot;</span>
+</code></pre></div>
+<p>Kubernetes 只会拿列表中<strong>更早</strong>定义的变量去解析 <code>$(VAR)</code>，所以这只有靠前置才成立。上游每个示例都依赖它——<code>--ray_address=$(LWS_LEADER_ADDRESS)</code>、<code>--ray_cluster_size=$(LWS_GROUP_SIZE)</code>——重排那个函数会把它们全弄坏。</p>
+<h3 id="12-entrypoint">1.2 通用的 entrypoint 形状<a class="headerlink" href="#12-entrypoint" title="Permanent link">&para;</a></h3>
+<p>几乎每种集成都能归约成同一个分支：</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_WORKER_INDEX</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># leader：启动 rendezvous / head，等 peer 到齐，然后开始服务</span>
+<span class="w">    </span>start_head_node
+<span class="w">    </span>wait_for_workers<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_GROUP_SIZE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">exec</span><span class="w"> </span>serve_model<span class="w"> </span>--world-size<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_GROUP_SIZE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="c1"># worker：加入并阻塞</span>
+<span class="w">    </span><span class="nb">exec</span><span class="w"> </span>join_cluster<span class="w"> </span>--address<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_LEADER_ADDRESS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--rank<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LWS_WORKER_INDEX</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">fi</span>
+</code></pre></div>
+<p>有三个细节把「能用的脚本」和「会抖的脚本」区分开：</p>
+<ul>
+<li><strong>worker 的加入必须重试。</strong> 默认 <code>startupPolicy: LeaderCreated</code> 下，worker 立刻启动，而 leader 可能还没在监听。要么在脚本里重试，要么用 <code>startupPolicy: LeaderReady</code> 并接受串行冷启动（<a href="../03_group_lifecycle_and_identity/">模块 3</a> §3）。</li>
+<li><strong><code>exec</code> 很重要。</strong> 没有它，shell 是 PID 1，信号发给 shell 而不是引擎，于是每一步滚动都要等 30 秒 <code>SIGKILL</code>。20 个组的滚动就是十分钟的纯等待。</li>
+<li><strong>worker 必须永远阻塞。</strong> worker 进程退出就是一次容器重启，而在默认重启策略下那会重建整个组（<a href="../05_pod_controller_and_failure_handling/">模块 5</a>）。</li>
+</ul>
+<h3 id="13-lws">1.3 LWS 没给你的东西<a class="headerlink" href="#13-lws" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">缺失的信号</th>
+<th style="text-align: left;">后果</th>
+<th style="text-align: left;">实践中的绕法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">「所有 worker 都就绪了」</td>
+<td style="text-align: left;">leader 不知道何时开始服务</td>
+<td style="text-align: left;">引擎侧 rendezvous，或轮询 Kubernetes API（TensorRT-LLM 示例正是这么干的）</td>
+</tr>
+<tr>
+<td style="text-align: left;">组级的就绪闸门</td>
+<td style="text-align: left;">单个 Pod 在组还不能服务时就通过了自己的探针</td>
+<td style="text-align: left;">只在 leader 上放 readiness probe，并让它反映<em>整组</em>健康</td>
+</tr>
+<tr>
+<td style="text-align: left;">组级指标</td>
+<td style="text-align: left;">HPA 只看得到 leader Pod（<a href="../02_api_surface_anatomy/">模块 2</a> §4）</td>
+<td style="text-align: left;">leader 必须自己聚合并暴露组级指标</td>
+</tr>
+</tbody>
+</table>
+<p>第一个缺口对贡献者最有意思，因为 TensorRT-LLM 示例的绕法是<strong>给 Pod 授予调用 <code>kubectl</code> 的 RBAC</strong>——leader 轮询 API server 来得知 worker 何时就绪。这强烈说明缺了一个 LWS 原生机制。KEP-135 的 <code>LeaderReady</code> 处理的是反方向（worker 等 leader），对这个方向毫无帮助。</p>
+<hr />
+<h2 id="_1">第二部分：四种引擎接法<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    subgraph RAY ["模式 A · Ray head/worker —— vLLM"]
+        A1["leader：ray start --head&lt;br&gt;然后 vllm serve"]
+        A2["worker：ray start --address=$(LWS_LEADER_ADDRESS)"]
+        A2 --&gt; A1
+    end
+    subgraph NATIVE ["模式 B · 原生 dist-init —— SGLang"]
+        B1["所有 Pod：同一个二进制&lt;br&gt;--dist-init-addr $(LWS_LEADER_ADDRESS)&lt;br&gt;--node-rank $(LWS_WORKER_INDEX)"]
+    end
+    subgraph MPI ["模式 C · MPI launcher —— TensorRT-LLM"]
+        C1["leader：轮询 worker 就绪，&lt;br&gt;然后 mpirun -H all-hosts"]
+        C2["worker：sshd / orted，等待"]
+        C1 --&gt; C2
+    end
+    subgraph RPC ["模式 D · RPC 后端 —— llama.cpp"]
+        D1["leader：llama-server --rpc host1,host2,…"]
+        D2["worker：rpc-server，等待"]
+        D1 --&gt; D2
+    end</code></pre>
+<h3 id="21-a-vllm-ray">2.1 模式 A —— vLLM 配 Ray<a class="headerlink" href="#21-a-vllm-ray" title="Permanent link">&para;</a></h3>
+<p>上游示例部署两个 vLLM 副本，有两种形态：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">形态</th>
+<th style="text-align: left;">拓扑</th>
+<th style="text-align: left;">并行度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">GPU</td>
+<td style="text-align: left;">每副本 2 个 Pod，每 Pod 8 卡</td>
+<td style="text-align: left;"><code>pipeline_parallel_size=2</code>、<code>tensor_parallel_size=8</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">TPU</td>
+<td style="text-align: left;">两个 TPU v5e-16 slice，各 4 host，每 host 4 TPU</td>
+<td style="text-align: left;"><code>pipeline_parallel_size=2</code>、<code>tensor_parallel_size=16</code></td>
+</tr>
+</tbody>
+</table>
+<p>Ray 用 <strong>leader Pod 作为 head node</strong>，worker Pod 作为 Ray node。leader 随后运行 vLLM server，通过 ClusterIP Service 暴露。</p>
+<p>注意这个并行度映射：<strong>TP 在 Pod 内，PP 跨 Pod。</strong> 这是刻意的——TP 是吃带宽的那个维度（<a href="../01_multihost_inference_problem_space/">模块 1</a> §1.2），所以留在一台主机的 NVLink 域内，而跨 Pod 的维度用流水并行，它只需要点对点的激活值传输。</p>
+<p>验证方法，也是个好习惯：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>logs<span class="w"> </span>vllm-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;Loading model weights took&quot;</span>
+kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/vllm-leader<span class="w"> </span><span class="m">8080</span>:8080
+</code></pre></div>
+<p>这条日志每个 Ray worker 出现一次，是确认每个 rank 都真的加入了的最快办法。</p>
+<div class="admonition tip">
+<p class="admonition-title">TPU 形态会走 TPU 环境变量注入</p>
+<p>在 TPU 路径上，<code>TPU_WORKER_HOSTNAMES</code> 和 <code>TPU_WORKER_ID</code>（<a href="../03_group_lifecycle_and_identity/">模块 3</a> §7）做的是 GPU 路径上 Ray 做的事。排查 TPU 部署时先查这些变量——围绕 <code>leader-requests-tpus</code> 的偏移逻辑通常是元凶。</p>
+</div>
+<h3 id="22-b-sglang">2.2 模式 B —— SGLang，原生分布式初始化<a class="headerlink" href="#22-b-sglang" title="Permanent link">&para;</a></h3>
+<p>SGLang 不需要 Ray。每个 Pod 跑同一条命令，只是参数由 LWS 变量导出：</p>
+<div class="highlight"><pre><span></span><code>--dist-init-addr $(LWS_LEADER_ADDRESS):5000
+--nnodes $(LWS_GROUP_SIZE)
+--node-rank $(LWS_WORKER_INDEX)
+</code></pre></div>
+<p>这是四种模式里最干净的一种，接新引擎时值得照它来。</p>
+<p>上游示例是 2 副本 × 2 Pod × 1 卡，配 <code>--tp 2</code>，并且带了一条值得重复的明确警告：<strong>SGLang 跨节点用的是张量并行</strong>，比流水并行吵闹得多，因此需要高带宽互联。这与 vLLM 的示例形成对照，后者刻意把 TP 留在 Pod 内。同一个 API、相反的并行拓扑、截然不同的网络要求——这也是在选引擎之前先读<a href="../07_scheduling_placement_and_networking/">模块 7</a> 的好理由。</p>
+<h3 id="23-c-tensorrt-llm-mpi">2.3 模式 C —— TensorRT-LLM 配 MPI<a class="headerlink" href="#23-c-tensorrt-llm-mpi" title="Permanent link">&para;</a></h3>
+<p>最复杂的集成，也最能说明 LWS 缺什么。</p>
+<ul>
+<li>需要一个<strong>自定义镜像</strong>，它下载模型并携带一段 Python 脚本来初始化 MPI 并启动 Triton。</li>
+<li>独一份地需要 <strong>RBAC</strong>：示例会 apply 一个 Role 和 RoleBinding，「因为该脚本需要访问 <code>kubectl</code> 来判断 worker 何时处于就绪状态」。</li>
+<li>每副本 2 个 Pod，每 Pod 8 卡。通过 <code>POST /v2/models/ensemble/generate</code> 提供服务。</li>
+</ul>
+<p>那条 RBAC 要求才是重点。MPI 的 launcher 必须在 <code>mpirun</code> 之前知道每台主机都起来了，而 LWS 没有向容器暴露任何「这个组已经集结完毕」的信号。于是 leader 被授予 API 访问权限，自己去轮询 Pod 就绪。</p>
+<p>如果你自己撞上这个问题，按干净程度递增的选项是：轮询 API server（示例的做法，代价是你的推理 Pod 持有集群凭据）；让 worker 往共享卷写一个哨兵文件；或者用一个容忍晚到成员的引擎原生 rendezvous。引擎支持的话，最后一个最好。</p>
+<div class="admonition bug">
+<p class="admonition-title">TensorRT-LLM 页面有个复制粘贴错误</p>
+<p>它的 port-forward 命令写的是 <code>kubectl port-forward svc/vllm-leader 8000:8000</code>——从 vLLM 那页抄来的。该示例里的 Service 并不叫 <code>vllm-leader</code>。这一页的 <code>kubectl get pods</code> 输出也只显示两个 Pod，而正文说的是 2 个 Pod、每个 8 卡。两条都记在<a href="../appendix_pr_opportunities/">附录 B</a>。</p>
+</div>
+<h3 id="24-d-llamacpp-service">2.4 模式 D —— llama.cpp，以及前置 Service 模式<a class="headerlink" href="#24-d-llamacpp-service" title="Permanent link">&para;</a></h3>
+<p>llama.cpp 示例是唯一<strong>纯 CPU、可在 kind 上跑</strong>的，所以如果你没有加速器，从它开始最合适。leader 加载模型并分发层，worker 跑 <code>rpc-server</code> 做计算。</p>
+<p>它真正的价值在于，它是整个站点上把 <strong>LWS 双 Service 模型</strong>讲得最清楚的一处：</p>
+<pre class="mermaid"><code>flowchart LR
+    CLIENT["客户端 / clichat Pod"]
+    CLIENT --&gt;|"ClusterIP"| FRONT["&lt;b&gt;Service llamacpp&lt;/b&gt;&lt;br&gt;用户创建&lt;br&gt;selector: worker-index=0&lt;br&gt;&lt;i&gt;只路由到 LEADER&lt;/i&gt;"]
+    FRONT --&gt; L["leader Pod"]
+    L &lt;--&gt;|"RPC"| W1["worker 1"]
+    L &lt;--&gt;|"RPC"| W2["worker 2"]
+    HEADLESS["&lt;b&gt;Service llamacpp-…&lt;/b&gt;&lt;br&gt;LWS 创建的 headless&lt;br&gt;clusterIP: None&lt;br&gt;publishNotReadyAddresses: true&lt;br&gt;&lt;i&gt;仅供组内 DNS&lt;/i&gt;"]
+    HEADLESS -.-&gt; L
+    HEADLESS -.-&gt; W1
+    HEADLESS -.-&gt; W2</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">LWS 创建的 headless Service</th>
+<th style="text-align: left;">用户创建的前置 Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">用途</td>
+<td style="text-align: left;">供 rendezvous 用的组内 DNS</td>
+<td style="text-align: left;">客户端流量入口</td>
+</tr>
+<tr>
+<td style="text-align: left;">类型</td>
+<td style="text-align: left;">headless（<code>clusterIP: None</code>）</td>
+<td style="text-align: left;">ClusterIP / LoadBalancer</td>
+</tr>
+<tr>
+<td style="text-align: left;">Selector</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/name=&lt;lws&gt;</code></td>
+<td style="text-align: left;">必须含 <strong><code>worker-index: "0"</code></strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">谁创建</td>
+<td style="text-align: left;">LWS</td>
+<td style="text-align: left;">你</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LWS 不会创建前置 Service。</strong> 你必须自己建，而且它的 selector 必须包含 <code>worker-index: "0"</code>——否则流量会被均衡到那些根本没有 HTTP server 的 worker 上，你会得到间歇性的连接拒绝，看起来像后端不稳定。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Service</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-leader</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/worker-index</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0&quot;</span><span class="w">    </span><span class="c1"># ← 承重的那一行</span>
+<span class="w">  </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="w">      </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+</code></pre></div>
+<hr />
+<h2 id="_2">第三部分：探针设计<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<p>探针是多机服务最容易出错的地方，因为 Kubernetes 的 per-pod 模型与「组」的实际健康并不匹配。</p>
+<h3 id="31">3.1 规则<a class="headerlink" href="#31" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">探针</th>
+<th style="text-align: left;">leader</th>
+<th style="text-align: left;">worker</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Readiness</strong></td>
+<td style="text-align: left;">要——而且必须反映<strong>整组</strong>健康，因为前置 Service 靠它路由</td>
+<td style="text-align: left;">通常<strong>不要</strong>。worker 没有端点，它的就绪对客户端毫无意义</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Liveness</strong></td>
+<td style="text-align: left;">小心——探针失败会重启容器，而在默认重启策略下那会摧毁整个组</td>
+<td style="text-align: left;">同理，而且更甚</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Startup</strong></td>
+<td style="text-align: left;">强烈建议——模型加载可能要好几分钟</td>
+<td style="text-align: left;">建议</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-liveness-probe">3.2 为什么这里的 liveness probe 很危险<a class="headerlink" href="#32-liveness-probe" title="Permanent link">&para;</a></h3>
+<p>liveness probe 失败会重启容器。<code>ContainerRestarted</code> 看到 <code>RestartCount &gt; 0</code>，而在 <code>RecreateGroupOnPodRestart</code> 下<strong>整个组</strong>会被删除重建（<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §4.2）。于是某个 worker 上的一次瞬时抖动，代价是一整组的冷启动——对 405B 模型来说，那是每个 Pod 好几分钟的权重加载。</p>
+<p>指导原则：优先在 leader 上用 readiness probe；任何 liveness probe 都给宽松的 <code>failureThreshold</code>；加载慢的模型一定配 <code>startupProbe</code>，好让 liveness probe 不会在加载期间触发。</p>
+<h3 id="33-leader">3.3 一份可用的 leader 探针配置<a class="headerlink" href="#33-leader" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">startupProbe</span><span class="p">:</span><span class="w">                    </span><span class="c1"># 宽松：覆盖权重加载</span>
+<span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/health</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">failureThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120</span>
+<span class="w">  </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w">              </span><span class="c1"># 最长 20 分钟</span>
+<span class="nt">readinessProbe</span><span class="p">:</span><span class="w">                  </span><span class="c1"># 紧：前置 Service 靠它路由</span>
+<span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/health</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">  </span><span class="nt">failureThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="nt">livenessProbe</span><span class="p">:</span><span class="w">                   </span><span class="c1"># 非常宽容：重启会杀掉整个组</span>
+<span class="w">  </span><span class="nt">httpGet</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> path</span><span class="p">:</span><span class="w"> </span><span class="nv">/health</span><span class="p p-Indicator">,</span><span class="nt"> port</span><span class="p">:</span><span class="w"> </span><span class="nv">8080</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<span class="w">  </span><span class="nt">failureThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</code></pre></div>
+<p>正是 startup probe 让另外两个变得安全：在它通过之前，readiness 和 liveness 都不会运行。</p>
+<p>另外注意 LWS 创建的 headless Service 设了 <code>publishNotReadyAddresses: true</code>（<a href="../03_group_lifecycle_and_identity/">模块 3</a> §5），所以尚未就绪的 leader 仍然能被它的 worker 通过 DNS 解析到。正是这一点让「在 leader 上放一个严格的 readiness probe」不会把 rendezvous 卡死。</p>
+<hr />
+<h2 id="_3">第四部分：冷启动与权重加载<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>冷启动是 LWS 在生产中最主要的运维成本，而且它会与本笔记里的一切复合。</p>
+<pre class="mermaid"><code>flowchart LR
+    A["组被调度&lt;br&gt;&lt;i&gt;gang：全有或全无&lt;/i&gt;"] --&gt; B["拉镜像&lt;br&gt;10-40 GB 引擎镜像"]
+    B --&gt; C["取权重&lt;br&gt;PVC / GCS FUSE / HF 下载"]
+    C --&gt; D["权重装入 HBM&lt;br&gt;各 Pod 并行"]
+    D --&gt; E["rendezvous&lt;br&gt;集合通信初始化"]
+    E --&gt; F["就绪"]</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">阶段</th>
+<th style="text-align: left;">典型代价</th>
+<th style="text-align: left;">缓解</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">拉镜像</td>
+<td style="text-align: left;">20–40 GB 引擎镜像要好几分钟</td>
+<td style="text-align: left;">用 DaemonSet 预拉；平台支持的话用镜像流式加载；把模型<strong>移出</strong>镜像</td>
+</tr>
+<tr>
+<td style="text-align: left;">取权重</td>
+<td style="text-align: left;">大模型的主导项</td>
+<td style="text-align: left;">用预填充好的 ReadWriteMany 卷配 <code>volumeClaimTemplates</code>（<a href="../07_scheduling_placement_and_networking/">模块 7</a> §6），或者带本地 SSD 缓存的 FUSE 挂载</td>
+</tr>
+<tr>
+<td style="text-align: left;">装入权重</td>
+<td style="text-align: left;">各 Pod 并行，因此随组大小而不是模型大小伸缩</td>
+<td style="text-align: left;"><code>/dev/shm</code> 要给够——上游 TAS 示例用的是 <code>emptyDir</code> 加 <code>medium: Memory, sizeLimit: 15Gi</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Rendezvous</td>
+<td style="text-align: left;">秒级，除非在竞态</td>
+<td style="text-align: left;">在 worker 脚本里重试；不到万不得已别上 <code>LeaderReady</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="41">4.1 冷启动在哪里复合<a class="headerlink" href="#41" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>滚动更新。</strong> 逐组滚动意味着冷启动要付 <code>replicas</code> 次。20 个组每个 5 分钟就是 100 分钟的滚动，还没算 <code>maxUnavailable</code> 带来的并行。</li>
+<li><strong><code>RecreateGroupOnPodRestart</code>。</strong> 任何单个容器重启都要付一整组冷启动。</li>
+<li><strong><code>startupPolicy: LeaderReady</code>。</strong> 把 leader 加载串行到 worker 加载之前，给每个组都加上 leader 的完整加载时间。</li>
+<li><strong><code>maxSurge</code>。</strong> 降低的是<em>可用性</em>影响而不是<em>耗时</em>——surge 组照样要冷启动。</li>
+</ul>
+<p>杠杆率最高的单项优化，几乎总是<strong>把模型移出镜像、放到一个快速且预热过的卷上</strong>。第二高的是配一个宽到不会在加载中途杀掉 Pod 的 <code>startupProbe</code>。</p>
+<hr />
+<h2 id="_4">第五部分：与其他系统的组合<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h3 id="51-kueue-dynamic-workload-scheduler">5.1 Kueue 与 Dynamic Workload Scheduler<a class="headerlink" href="#51-kueue-dynamic-workload-scheduler" title="Permanent link">&para;</a></h3>
+<p>在加速器容量稀缺时，Kueue 的准入（<a href="../07_scheduling_placement_and_networking/">模块 7</a> §4）通常比拓扑放置更有价值。一个带清晰状态在队列里等待的组，运维上远好过一个对着调度器 Pending、毫无可见性的组。DWS flex-start 集成还能让一个组去等一份尚不存在的容量，而不是直接失败。</p>
+<h3 id="52-gateway-api-inference-extension">5.2 Gateway API Inference Extension<a class="headerlink" href="#52-gateway-api-inference-extension" title="Permanent link">&para;</a></h3>
+<p>路由明确不在 LWS 范围内。Gateway API Inference Extension 提供模型感知和 prefix-cache 感知的负载均衡，把 LWS 管理的 Pod 当作后端。集成点就是 §2.4 的前置 Service。</p>
+<p>对 DisaggregatedSet 而言，路由还必须<strong>感知 revision</strong>——见<a href="../08_disaggregatedset/">模块 8</a> §8。每 <code>(slice, revision, role)</code> 一个 Service，存在的意义正是让负载均衡器可以跨 role 池按 revision 统计后端并按比例分流。那份统计是负载均衡器的活，不是 LWS 的。</p>
+<h3 id="53-llm-d">5.3 llm-d<a class="headerlink" href="#53-llm-d" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/llm-d/llm-d">llm-d</a>（CNCF sandbox）是两个 API 共同设计时的参考消费方：vLLM 加 Gateway API Inference Extension，带 P/D 分离和 prefix caching。好几个 KEP 直接引用 llm-d 的需求。如果你在提一个 DisaggregatedSet 特性，「llm-d 需要这个吗？」是你会被问到的问题。</p>
+<h3 id="54">5.4 机密计算服务<a class="headerlink" href="#54" title="Permanent link">&para;</a></h3>
+<p>如果你的威胁模型要求云厂商既读不到权重也读不到 prompt，那么 LWS 是位于机密信任边界<em>内部</em>的编排层，而不是这条边界的组成部分。组合方式大致是：</p>
+<ul>
+<li>Confidential GKE 节点或 Confidential Containers 提供 CPU TEE；NVIDIA CC 模式把 GPU 拉进边界内。</li>
+<li><strong>LWS 在这些节点上编排多机组</strong>——它与 TEE 完全正交，不需要任何改动。</li>
+<li>权重交付变成经证明的密钥释放：加密权重放在对象存储上，DEK 只解封进一个通过证明的 Pod 的内存里。</li>
+<li>TLS 必须在 Pod <strong>内部</strong>终止，所以前置 Service 必须是 L4 透传——L7 负载均衡器会在信任边界之外终止 TLS，从而使保证失效。</li>
+</ul>
+<p>唯一与 LWS 相关的考量是：per-pod 的证明次数会乘上组大小。一个 16-Pod 的组就是冷启动路径上的 16 次证明，而且它们都在权重解密的关键路径上。</p>
+<p>关于 TEE、远程证明和机密 GPU 的详细论述不在本文范围，参见配套笔记<a href="https://marinette101.github.io/llm-cc-in-k8s/">《GKE 上 LLM 服务的机密计算》</a>，其模块 6 正是以这种方式把 LWS 用作编排层。</p>
+<hr />
+<h2 id="_5">第六部分：接入一个新引擎<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<p>一份按问题实际出现顺序排列的清单：</p>
+<ol>
+<li><strong>引擎怎么知道自己的 rank 和 world size？</strong> 映射到 <code>LWS_WORKER_INDEX</code> 和 <code>LWS_GROUP_SIZE</code>。如果它要的是完整主机列表而不是 head 地址，就在 entrypoint 里从 <code>LWS_LEADER_ADDRESS</code> 和命名规则拼出来——worker <code>i</code> 是 <code>&lt;lws&gt;-&lt;group&gt;-&lt;i&gt;.&lt;subdomain&gt;</code>。</li>
+<li><strong>它需要 rendezvous 服务器，还是点对点？</strong> 需要 rendezvous → leader 来托管。点对点 → 每个 Pod 都要完整主机列表。</li>
+<li><strong>worker 能容忍启动时 leader 还不在吗？</strong> 不能 → 要么在脚本里重试，要么用 <code>startupPolicy: LeaderReady</code> 并接受串行冷启动。</li>
+<li><strong>并行拓扑是什么？</strong> 「TP 在 Pod 内、PP 跨 Pod」（vLLM 风格）与「TP 跨 Pod」（SGLang 风格）的网络要求完全不同。这决定了你是否需要独占拓扑、以及用哪个 <code>topologyKey</code>。</li>
+<li><strong>leader 提供 HTTP 吗？</strong> 那就建一个 selector 含 <code>worker-index: "0"</code> 的前置 Service。</li>
+<li><strong>你打算用什么组级指标做伸缩？</strong> 它必须由 leader 发布（<a href="../02_api_surface_anatomy/">模块 2</a> §4）。</li>
+<li><strong>这个组是 prefill/decode 分离的吗？</strong> 那它应该是一个 DisaggregatedSet，而不是两个 LWS（<a href="../08_disaggregatedset/">模块 8</a>）。</li>
+</ol>
+<p>给 <code>site/content/en/docs/examples/</code> 贡献一个新示例，是一个确有价值且边界清晰的 PR。门槛是：照着写就能跑、固定的版本是当前的、并且说明它演练了哪些 LWS 字段以及为什么。</p>
+<hr />
+<h2 id="_6">实验：端到端接一个引擎<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">规模</p>
+<p>A 部分纯 CPU，在 <code>kind</code> 上就能跑——不管你有什么硬件都从它开始，因为它把集成机制与 GPU 问题隔离开了。B 和 C 部分需要真实的多机加速器容量，标注为 unverified。</p>
+</div>
+<h3 id="a-kind-llamacpp">A 部分 — kind 上的 llama.cpp<a class="headerlink" href="#a-kind-llamacpp" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>create<span class="w"> </span>cluster
+<span class="c1"># 上游示例通过对已有集群运行 e2e 套件来安装 LWS：</span>
+<span class="nv">USE_EXISTING_CLUSTER</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="nv">KIND_CLUSTER_NAME</span><span class="o">=</span>kind<span class="w"> </span>make<span class="w"> </span>test-e2e
+./docs/examples/llamacpp/dev/tasks/run-in-kind
+</code></pre></div>
+<p>你应该得到一个五 Pod 的组（<code>…-0</code> 到 <code>…-0-4</code>）加一个 <code>clichat</code> Pod。然后解剖那两个 Service：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>svc
+kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>llamacpp<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.selector}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>&lt;lws<span class="w"> </span>名&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.clusterIP}{&quot;\t&quot;}{.spec.publishNotReadyAddresses}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>endpointslices<span class="w"> </span>-l<span class="w"> </span>kubernetes.io/service-name<span class="o">=</span>llamacpp
+</code></pre></div>
+<p>确认 §2.4：用户创建的 <code>llamacpp</code> Service <strong>只</strong>选中 leader，而 LWS 创建的 headless Service 覆盖全部五个 Pod。然后故意搞坏它——把前置 Service selector 里的 <code>worker-index: "0"</code> 去掉，看着请求开始间歇性失败、落到那些没有 HTTP server 的 RPC worker 上。这个失效模式值得亲眼见一次。</p>
+<h3 id="a2-abi">A2 部分 — 验证 ABI<a class="headerlink" href="#a2-abi" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;leader&gt;<span class="w"> </span>--<span class="w"> </span>env<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>LWS_
+kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;worker-2&gt;<span class="w"> </span>--<span class="w"> </span>env<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>LWS_
+</code></pre></div>
+<p>确认 leader 的 <code>LWS_WORKER_INDEX=0</code>、worker 的是 <code>2</code>，两者共享 <code>LWS_GROUP_SIZE=5</code>，且 <code>LWS_LEADER_ADDRESS</code> 完全一致。</p>
+<p>现在加一个引用它们的容器环境变量：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PEER_LIST</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$(LWS_LEADER_ADDRESS)&quot;</span>
+</code></pre></div>
+<p>验证它确实展开了。然后读 <code>pkg/utils/pod/pod_utils.go</code> 里的 <code>AddLWSVariables</code>，解释为什么改成追加就会坏。</p>
+<h3 id="b-vllm-unverified-2-8">B 部分 — vLLM 多机（unverified，需要 2 台 8 卡节点）<a class="headerlink" href="#b-vllm-unverified-2-8" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">HF_TOKEN</span><span class="o">=</span>&lt;your-hf-token&gt;
+curl<span class="w"> </span>https://raw.githubusercontent.com/kubernetes-sigs/lws/refs/heads/main/docs/examples/vllm/GPU/lws.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-s<span class="w"> </span><span class="p">|</span><span class="w"> </span>envsubst<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
+
+kubectl<span class="w"> </span>logs<span class="w"> </span>vllm-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;Loading model weights took&quot;</span>
+kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/vllm-leader<span class="w"> </span><span class="m">8080</span>:8080
+</code></pre></div>
+<p>然后按 §4 给冷启动打时间戳、做量化：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span>involvedObject.name<span class="o">=</span>vllm-0<span class="w"> </span>--sort-by<span class="o">=</span>.lastTimestamp
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>vllm-0<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .status.conditions[*]}{.type}={.lastTransitionTime}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<p>把墙钟时间归因到拉镜像、取权重、装权重、rendezvous 四个阶段。哪个占主导就优化哪个；靠猜，是人们把一周花在错误阶段上的典型方式。</p>
+<h3 id="b2">B2 部分 — 测量组重启的代价<a class="headerlink" href="#b2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nb">time</span><span class="w"> </span>kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>vllm-0-1<span class="w">     </span><span class="c1"># 一个 worker，不是 leader</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+<p>一直测到所有 Pod 重新 Ready。那个数字就是一次 liveness probe 失败要付的代价，也是 §3.2 那条建议的经验依据。</p>
+<h3 id="c-unverified">C 部分 — 写一个新的引擎集成（unverified）<a class="headerlink" href="#c-unverified" title="Permanent link">&para;</a></h3>
+<p>挑一个上游示例里没有的引擎，按 §6 的清单写出集成。一个有用的交付物是一份 manifest 加一页简短说明：</p>
+<ul>
+<li>它属于四种模式中的哪一种，为什么。</li>
+<li>从 <code>LWS_*</code> 到引擎参数的精确映射。</li>
+<li>worker 是否容忍 leader 晚到，因此你选了哪个 <code>startupPolicy</code>。</li>
+<li>并行拓扑，以及由此产生的网络要求。</li>
+<li>探针配置，以及每个阈值背后的理由。</li>
+</ul>
+<p>如果它照着写就能跑、且固定的是当前版本，那就是一个可以提交上游的 PR。</p>
+<h3 id="_7">检查点问题<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>TensorRT-LLM 示例给 Pod 授予 RBAC，好让 leader 轮询 worker 就绪。设计一个 LWS 原生的替代方案。它作为 API 长什么样——一个字段、一个 condition、还是一个注入的变量？如果容器读它的时候组正在重建，会坏在哪？</li>
+<li>一个 worker 的进程以状态 0 干净退出。分别追踪三种重启策略下会发生什么，并说明对一个 TP 分片来说哪一种才是正确的。</li>
+<li>vLLM 示例把 TP 放在 Pod 内、PP 跨 Pod；SGLang 示例把 TP 跨 Pod。哪个需要 <code>exclusive-topology</code>？用哪个 <code>topologyKey</code>？为什么？</li>
+</ul>
+<p>继续阅读<a href="../10_operations_and_troubleshooting/">模块 10：运维与排障</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

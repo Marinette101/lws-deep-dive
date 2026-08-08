@@ -1,0 +1,2204 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/11_contributor_workflow/">
+      
+      
+        <link rel="prev" href="../10_operations_and_troubleshooting/">
+      
+      
+        <link rel="next" href="../appendix_glossary/">
+      
+      
+        
+          <link rel="alternate" href="../../11_contributor_workflow/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>模块 11 - 贡献者工作流 - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#11" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              模块 11 - 贡献者工作流
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../11_contributor_workflow/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：仓库布局
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#make" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：要紧的 Make 目标
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：要紧的 Make 目标">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 日常循环
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-make-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 make verify 就是门禁
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 固定的工具版本
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：三层测试
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：三层测试">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 单元测试——表驱动惯例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-envtest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 集成测试——envtest，以及那个陷阱
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-ginkgo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Ginkgo 表驱动惯例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 wrapper 构建器惯例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-e2e" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 e2e
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：Lint
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第四部分：Lint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-golangciyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 .golangci.yaml 极其精简
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-api-pr-kal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 约束 API PR 的 KAL 规则
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-codespell-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Codespell 会拦 PR
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：CI 实际跑什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：KEP 流程
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：KEP 流程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-kepyaml-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 kep.yaml schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 什么算写得好
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-kep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 KEP 与代码之间的落差
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：治理，以及如何让 PR 被合
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七部分：治理，以及如何让 PR 被合">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 谁来批准
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 PR 模板
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 去哪里讨论
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 仓库里最有价值的文档 PR
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八部分：发布机制
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pr_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：提出第一个 PR
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：提出第一个 PR">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 搭好环境并验证工具链
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 挑一个第一 PR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 写出来
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 提交
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：仓库布局
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#make" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：要紧的 Make 目标
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：要紧的 Make 目标">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 日常循环
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-make-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 make verify 就是门禁
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 固定的工具版本
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：三层测试
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：三层测试">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 单元测试——表驱动惯例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-envtest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 集成测试——envtest，以及那个陷阱
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-ginkgo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Ginkgo 表驱动惯例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 wrapper 构建器惯例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-e2e" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 e2e
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：Lint
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第四部分：Lint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-golangciyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 .golangci.yaml 极其精简
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-api-pr-kal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 约束 API PR 的 KAL 规则
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-codespell-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Codespell 会拦 PR
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：CI 实际跑什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：KEP 流程
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：KEP 流程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-kepyaml-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 kep.yaml schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 什么算写得好
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-kep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 KEP 与代码之间的落差
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七部分：治理，以及如何让 PR 被合
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七部分：治理，以及如何让 PR 被合">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 谁来批准
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 PR 模板
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 去哪里讨论
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 仓库里最有价值的文档 PR
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八部分：发布机制
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pr_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：提出第一个 PR
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：提出第一个 PR">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 搭好环境并验证工具链
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 挑一个第一 PR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 写出来
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 提交
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        检查点问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="11">模块 11：贡献者工作流<a class="headerlink" href="#11" title="Permanent link">&para;</a></h1>
+<p>到这里为止的一切都是为了<em>理解</em> LWS。本模块讲的是<em>改动</em>它：仓库布局、把守 CI 的 <code>make</code> 目标、三层测试及其惯例、linter、代码生成链、KEP 流程、发布机制，以及谁必须批准你的 PR。</p>
+<p>它是为「读完了前十个模块、想提第一个 PR」这个具体情境写的。其中最有用的一条事实是：<strong><code>make verify</code> 就是提交前的门禁</strong>，推之前跑一遍，每次都能省下一轮 review。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源信息</p>
+<p>对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）核实。工具版本固定在 <code>Makefile</code> 和 <code>Makefile-deps.mk</code> 里；别想当然，先查。</p>
+</div>
+<hr />
+<h2 id="_1">第一部分：仓库布局<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>api/                   ← API 类型。动这里任何东西都会触发完整的代码生成链。
+  leaderworkerset/v1/    LeaderWorkerSet —— KAL 唯一检查的那棵树
+  disaggregatedset/v1/   DisaggregatedSet + DisaggregatedSetRoleScaler
+  config/v1alpha1/       Configuration（控制器自身的配置文件格式）
+cmd/main.go            ← manager 装配、命令行参数、启动顺序
+pkg/
+  controllers/           leaderworkerset_controller.go、pod_controller.go、metadata.go
+  controllers/disaggregatedset/   planner.go、executor.go、*_manager.go
+  webhooks/              LWS 与 pod webhook；disaggregatedset/ 子包
+  utils/                 revision/、pod/、statefulset/、controller/、accelerators/、disaggregatedset/
+  schedulerprovider/     gang 调度接口 + volcano provider
+  config/、cert/、version/
+client-go/             ← 生成的。永远不要手改。
+config/                ← kustomize：crd/ default/ manager/ rbac/ webhook/ internalcert/
+                          certmanager/ components/{prometheus,volcano}
+charts/lws/            ← Helm chart；crds/ 由 `make crds` 生成
+keps/                  ← 每个 KEP 一个目录：README.md + kep.yaml
+site/                  ← Hugo + Docsy 文档站
+test/                  ← wrappers/ testutils/ integration/ e2e/
+hack/                  ← 代码生成、e2e 脚手架、chart 推送、TOC、KAL 构建配置
+</code></pre></div>
+<p>由布局推出三条规则：</p>
+<ol>
+<li><strong><code>client-go/</code> 和每个 <code>zz_generated.*.go</code> 都是生成的。</strong> <code>make verify</code> 会重新生成并 diff；手改会挂 CI。</li>
+<li><strong>KAL 只检查 <code>api/leaderworkerset/*</code>。</strong> <code>api/disaggregatedset/</code> 和 <code>api/config/</code> 不受检——见<a href="../02_api_surface_anatomy/">模块 2</a> §8.2。</li>
+<li><strong>恰好只有两个 <code>OWNERS</code> 文件。</strong> 没有按包的所有权，所以每个非站点 PR 都需要四位根 approver 之一。</li>
+</ol>
+<hr />
+<h2 id="make">第二部分：要紧的 Make 目标<a class="headerlink" href="#make" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">必须用 GNU sed</p>
+<p>如果 <code>sed --version</code> 不是 GNU，Makefile 会硬报错：<em>"!!! GNU sed is required. If on OS X, use 'brew install gnu-sed'."</em> 存在 <code>gsed</code> 时会优先用它。macOS 贡献者在第一条命令就会撞上。</p>
+</div>
+<h3 id="21">2.1 日常循环<a class="headerlink" href="#21" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">目标</th>
+<th style="text-align: left;">做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>make manifests</code></td>
+<td style="text-align: left;"><code>controller-gen</code> → CRD 到 <code>config/crd/bases</code>、RBAC 到 <code>config/rbac</code>、webhook 配置到 <code>config/webhook</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>make generate</code></td>
+<td style="text-align: left;">deepcopy + <code>hack/update-codegen.sh</code>（clientset、lister、informer、apply configuration）+ API 参考文档 + Helm CRD</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>make fmt</code> / <code>make vet</code></td>
+<td style="text-align: left;"><code>go fmt</code> / <code>go vet</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make test</code></strong></td>
+<td style="text-align: left;">基于 envtest 的单测，覆盖 <code>./api/... ./pkg/... ./cmd/...</code>，带覆盖率</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make test-integration</code></strong></td>
+<td style="text-align: left;">对 <code>./test/integration/...</code> 跑 Ginkgo，配 envtest</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make test-e2e</code></strong></td>
+<td style="text-align: left;"><code>hack/e2e-test.sh</code>——建 kind 集群、构建并加载镜像、部署、跑 Ginkgo</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make lint</code></strong></td>
+<td style="text-align: left;"><code>golangci-lint run --timeout 15m0s</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make lint-api</code></strong></td>
+<td style="text-align: left;">自行编译的 kube-api-linter 二进制</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>make verify</code></strong></td>
+<td style="text-align: left;"><strong>提交前门禁</strong>——见下</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-make-verify">2.2 <code>make verify</code> 就是门禁<a class="headerlink" href="#22-make-verify" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>gomod-verify lint lint-api fmt-verify toc-verify manifests generate prepare-release-branch
+  → git --no-pager diff --exit-code config/components api client-go site/ charts/
+  → 上述路径下出现任何未跟踪文件即失败
+</code></pre></div>
+<p>它把一切重新生成一遍，然后要求工作树是干净的。有两个后果常常绊人：</p>
+<ul>
+<li><strong>改了 API 却忘了 <code>make generate</code> 会挂 CI</strong>，因为重新生成的 <code>client-go/</code> 与你提交的不一致。</li>
+<li><strong>手改版本字符串会挂 CI。</strong> <code>prepare-release-branch</code> 会重写 <code>README.md</code>、<code>site/hugo.toml</code>、<code>charts/lws/README.md</code>、<code>site/content/en/docs/installation/_index.md</code> 和 <code>charts/lws/Chart.yaml</code> 里的版本字符串。你手改的那个会被重新生成覆盖回去，然后 diff 失败。</li>
+</ul>
+<p>每次推之前跑一遍 <code>make verify</code>。它比 CI 反馈慢，但比一个来回快得多。</p>
+<h3 id="23">2.3 固定的工具版本<a class="headerlink" href="#23" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">工具</th>
+<th style="text-align: left;">版本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Go</td>
+<td style="text-align: left;"><strong>1.26.0</strong>（来自 <code>go.mod</code>——唯一真相来源）</td>
+</tr>
+<tr>
+<td style="text-align: left;">controller-gen</td>
+<td style="text-align: left;">v0.17.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">kustomize</td>
+<td style="text-align: left;">v5.2.1（版本不对会被重装）</td>
+</tr>
+<tr>
+<td style="text-align: left;">golangci-lint</td>
+<td style="text-align: left;">v2.12.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">kube-api-linter</td>
+<td style="text-align: left;">由 <code>hack/.custom-gcl.yaml</code> 按 commit 固定</td>
+</tr>
+<tr>
+<td style="text-align: left;">envtest Kubernetes</td>
+<td style="text-align: left;"><strong>1.36.0</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">kind 节点镜像</td>
+<td style="text-align: left;"><code>kindest/node:v1.36.1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">helm</td>
+<td style="text-align: left;">v3.19.0 · yq v4.45.1 · hugo v0.152.2（extended） · genref v0.28.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">Volcano（e2e）</td>
+<td style="text-align: left;">v1.12.1 · cert-manager（e2e） v1.17.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">code-generator</td>
+<td style="text-align: left;">跟随 <code>k8s.io/api</code> → <strong>v0.36.3</strong></td>
+</tr>
+</tbody>
+</table>
+<p>所有东西装到 <code>./bin</code>。KAL 二进制是<strong>编译</strong>出来的而不是下载的（<code>make golangci-lint-kal</code> 从 <code>hack/.custom-gcl.yaml</code> 构建），所以第一次 <code>make lint-api</code> 会比较久。</p>
+<hr />
+<h2 id="_2">第三部分：三层测试<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart LR
+    U["&lt;b&gt;单元&lt;/b&gt; · pkg/**/_test.go&lt;br&gt;朴素 Go 表驱动测试&lt;br&gt;cmp.Diff 断言&lt;br&gt;不需要集群"]
+    I["&lt;b&gt;集成&lt;/b&gt; · test/integration/&lt;br&gt;Ginkgo + envtest&lt;br&gt;真实 apiserver + etcd&lt;br&gt;&lt;b&gt;没有 kubelet，没有 webhook&lt;/b&gt;"]
+    E["&lt;b&gt;e2e&lt;/b&gt; · test/e2e/&lt;br&gt;Ginkgo + kind&lt;br&gt;完整集群，真实 Pod"]
+    U --&gt; I --&gt; E
+    U -.-&gt;|"秒级"| U
+    I -.-&gt;|"分钟级"| I
+    E -.-&gt;|"数十分钟"| E</code></pre>
+<h3 id="31">3.1 单元测试——表驱动惯例<a class="headerlink" href="#31" title="Permanent link">&para;</a></h3>
+<p>朴素 Go，不用 Ginkgo，用 <code>cmp.Diff</code> 断言：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">TestGenGroupUniqueKey</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">tests</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">name</span><span class="w">        </span><span class="kt">string</span>
+<span class="w">        </span><span class="nx">podName</span><span class="w">     </span><span class="kt">string</span>
+<span class="w">        </span><span class="nx">namespace</span><span class="w">   </span><span class="kt">string</span>
+<span class="w">        </span><span class="nx">expectedKey</span><span class="w"> </span><span class="kt">string</span>
+<span class="w">    </span><span class="p">}{</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;same namespace, pod name&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">podName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;test-sample&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">namespace</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;default&quot;</span><span class="p">,</span>
+<span class="w">         </span><span class="nx">expectedKey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;95e88034e460983f51a9952fe128729fbc0663b5&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">tc</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">tests</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">t</span><span class="p">.</span><span class="nx">Run</span><span class="p">(</span><span class="nx">tc</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nx">key</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">genGroupUniqueKey</span><span class="p">(</span><span class="nx">tc</span><span class="p">.</span><span class="nx">namespace</span><span class="p">,</span><span class="w"> </span><span class="nx">tc</span><span class="p">.</span><span class="nx">podName</span><span class="p">)</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">diff</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cmp</span><span class="p">.</span><span class="nx">Diff</span><span class="p">(</span><span class="nx">tc</span><span class="p">.</span><span class="nx">expectedKey</span><span class="p">,</span><span class="w"> </span><span class="nx">key</span><span class="p">);</span><span class="w"> </span><span class="nx">diff</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nx">t</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;unexpected key %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">diff</span><span class="p">)</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">})</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>注意那些<strong>黄金哈希值</strong>。如果你改了 <code>genGroupUniqueKey</code> 的入参顺序或哈希方式，这些测试会大声挂掉——这是刻意的，因为那个值是亲和性 key，改了它会静默地把每个组重新放置一遍。</p>
+<p>Testify 是直接依赖，但用得很少；<code>cmp.Diff</code> 才是本项目的风格。</p>
+<p>DisaggregatedSet 的 planner 是整个项目里最适合写单测的地方：它是四个整数向量的纯函数，<code>planner_test.go</code> 是 38 KB 的表驱动测试，还含一个全序列断言。改滚动算法的 PR 应当带上那里的条目。</p>
+<h3 id="32-envtest">3.2 集成测试——envtest，以及那个陷阱<a class="headerlink" href="#32-envtest" title="Permanent link">&para;</a></h3>
+<p><code>test/integration/</code> 跑真实的 apiserver 和 etcd、真实的 <code>ctrl.NewManager</code>、真实的 reconciler——但<strong>没有 kubelet，也没有准入 webhook</strong>。</p>
+<p>第二个缺失是 API PR 最常见的陷阱：</p>
+<div class="admonition danger">
+<p class="admonition-title">集成测试是在没有 defaulting webhook 的情况下跑的</p>
+<p><code>wrappers.BuildLeaderWorkerSet</code> 带着注释 <em>"Manually set this for we didn't enable webhook in controller tests"</em>，并显式填充了 <code>RolloutStrategy</code>、<code>StartupPolicy</code> 和 <code>NetworkConfig</code>——也就是 defaulting webhook 本该填的那些字段。</p>
+<p><strong>如果你加了一个有默认值的 API 字段，你必须同时把它加到 wrapper 里。</strong> 否则一个未设置的指针会在 reconciler 内部空指针 panic，而失败看起来像控制器 bug，而不是测试 fixture 的缺口。</p>
+</div>
+<p>这个套件里还有一个值得修的真 bug：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">BinaryAssetsDirectory</span><span class="p">:</span><span class="w"> </span><span class="nx">filepath</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="s">&quot;..&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;..&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;..&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;bin&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;k8s&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;1.28.3-%s-%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">runtime</span><span class="p">.</span><span class="nx">GOOS</span><span class="p">,</span><span class="w"> </span><span class="nx">runtime</span><span class="p">.</span><span class="nx">GOARCH</span><span class="p">)),</span>
+</code></pre></div>
+<p>硬编码了 <strong>1.28.3</strong>，而 Makefile 里是 <code>ENVTEST_K8S_VERSION = 1.36.0</code>。通过 <code>make test-integration</code> 跑不受影响，因为 <code>KUBEBUILDER_ASSETS</code> 胜出——但注释里明说这条路径是「if you want to run the tests directly without call the makefile target」，而那条路径是坏的。小而安全的 PR。</p>
+<h3 id="33-ginkgo">3.3 Ginkgo 表驱动惯例<a class="headerlink" href="#33-ginkgo" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">var</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ginkgo</span><span class="p">.</span><span class="nx">Describe</span><span class="p">(</span><span class="s">&quot;LeaderWorkerSet controller&quot;</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">type</span><span class="w"> </span><span class="nx">update</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">lwsUpdateFn</span><span class="w">       </span><span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">checkLWSState</span><span class="w">     </span><span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">checkLWSCondition</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">Client</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">,</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kd">type</span><span class="w"> </span><span class="nx">testCase</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">makeLeaderWorkerSet</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">nsName</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">wrappers</span><span class="p">.</span><span class="nx">LeaderWorkerSetWrapper</span>
+<span class="w">        </span><span class="nx">updates</span><span class="w">             </span><span class="p">[]</span><span class="o">*</span><span class="nx">update</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">ginkgo</span><span class="p">.</span><span class="nx">DescribeTable</span><span class="p">(</span><span class="s">&quot;leaderWorkerSet creating or updating&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="kd">func</span><span class="p">(</span><span class="nx">tc</span><span class="w"> </span><span class="o">*</span><span class="nx">testCase</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nx">ns</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">corev1</span><span class="p">.</span><span class="nx">Namespace</span><span class="p">{</span><span class="nx">ObjectMeta</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">ObjectMeta</span><span class="p">{</span><span class="nx">GenerateName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;lws-ns-&quot;</span><span class="p">}}</span>
+<span class="w">            </span><span class="c1">// …</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nx">ginkgo</span><span class="p">.</span><span class="nx">Entry</span><span class="p">(</span><span class="s">&quot;scale up number of groups&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">testCase</span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="nx">ginkgo</span><span class="p">.</span><span class="nx">Entry</span><span class="p">(</span><span class="s">&quot;scale down to 0&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">testCase</span><span class="p">{</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>每个 entry 都拿到一个<strong>全新的、生成名字的命名空间</strong>。<code>updates</code> 切片建模的是「一串变更，中间夹着断言」，这正是测试滚动更新该有的形状。</p>
+<p>注意在测试主体里 Ginkgo 是<strong>带包名</strong>导入的（<code>ginkgo.Describe</code>），而套件文件用的是 dot-import。两种风格并存；跟着你正在改的那个文件走。</p>
+<h3 id="34-wrapper">3.4 wrapper 构建器惯例<a class="headerlink" href="#34-wrapper" title="Permanent link">&para;</a></h3>
+<p>只要你加字段，就照这个模式来：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">LeaderWorkerSetWrapper</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">w</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="p">)</span><span class="w"> </span><span class="nx">Obj</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">w</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">w</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="p">)</span><span class="w"> </span><span class="nx">Replica</span><span class="p">(</span><span class="nx">count</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">w</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ptr</span><span class="p">.</span><span class="nx">To</span><span class="p">[</span><span class="kt">int32</span><span class="p">](</span><span class="nb">int32</span><span class="p">(</span><span class="nx">count</span><span class="p">))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">w</span>
+<span class="p">}</span>
+
+<span class="c1">// 嵌套的可选结构体由 setter 惰性分配——你的字段如果落在一个新的</span>
+<span class="c1">// 指针子结构下面，就照抄这个惯例。</span>
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">w</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="p">)</span><span class="w"> </span><span class="nx">SubGroupType</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">SubGroupPolicyType</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetWrapper</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">w</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">SubGroupPolicy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">w</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">SubGroupPolicy</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">SubGroupPolicy</span><span class="p">{}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">w</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">SubGroupPolicy</span><span class="p">.</span><span class="nx">Type</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">t</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">w</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>两个构造函数：<code>BuildBasicLeaderWorkerSet(name, ns)</code> 给一个裸对象，<code>BuildLeaderWorkerSet(nsName)</code> 给大多数条目使用的那个「贴近真实」的版本。</p>
+<p>配套的包：</p>
+<ul>
+<li><strong><code>test/testutils/util.go</code></strong>——40 多个集群状态 helper：<code>MustCreateLws</code>、<code>CreateLeaderPods</code>、<code>CreateLeaderPodsWithInjectFn</code>（任意改 Pod 的逃生口）、<code>SetLeaderPodsToReady(start, end)</code>、<code>SetStatefulsetToUnReady</code>、<code>UpdateWorkerTemplateImage</code>、<code>ValidatePodExclusivePlacementTerms</code> 等等。</li>
+<li><strong><code>test/testutils/validators.go</code></strong>——内含 <code>Eventually</code> 的 <code>Expect*</code> 断言：<code>ExpectValidLeaderStatefulSet</code>、<code>ExpectLeaderWorkerSetAvailable</code>、<code>ExpectStatefulsetPartitionEqualTo</code>、<code>ExpectRevisions(…, numRevisions)</code>、<code>ValidateEvent</code>。</li>
+</ul>
+<p>写 helper 之前先 grep 这两个文件。它们几乎肯定已经有了。</p>
+<h3 id="35-e2e">3.5 e2e<a class="headerlink" href="#35-e2e" title="Permanent link">&para;</a></h3>
+<p><code>hack/e2e-test.sh</code> 就是整套脚手架：</p>
+<div class="highlight"><pre><span></span><code>trap cleanup EXIT
+startup → pull_upgrade_images → kind_load → deploy_cert_manager
+        → deploy_gang_scheduler → lws_deploy → run_tests
+</code></pre></div>
+<p>值得注意的行为：</p>
+<ul>
+<li><code>lws_deploy</code> 会<strong>动态写出 <code>config/manager/controller_manager_config.yaml</code></strong>，cert-manager 变体加 <code>internalCertManagement.enable: false</code>，Volcano 变体加 <code>gangSchedulingManagement.schedulerProvider</code>。Volcano 情况下它还会在缺失时补上 <code>podgroups</code> 的 RBAC 规则。</li>
+<li>cert-manager 变体会加 <code>cainjection_in_leaderworkersets.yaml</code>、<code>webhookcainjection_patch.yaml</code> 和 <code>cert_metrics_manager_patch.yaml</code>——<strong>比上游 cert-manager 文档描述的还多</strong>（<a href="../10_operations_and_troubleshooting/">模块 10</a> §3）。</li>
+<li><code>run_tests</code> 用一个<strong>字面的 Ginkgo 描述字符串</strong>来选 gang 调度套件（一个分支用 <code>--focus=</code>，另一个用 <code>--skip=</code>）。给那个 <code>Describe</code> 改名会静默地把两个分支都弄坏。</li>
+<li><code>cleanup</code> 会把控制器日志、Pod 列表、Volcano 日志和 <code>kind export logs</code> 收集到 <code>$ARTIFACTS</code>——CI 上 e2e 挂了先看那里。</li>
+</ul>
+<p>变体：<code>make test-e2e-cert-manager</code>、<code>make test-e2e-gang-scheduling-volcano</code>、<code>make test-e2e-upgrade</code>（装 <code>LWS_UPGRADE_FROM_VERSION</code>、跑 <code>before</code> 阶段、升级、跑 <code>after</code> 阶段）。</p>
+<p>想对着已有集群快速迭代：</p>
+<div class="highlight"><pre><span></span><code><span class="nv">USE_EXISTING_CLUSTER</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="nv">KIND_CLUSTER_NAME</span><span class="o">=</span>kind<span class="w"> </span>make<span class="w"> </span>test-e2e
+</code></pre></div>
+<hr />
+<h2 id="lint">第四部分：Lint<a class="headerlink" href="#lint" title="Permanent link">&para;</a></h2>
+<h3 id="41-golangciyaml">4.1 <code>.golangci.yaml</code> 极其精简<a class="headerlink" href="#41-golangciyaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2&quot;</span>
+<span class="nt">linters</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
+<span class="w">  </span><span class="nt">enable</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unparam</span>
+<span class="nt">formatters</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enable</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">goimports</span>
+</code></pre></div>
+<p>配置就这么多。<code>default: none</code> 连 golangci-lint 的标准集都禁了，所以<strong>唯一</strong>启用的 linter 是 <code>unparam</code>——未使用的函数参数、总是返回同一个值的返回值——外加 <code>goimports</code> 格式化器。没有 <code>errcheck</code>、没有 <code>staticcheck</code>、没有 <code>unused</code>。<code>go vet</code> 作为 Makefile 的前置目标单独跑。</p>
+<p>实践中 <code>make lint</code> 的失败几乎总是 <code>unparam</code> 或 import 顺序。而 <code>unparam</code> 也解释了<a href="../08_disaggregatedset/">模块 8</a> §10.1 里那几个「死参数」为什么能活下来——靠的是显式的 <code>//nolint:unparam</code> 注释。</p>
+<h3 id="42-api-pr-kal">4.2 约束 API PR 的 KAL 规则<a class="headerlink" href="#42-api-pr-kal" title="Permanent link">&para;</a></h3>
+<p>见<a href="../02_api_surface_anatomy/">模块 2</a> §8.2。绊倒几乎所有人的那一条：</p>
+<blockquote>
+<p><strong><code>commentstart</code></strong>——字段的文档注释必须以<strong>序列化后</strong>（JSON）的字段名开头。<code>json:"replicas"</code> 上写 <code>// Replicas is …</code> 会挂；写 <code>// replicas is …</code> 才过。</p>
+</blockquote>
+<p>同时启用的还有：<code>conditions</code>、<code>conflictingmarkers</code>、<code>duplicatemarkers</code>、<code>jsontags</code>、<code>nodurations</code>、<code>nofloats</code>、<code>nonullable</code>、<code>notimestamp</code>、<code>statusoptional</code>、<code>statussubresource</code>、<code>uniquemarkers</code>、<code>nophase</code>。明确禁用、待讨论的有：<code>integers</code>、<code>maxlength</code>、<code>nobools</code>、<code>nomaps</code>、<code>optionalfields</code>、<code>optionalorrequired</code>、<code>requiredfields</code>、<code>ssatags</code>。</p>
+<p>那份禁用清单在提 API PR 之前值得读一读。linter 不会拦你加 <code>bool</code> 或 <code>map</code>，但 reviewer 可能会——不管工具管不管，那些都是 Kubernetes 的 API 约定。</p>
+<h3 id="43-codespell-pr">4.3 Codespell 会拦 PR<a class="headerlink" href="#43-codespell-pr" title="Permanent link">&para;</a></h3>
+<p><code>.github/workflows/codespell.yaml</code> 在每次 push 和 PR 上运行，且带 <code>check_filenames: true</code>。拼写失败会拦住 PR，这件事常常让人意外。忽略清单很短：<code>complies, ro, NotIn, notin, implementors, AfterAll, afterall</code>。</p>
+<hr />
+<h2 id="ci">第五部分：CI 实际跑什么<a class="headerlink" href="#ci" title="Permanent link">&para;</a></h2>
+<p><strong>只有三个 GitHub Actions workflow。</strong> 更重的东西都跑在 <strong>Prow</strong> 上，配置在仓库之外的 <code>kubernetes/test-infra</code>，因此在本仓库里看不见。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Workflow</th>
+<th style="text-align: left;">触发</th>
+<th style="text-align: left;">做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>codespell.yaml</code></td>
+<td style="text-align: left;">push + PR</td>
+<td style="text-align: left;">拼写检查，含文件名。失败即拦</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>test_coverage.yaml</code></td>
+<td style="text-align: left;">push + PR</td>
+<td style="text-align: left;"><code>go test -race -covermode=atomic ./pkg/... ./cmd/...</code> → Coveralls。注意它与 <code>make test</code> 不同，<strong>排除了 <code>./api/...</code></strong>，而且不需要 envtest 资产</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>trivy.yaml</code></td>
+<td style="text-align: left;">push 到 main + PR</td>
+<td style="text-align: left;"><code>make build</code>、docker build，然后 Trivy，配 <strong><code>severity: CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN</code></strong> 和 <code>exit-code: 1</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Trivy 对<em>任何</em>严重级别都失败</p>
+<p>包括 <code>LOW</code> 和 <code>UNKNOWN</code>。这就是提交历史里源源不断出现「唯一目的是解开 CI」的依赖升级的原因——「Bump golang.org/x/text to fix CVE-…」、「chore: unblock CI」。</p>
+<p>如果你的 PR 因为一个你没碰过的传递依赖里的 CVE 而挂在 Trivy 上，那是正常的。先 rebase 到 main；通常已经有人升过了。</p>
+</div>
+<p><code>cloudbuild.yaml</code> 是 postsubmit 的发布器：<code>make image-push helm-chart-push</code> 推到 <code>us-central1-docker.pkg.dev/k8s-staging-images/lws</code>。</p>
+<p>Dependabot 每周跑 gomod，把 <code>k8s.io/*</code> 和 <code>sigs.k8s.io/*</code> 归为 <code>kubernetes</code> 组，并且<strong>对 <code>k8s.io/*</code> 忽略 major/minor</strong>（只收 patch 和安全更新）——所以 Kubernetes 库的升级是人为的、刻意的决定。</p>
+<hr />
+<h2 id="kep">第六部分：KEP 流程<a class="headerlink" href="#kep" title="Permanent link">&para;</a></h2>
+<p>非平凡特性需要 KEP。语料在 <code>keps/</code>，每个 KEP 一个目录，含 <code>README.md</code> 和 <code>kep.yaml</code>。</p>
+<h3 id="61-kepyaml-schema">6.1 <code>kep.yaml</code> schema<a class="headerlink" href="#61-kepyaml-schema" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;人可读的标题&gt;</span>
+<span class="nt">kep-number</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;与目录编号一致&gt;</span>
+<span class="nt">authors</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span>
+<span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">provisional | implementable | implemented | deferred | rejected | withdrawn | replaced</span>
+<span class="nt">creation-date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">YYYY-MM-DD</span>
+<span class="nt">reviewers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span>
+<span class="nt">approvers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span>
+<span class="nt">see-also</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># 可选</span>
+<span class="nt">replaces</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># 可选</span>
+<span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">alpha | beta | stable</span>
+<span class="nt">latest-milestone</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vX.Y.Z&quot;</span>
+<span class="nt">milestone</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">alpha</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vX.Y.Z&quot;</span>
+<span class="w">  </span><span class="nt">beta</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vX.Y.Z&quot;</span>
+<span class="w">  </span><span class="nt">stable</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vX.Y.Z&quot;</span>
+<span class="c1"># PRR：</span>
+<span class="nt">feature-gates</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;GateName&gt;</span>
+<span class="nt">disable-supported</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># alpha 阶段必填</span>
+<span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">             </span><span class="c1"># beta 阶段必填</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">自己写之前先读一遍现有语料</p>
+<p><code>keps/</code> 里的 15 份 KEP 是了解 reviewer 期待什么的最好材料，同时也展示了各种失败模式。有几份在 <code>status: implementable</code> 的文档里还留着未填的占位符；有几份描述了从未被实现的 API（KEP-552 的 <code>ResizePolicy</code>、KEP-407 的 <code>PodGroupPerReplica</code> gate）；有一份的 <code>kep-number</code> 和目录名对不上。</p>
+<p>这些都能用一个文档 PR 修掉——而修其中一个，是把某份 KEP 读到足以自己写一份的好办法。</p>
+</div>
+<h3 id="62">6.2 什么算写得好<a class="headerlink" href="#62" title="Permanent link">&para;</a></h3>
+<p>语料里最强的那几份 KEP 有共同的形状：</p>
+<ul>
+<li><strong>KEP-766</strong>——它的「Alternatives」章节真正解释了为什么所选设计是<em>必要</em>的，而不只是说别的更差。它的替代方案 4 那段讨论，正是整个 DisaggregatedSet planner 存在的原因。</li>
+<li><strong>KEP-849</strong>——一份「坑」清单，每一条都是真实踩过的 bug，带缓解和推理（<a href="../08_disaggregatedset/">模块 8</a> §7.6）。</li>
+<li><strong>KEP-820</strong>——一节「Why No <code>Failed</code> Before」，给出了「某个东西为什么不存在」的历史背景，这比列一串特性难写得多。</li>
+</ul>
+<p>共同模式：解释约束，而不只是解释设计。</p>
+<h3 id="63-kep">6.3 KEP 与代码之间的落差<a class="headerlink" href="#63-kep" title="Permanent link">&para;</a></h3>
+<p>这是本笔记反复出现的主题，也是把 KEP 当文档读时的真实风险：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">KEP</th>
+<th style="text-align: left;">说的是</th>
+<th style="text-align: left;">代码里是</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">407</td>
+<td style="text-align: left;">feature gate <code>PodGroupPerReplica</code>；三个 provider 接口</td>
+<td style="text-align: left;">没有 gate；只有 <code>SchedulerProvider</code>；换成了一个配置字段</td>
+</tr>
+<tr>
+<td style="text-align: left;">552</td>
+<td style="text-align: left;">一个 <code>ResizePolicy</code> 字段</td>
+<td style="text-align: left;">没这个字段——<code>size</code> 直接可变</td>
+</tr>
+<tr>
+<td style="text-align: left;">766</td>
+<td style="text-align: left;"><code>RolloutStrategy</code> 不会传播到子 LWS</td>
+<td style="text-align: left;">会传播（虽然是惰性的）</td>
+</tr>
+<tr>
+<td style="text-align: left;">820</td>
+<td style="text-align: left;"><code>maxGroupRestarts</code>、一个 <code>Failed</code> condition</td>
+<td style="text-align: left;">什么都没实现</td>
+</tr>
+<tr>
+<td style="text-align: left;">849</td>
+<td style="text-align: left;"><code>Replicas *int32</code>；selector 只写一次</td>
+<td style="text-align: left;">非指针带默认值；每次 reconcile 都重写</td>
+</tr>
+</tbody>
+</table>
+<p><strong>永远去查代码。</strong> 上面每一条落差，都是一个等着被写的文档 PR。</p>
+<hr />
+<h2 id="pr">第七部分：治理，以及如何让 PR 被合<a class="headerlink" href="#pr" title="Permanent link">&para;</a></h2>
+<h3 id="71">7.1 谁来批准<a class="headerlink" href="#71" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>/OWNERS
+  approvers:  ahg-g, kerthcet, edwinhr716, yankay
+  reviewers:  ahg-g, ardaguclu, hasB4K, kerthcet, edwinhr716, yankay
+  emeritus_approvers: liurupeng
+
+/site/OWNERS
+  approvers: ahg-g, edwinhr716, kerthcet
+</code></pre></div>
+<p><strong>没有按包的 OWNERS 文件。</strong> 每个非站点 PR 都需要这四个人之一批准。实际含义是：<strong>限速环节通常是 review 带宽，而不是意见分歧。</strong> 一个小的、显然正确的、描述清晰的 PR 合得比大 PR 快得多——这也是拆分工作的有力理由。</p>
+<p>顺带一提，<code>SECURITY_CONTACTS</code> 里还列着 <code>liurupeng</code>，而他在 <code>OWNERS</code> 里已是 <code>emeritus_approvers</code>——多半过时了，是个极小的 PR。</p>
+<h3 id="72-pr">7.2 PR 模板<a class="headerlink" href="#72-pr" title="Permanent link">&para;</a></h3>
+<p><code>.github/PULL_REQUEST_TEMPLATE.md</code> 要求：</p>
+<ul>
+<li>一个 <code>/kind</code> 标签：<code>bug</code>、<code>cleanup</code>、<code>documentation</code> 或 <code>feature</code>；可选 <code>api-change</code>、<code>deprecation</code>、<code>failing-test</code>、<code>flake</code>、<code>regression</code>。</li>
+<li>「What this PR does / why we need it」。</li>
+<li><code>Fixes #&lt;issue&gt;</code>。</li>
+<li>一个 <code>```release-note</code> 块——不面向用户就写 <code>NONE</code>。</li>
+</ul>
+<p>Issue 模板：<code>BUG_REPORT.md</code>、<code>CLEANUP.md</code>、<code>ENHANCEMENT.md</code>、<code>NEW_RELEASE.md</code>、<code>SUPPORT.md</code>。</p>
+<h3 id="73">7.3 去哪里讨论<a class="headerlink" href="#73" title="Permanent link">&para;</a></h3>
+<p>这里存在一个真实的不一致：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">来源</th>
+<th style="text-align: left;">Slack</th>
+<th style="text-align: left;">邮件列表</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>CONTRIBUTING.md</code> 和 <code>README.md</code></td>
+<td style="text-align: left;"><code>#sig-apps</code></td>
+<td style="text-align: left;"><code>kubernetes-sig-apps</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>site/content/en/docs/contribution guidelines/</code></td>
+<td style="text-align: left;"><code>C071WA7R9LY</code></td>
+<td style="text-align: left;"><code>wg-serving</code></td>
+</tr>
+</tbody>
+</table>
+<p>两者不可能都是权威。<code>#sig-apps</code> 是更稳妥的默认（LWS 是 SIG-Apps 项目），但把两者统一起来本身就是个小 PR——而问一句「哪个才对」是一条合理的开场消息。</p>
+<h3 id="74-pr">7.4 仓库里最有价值的文档 PR<a class="headerlink" href="#74-pr" title="Permanent link">&para;</a></h3>
+<p><strong><code>CONTRIBUTING.md</code> 完全是模板样板。</strong> 它是未经修改的 Kubernetes 模板，连一条遗留的 HTML 注释都还在：</p>
+<div class="highlight"><pre><span></span><code>&lt;!--- If your repo has certain guidelines for contribution, put them here ahead of the general k8s resources --&gt;
+</code></pre></div>
+<p>它完全没提 <code>make test</code>、<code>make lint</code>、<code>make verify</code>、envtest、wrapper 惯例、KEP 流程，也没提 GNU sed。而这里面每一项都是新贡献者需要、却只能靠碰壁才发现的。</p>
+<p><code>RELEASE.md</code> 有同样的问题，而且是明确错误的——它还写着「The Kubernetes <strong>Template Project</strong> is released on an as-needed basis」，描述的 <code>git tag -s</code> 流程与 <code>make artifacts</code>、<code>make prepare-release-branch</code>、<code>cloudbuild.yaml</code>、<code>hack/cherry_pick_pull.sh</code> 里的真实机制对不上。</p>
+<p>在 <code>CONTRIBUTING.md</code> 里写一节真正的开发环境搭建，可以说是当前可做的杠杆率最高的贡献者 PR。它不需要任何设计讨论，惠及所有后来者——而且很有用的一点是：刚刚一路踩着坑学完这一切的你，正是写它的最合适人选。</p>
+<hr />
+<h2 id="_3">第八部分：发布机制<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">目标</th>
+<th style="text-align: left;">做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>make artifacts</code></td>
+<td style="text-align: left;">设置 manager 镜像、重建 <code>artifacts/</code>、<code>kustomize build config/default -o artifacts/manifests.yaml</code>、用 <code>yq</code> 把 <code>charts/lws/values.yaml</code> 打到发布仓库/tag、<code>helm package</code>、重命名为 <code>lws-chart-$(GIT_TAG).tgz</code>，然后把 values.yaml 还原</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>make prepare-release-branch</code></td>
+<td style="text-align: left;">版本号变更的自动化。用 <code>sed</code> 改 <code>README.md</code>、<code>site/hugo.toml</code>、<code>charts/lws/README.md</code>、<code>site/content/en/docs/installation/_index.md</code> 里的版本字符串，并用 <code>yq</code> 改 <code>charts/lws/Chart.yaml</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>make crds</code></td>
+<td style="text-align: left;">从 <code>kustomize build config/default</code> 经 <code>yq</code> 重新生成三个 Helm CRD 文件，每个文件带一个 <code>test -s</code> 守卫</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hack/cherry_pick_pull.sh</code></td>
+<td style="text-align: left;">发布分支的回合并</td>
+</tr>
+</tbody>
+</table>
+<p>因为 <code>make verify</code> 会跑 <code>prepare-release-branch</code> 然后 diff，<strong>这五个文件里任何手改的版本字符串都会挂 CI</strong>。这点值得重复，因为它的失败很迷惑：你改了一个 README，CI 却在抱怨 <code>charts/</code>。</p>
+<hr />
+<h2 id="pr_1">实验：提出第一个 PR<a class="headerlink" href="#pr_1" title="Permanent link">&para;</a></h2>
+<p>目标是一个被合入上游的 PR。这里挑的每一项都小、显然正确、可验证——正是能让 PR 快速被合的那些性质。</p>
+<h3 id="1">步骤 1 — 搭好环境并验证工具链<a class="headerlink" href="#1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/kubernetes-sigs/lws<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>lws
+go<span class="w"> </span>version<span class="w">                </span><span class="c1"># 必须是 1.26.x</span>
+sed<span class="w"> </span>--version<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w">   </span><span class="c1"># 必须是 GNU；macOS 上：brew install gnu-sed</span>
+
+make<span class="w"> </span><span class="nb">test</span><span class="w">                 </span><span class="c1"># 首次运行会下载 envtest 资产</span>
+make<span class="w"> </span>lint
+make<span class="w"> </span>lint-api<span class="w">             </span><span class="c1"># 会编译 KAL 二进制；第一次很慢</span>
+make<span class="w"> </span>verify<span class="w">               </span><span class="c1"># 门禁——在干净 checkout 上必须是干净的</span>
+</code></pre></div>
+<p>如果 <code>make verify</code> 在未修改的 checkout 上不干净，先停下来查清楚。那本身就是个 bug，值得报上去。</p>
+<h3 id="2-pr">步骤 2 — 挑一个第一 PR<a class="headerlink" href="#2-pr" title="Permanent link">&para;</a></h3>
+<p>从<a href="../appendix_pr_opportunities/">附录 B</a> 的文档层挑。好的候选，本笔记里都有据可查：</p>
+<ol>
+<li><strong><code>concepts/_index.md</code> 写了不存在的 <code>SubGroupType: LeaderOnly</code></strong>。真实取值是 <code>LeaderExcluded</code>，含义相反（<a href="../03_group_lifecycle_and_identity/">模块 3</a> §6.2）。用户影响最大的文档修复。</li>
+<li><strong><code>rollout-strategy</code> 与 <code>installation</code> 之间关于 <code>MaxUnavailableStatefulSet</code> 的矛盾</strong>（<a href="../06_rollout_and_revisions/">模块 6</a> §9）。</li>
+<li><strong>label/annotation 参考页缺的四个 key</strong>（<a href="../02_api_surface_anatomy/">模块 2</a> §6.2）。</li>
+<li><strong><code>cert_manager.md</code> 写的是 <code>internalCertManager</code></strong>，真实字段是 <code>internalCertManagement.enable</code>（<a href="../10_operations_and_troubleshooting/">模块 10</a> §3）。</li>
+<li><strong>排障页缺了 Helm CRD 删除风险</strong>（<a href="../10_operations_and_troubleshooting/">模块 10</a> §2.1）。</li>
+</ol>
+<p>挑一个。别打包——一个聚焦的 PR 比五个捆一起的 review 得快，而且把不相关的修复混在一起，会给 reviewer 一个要求拆分的理由。</p>
+<h3 id="3">步骤 3 — 写出来<a class="headerlink" href="#3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>fix-subgroup-type-docs
+<span class="c1"># 编辑 site/content/en/docs/concepts/_index.md</span>
+make<span class="w"> </span>verify<span class="w">        </span><span class="c1"># 是的，文档改动也要跑——toc-verify 和 codespell 都在这里</span>
+</code></pre></div>
+<p>然后对着代码核实你的论断，并把出处放进 <strong>PR 描述</strong>：</p>
+<div class="highlight"><pre><span></span><code>grep<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;LeaderExcluded\|LeaderOnly&quot;</span><span class="w"> </span>api/leaderworkerset/v1/leaderworkerset_types.go
+</code></pre></div>
+<p>一个能用一条命令核实你说法的 reviewer，会一轮就批。一个得自己去找证据的 reviewer，不会。</p>
+<h3 id="4">步骤 4 — 提交<a class="headerlink" href="#4" title="Permanent link">&para;</a></h3>
+<p>把模板填完整：</p>
+<p><div class="highlight"><pre><span></span><code>/kind documentation
+
+<span class="gs">**What this PR does / why we need it**</span>:
+The concepts page documents a <span class="sb">`SubGroupType: LeaderOnly`</span> value that does not exist
+in the API. The actual enum value is <span class="sb">`LeaderExcluded`</span>
+(api/leaderworkerset/v1/leaderworkerset_types.go:243), and its semantics are the
+inverse of what the page describes: the leader is excluded from all subgroups,
+rather than having one created exclusively for it.
+
+<span class="gs">**Which issue(s) this PR fixes**</span>:
+Fixes #&lt;编号，如果有&gt;
+
+```release-note
+NONE
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>然后在 PR 上：确认 codespell 通过、及时回应 review、等四位根 approver 之一批准。
+
+### 步骤 5 — 第二个带代码的 PR
+
+第一个合入之后，挑一个带测试的小代码改动。本笔记里的好候选：
+
+| 改动 | 位置 | 为什么小 |
+| :--- | :--- | :--- |
+| 修掉硬编码的 envtest `1.28.3` | `test/integration/controllers/suite_test.go` | 一行；正确的值 Makefile 里已经有了 |
+| 删掉 DS 子系统里的死代码 | `pkg/utils/disaggregatedset/utils.go` | `NumRequiredRoles` 零引用，grep 可证 |
+| 修 LWS 校验器里的空指针顺序 | `pkg/webhooks/leaderworkerset_webhook.go` | 把一次读取挪到已有的 nil 检查之后；加一条表驱动测试 |
+| 修拓扑报错信息 | `pkg/controllers/pod_controller.go` | 它插值的是值而不是 key |
+
+每一项的流程都一样：写修复、加或扩一条表驱动测试、跑 `make test` 和 `make verify`、在描述里给出证据。
+
+### 步骤 6 — 把一份 KEP 读到能给出批评
+
+挑 KEP-820，自己核实它的第二个前提（[模块 5](05_pod_controller_and_failure_handling.md) §7.3）：
+
+```bash
+grep -n &quot;PublishNotReadyAddresses&quot; pkg/utils/controller/controller_utils.go
+grep -n &quot;PublishNotReadyAddresses&quot; test/testutils/validators.go
+</code></pre></div></p>
+<p>然后把你的发现评论到那份 KEP 上。这是一个有实质内容、零成本、能改进一份在议提案的贡献，也是与维护者建立联系的好开场——比一上来就丢一个大 PR 好得多。</p>
+<h3 id="_4">检查点问题<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>make verify</code> 先跑 <code>prepare-release-branch</code> 再 diff。为什么这意味着你永远不能手改 <code>README.md</code> 里的版本字符串？</li>
+<li>集成测试是在没有 defaulting webhook 的情况下跑的。如果你给 <code>LeaderWorkerSetSpec</code> 加了一个有默认值的指针字段却忘了改 wrapper，panic 具体发生在哪里？为什么调用栈指向的是控制器而不是测试？</li>
+<li>Trivy 对 <code>LOW</code> 和 <code>UNKNOWN</code> 也判失败。请把「这对本项目是不是正确策略」的两面都论证一遍。</li>
+</ul>
+<hr />
+<p>继续阅读<a href="../appendix_glossary/">附录 A：术语总表</a>、<a href="../appendix_pr_opportunities/">附录 B：PR 机会清单</a>、<a href="../appendix_reading_list/">附录 C：一手资料阅读清单</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1617 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/appendix_pr_opportunities/">
+      
+      
+        <link rel="prev" href="../appendix_glossary/">
+      
+      
+        <link rel="next" href="../appendix_reading_list/">
+      
+      
+        
+          <link rel="alternate" href="../../appendix_pr_opportunities/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>附录 B - PR 机会清单 - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bpr" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              附录 B - PR 机会清单
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../appendix_pr_opportunities/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 1 层 —— 文档
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 2 层 —— 项目元数据与治理
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-kep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 3 层 —— KEP 语料清理
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 4 层 —— 代码：边界清晰的修复
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 5 层 —— 代码：特性与校验缺口
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-kep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 6 层 —— 更大的工作，需要 KEP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        建议的顺序
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 1 层 —— 文档
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 2 层 —— 项目元数据与治理
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-kep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 3 层 —— KEP 语料清理
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 4 层 —— 代码：边界清晰的修复
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 5 层 —— 代码：特性与校验缺口
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-kep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第 6 层 —— 更大的工作，需要 KEP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        建议的顺序
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="bpr">附录 B：PR 机会清单<a class="headerlink" href="#bpr" title="Permanent link">&para;</a></h1>
+<p>写作本笔记过程中浮现出的每一个具体的上游贡献机会，附文件路径、证据和难度评级。每一条都是通过读代码而不是读 issue tracker 发现的——所以动手之前<strong>先确认是否已有 issue 或 PR</strong>，并且凡是超出「琐碎」层级的都先开 issue。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源信息</p>
+<p>全部发现对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）、v0.9.0 核实。行号可能漂移，但给出的 grep 不会。</p>
+</div>
+<p><strong>难度图例</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">🟢</td>
+<td style="text-align: left;">一个下午。不需要设计讨论。证据能塞进 PR 描述里</td>
+</tr>
+<tr>
+<td style="text-align: left;">🟡</td>
+<td style="text-align: left;">一两天。可能需要一个小测试，或与 reviewer 就方案聊一下</td>
+</tr>
+<tr>
+<td style="text-align: left;">🟠</td>
+<td style="text-align: left;">一周以上。要先开 issue，可能还要 KEP</td>
+</tr>
+<tr>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: left;">写代码之前必须先有 KEP 和设计讨论</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="1">第 1 层 —— 文档<a class="headerlink" href="#1" title="Permanent link">&para;</a></h2>
+<p>项目里「用户影响 / 投入」比值最高的一批。每一条都是「照着文档做会得到错误结果」的地方。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">发现</th>
+<th style="text-align: left;">位置</th>
+<th style="text-align: left;">证据</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">D1</td>
+<td style="text-align: left;"><strong>写了一个不存在的 <code>SubGroupType: LeaderOnly</code></strong>，而且描述的语义正好相反。真实取值是 <code>LeaderExcluded</code>，含义是 leader <strong>不在任何</strong>子组</td>
+<td style="text-align: left;"><code>site/content/en/docs/concepts/_index.md</code></td>
+<td style="text-align: left;"><code>grep -n "LeaderExcluded\|LeaderOnly" api/leaderworkerset/v1/leaderworkerset_types.go</code>。见<a href="../03_group_lifecycle_and_identity/">模块 3</a> §6.2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D2</td>
+<td style="text-align: left;"><strong>两页在 <code>MaxUnavailableStatefulSet</code> 上自相矛盾</strong>：<code>rollout-strategy</code> 说 1.35 起 beta 且默认开；<code>installation</code> 说「自 v1.24 起仍是 alpha」</td>
+<td style="text-align: left;"><code>concepts/rollout-strategy/_index.md</code> 对 <code>installation/_index.md</code></td>
+<td style="text-align: left;">两页都随 v0.9.0 发布。见<a href="../06_rollout_and_revisions/">模块 6</a> §9</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D3</td>
+<td style="text-align: left;"><strong>参考表里少了四个 key</strong>：<code>subgroup-policy-type</code>、<code>experimental-recreate-group-after-start</code>、<code>TPU_PROCESS_ADDRESSES</code>、<code>TPU_PROCESS_PORT</code></td>
+<td style="text-align: left;"><code>reference/labels-annotations-and-environment-variables.md</code></td>
+<td style="text-align: left;">常量在 <code>leaderworkerset_types.go:90,98</code> 和 <code>pkg/utils/accelerators/tpu.go</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D4</td>
+<td style="text-align: left;"><strong>说要禁用 <code>internalCertManager</code></strong>；真实字段是 <code>internalCertManagement.enable</code>。开头那句话语法也是坏的，kustomize 步骤还不如 <code>hack/e2e-test.sh</code> 实际做的完整</td>
+<td style="text-align: left;"><code>manage/cert_manager.md</code></td>
+<td style="text-align: left;"><code>api/config/v1alpha1/configuration_types.go</code>。见<a href="../10_operations_and_troubleshooting/">模块 10</a> §3</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D5</td>
+<td style="text-align: left;"><strong>排障页里没有 Helm CRD 删除风险</strong>——已知最具破坏性的失效模式，却只记在安装页和 chart README 里</td>
+<td style="text-align: left;"><code>troubleshooting/_index.md</code></td>
+<td style="text-align: left;">上游 issue #880。见<a href="../10_operations_and_troubleshooting/">模块 10</a> §2.1</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D6</td>
+<td style="text-align: left;"><strong>复制粘贴的 port-forward</strong>：TensorRT-LLM 页面上写着 <code>svc/vllm-leader</code>，而那里根本没有这个 Service。<code>kubectl get pods</code> 的输出也与正文矛盾</td>
+<td style="text-align: left;"><code>examples/tensorrt-llm.md</code></td>
+<td style="text-align: left;">见<a href="../09_inference_engine_integration/">模块 9</a> §2.3</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D7</td>
+<td style="text-align: left;"><strong>TAS 示例照抄跑不通</strong>：拓扑层级声明为 <code>cloud.google.com/gce-topology-block</code>，而 LWS annotation 引用的是 <code>cloud.provider.com/topology-block</code>。另外镜像固定在 <code>vllm/vllm-openai:v0.8.5</code>，<code>tabpane</code> 只有一个 tab</td>
+<td style="text-align: left;"><code>examples/tas.md</code></td>
+<td style="text-align: left;">见<a href="../07_scheduling_placement_and_networking/">模块 7</a> §4</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D8</td>
+<td style="text-align: left;"><strong>已废弃的 <code>Default</code> 重启策略取值全站无文档。</strong> 用户既不知道它存在，也不知道它等于 <code>None</code> 而不是「默认那个」</td>
+<td style="text-align: left;"><code>concepts/failure-handling/_index.md</code></td>
+<td style="text-align: left;"><code>leaderworkerset_types.go:346</code>。顺手修掉「distributed influence」这个错字</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D9</td>
+<td style="text-align: left;"><strong>实验性 annotation 的文档取值有误导性。</strong> 页面写 <code>: true</code>，测试 wrapper 设 <code>"enable"</code>；而代码是<strong>存在性检查</strong>，完全不看值</td>
+<td style="text-align: left;"><code>concepts/failure-handling/_index.md</code></td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go:220</code>。见<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §4.1</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D10</td>
+<td style="text-align: left;"><strong>陈旧镜像</strong>：<code>nginx:1.14.2</code>，而站点其余部分用的是 <code>nginxinc/nginx-unprivileged:1.27</code></td>
+<td style="text-align: left;"><code>examples/hpa.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D11</td>
+<td style="text-align: left;"><strong><code>kubectl get endpoints</code> 已废弃</strong>（应用 EndpointSlice）；另有「llamap.cpp」错字</td>
+<td style="text-align: left;"><code>examples/llamacpp.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D12</td>
+<td style="text-align: left;"><strong>两页都是 <code>weight: 5</code></strong>，导致它们的排序未定义</td>
+<td style="text-align: left;"><code>examples/hpa.md</code>、<code>examples/tas.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D13</td>
+<td style="text-align: left;"><strong>目录名里带空格</strong>：<code>site/content/en/docs/contribution guidelines/</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D14</td>
+<td style="text-align: left;"><strong>社区联系方式互相矛盾</strong>：<code>CONTRIBUTING.md</code> 写 <code>#sig-apps</code> / <code>kubernetes-sig-apps</code>；站点的贡献指南写 Slack <code>C071WA7R9LY</code> / <code>wg-serving</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">见<a href="../11_contributor_workflow/">模块 11</a> §7.3</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D15</td>
+<td style="text-align: left;"><strong>排障页自相矛盾</strong>：原因写「&lt; 1.27」，修法写「≥ 1.26」</td>
+<td style="text-align: left;"><code>troubleshooting/_index.md</code></td>
+<td style="text-align: left;">见<a href="../10_operations_and_troubleshooting/">模块 10</a> §5.1</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D16</td>
+<td style="text-align: left;"><strong>四个已发布的特性没有概念文档</strong>：<code>subdomainPolicy</code>、用户可设的 <code>partition</code>、可调整的 <code>size</code>、gang 调度</td>
+<td style="text-align: left;"><code>site/content/en/docs/concepts/</code></td>
+<td style="text-align: left;">模块 <a href="../03_group_lifecycle_and_identity/">3</a>、<a href="../06_rollout_and_revisions/">6</a>、<a href="../07_scheduling_placement_and_networking/">7</a></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">D17</td>
+<td style="text-align: left;"><strong>overview 的特性列表漏了 gang 调度</strong>，而 <code>README.md</code> 是列了的。两份列表已经分岔</td>
+<td style="text-align: left;"><code>overview/_index.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D18</td>
+<td style="text-align: left;"><strong>一段残留的尾部章节</strong>（「Install with Helm chart —— 请参考 release 页面」），与上面完整的 Helm 章节重复</td>
+<td style="text-align: left;"><code>installation/_index.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D19</td>
+<td style="text-align: left;"><strong>pre-v0.9.0 的 DS 升级片段只 apply 了两个 DS CRD 中的一个</strong>，漏了 chart 附带的 <code>disaggregatedsetrolescalers</code></td>
+<td style="text-align: left;"><code>installation/_index.md</code></td>
+<td style="text-align: left;"><code>charts/lws/crds/</code> 里有三个文件</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2">第 2 层 —— 项目元数据与治理<a class="headerlink" href="#2" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">发现</th>
+<th style="text-align: left;">位置</th>
+<th style="text-align: left;">证据</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">G1</td>
+<td style="text-align: left;"><strong><code>CONTRIBUTING.md</code> 完全是未修改的样板</strong>，连遗留的 HTML 注释都在。完全没提 <code>make test</code>、<code>make verify</code>、envtest、wrapper、KEP，也没提 GNU sed 的要求</td>
+<td style="text-align: left;"><code>CONTRIBUTING.md</code></td>
+<td style="text-align: left;">见<a href="../11_contributor_workflow/">模块 11</a> §7.4。<strong>可以说是仓库里杠杆率最高的贡献者 PR</strong></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">G2</td>
+<td style="text-align: left;"><strong><code>RELEASE.md</code> 是模板文本而且是明确错误的</strong>——仍然写着「The Kubernetes <strong>Template Project</strong>」，描述的 <code>git tag -s</code> 流程与 <code>make artifacts</code> / <code>make prepare-release-branch</code> / <code>cloudbuild.yaml</code> / <code>hack/cherry_pick_pull.sh</code> 对不上</td>
+<td style="text-align: left;"><code>RELEASE.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">G3</td>
+<td style="text-align: left;"><strong><code>SECURITY_CONTACTS</code> 里列着一位荣休 approver</strong>——<code>liurupeng</code> 在 <code>OWNERS</code> 里是 <code>emeritus_approvers</code></td>
+<td style="text-align: left;"><code>SECURITY_CONTACTS</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">G4</td>
+<td style="text-align: left;"><strong><code>hack/genref/config.yaml</code> 指向 Kubernetes 1.28 的 API 参考</strong>，而项目构建用的是 <code>k8s.io/api v0.36.3</code>。生成的参考文档里每个交叉链接都指向 1.28</td>
+<td style="text-align: left;"><code>hack/genref/config.yaml</code></td>
+<td style="text-align: left;">一行改动</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-kep">第 3 层 —— KEP 语料清理<a class="headerlink" href="#3-kep" title="Permanent link">&para;</a></h2>
+<p>每一条都是自足的文档修复，而且都是把某份 KEP 读细的好借口。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">发现</th>
+<th style="text-align: left;">位置</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">K1</td>
+<td style="text-align: left;"><strong>目录名是 <code>115</code>，<code>kep-number</code> 却写 <code>127</code></strong>，且 <code>creation-date: yyyy-mm-dd</code> 从未填写</td>
+<td style="text-align: left;"><code>keps/115-Subgroup-support/kep.yaml</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K2</td>
+<td style="text-align: left;"><strong>标题和编号是从 KEP-238 复制过来的</strong></td>
+<td style="text-align: left;"><code>keps/257-Subgroup-leader-only/kep.yaml</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K3</td>
+<td style="text-align: left;"><strong>描述了一个从未被实现的 <code>ResizePolicy</code> API 字段。</strong> Implementation History 记录了转向（<code>2025-08-05: Implementation revised to avoid additions to the API surface</code>），但正文从未更新。它也是唯一一份既无 <code>latest-milestone</code>、又无 <code>stage</code>、也无 <code>milestone</code> 块的内容型 KEP</td>
+<td style="text-align: left;"><code>keps/552-worker-resizing/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K4</td>
+<td style="text-align: left;"><strong>描述的 <code>PodGroupPerReplica</code> feature gate、三个 provider 接口、PodGroup 命名方案，与实际落地的全都不同。</strong> <code>grep -rn "PodGroupPerReplica"</code> 只命中 <code>kep.yaml:35</code></td>
+<td style="text-align: left;"><code>keps/407-gang-scheduling/</code></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">K5</td>
+<td style="text-align: left;"><strong><code>publishNotReadyAddresses</code> 的前提已过时。</strong> LWS 自己的 headless Service 硬编码为 <code>true</code>，还有测试断言，因此一个默认 <code>false</code> 的开关是回归风险。另外 Implementation History 的日期早于 <code>kep.yaml</code> 里的 <code>creation-date</code></td>
+<td style="text-align: left;"><code>keps/820-distributed-preflight-check/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K6</td>
+<td style="text-align: left;"><strong>KEP-766 说 <code>RolloutStrategy</code> 不会传播到子 LWS；而 <code>lws_manager.go</code> 会传播</strong>（虽然惰性）。文本或代码总得改一个</td>
+<td style="text-align: left;"><code>keps/766-DisaggregatedSet/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K7</td>
+<td style="text-align: left;"><strong>KEP-849 说 <code>status.selector</code>「只在 scaler 创建时写一次」</strong>，而实现每次 reconcile 都会原样重写</td>
+<td style="text-align: left;"><code>keps/849-DisaggregatedSet-HPA/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K8</td>
+<td style="text-align: left;"><strong>好几份 <code>status: implementable</code> 的 KEP 里还留着 <code>&lt;test&gt;: &lt;link to test coverage&gt;</code> 占位符</strong>，而 135/173/511/552/622 缺少 <code>stage:</code> / <code>milestone:</code> 块</td>
+<td style="text-align: left;"><code>keps/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K9</td>
+<td style="text-align: left;"><strong><code>spec.slices</code> 在代码里有 <code>Maximum=100</code>，KEP 的 API 块里却没有上限</strong></td>
+<td style="text-align: left;"><code>keps/846-disaggregatedset-slices/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">K5 是与维护者建立联系的最佳开场</p>
+<p>它只需要两次 grep，能改进一份在议的提案，而且是评论而不是 PR——低风险的自我介绍方式。</p>
+</div>
+<hr />
+<h2 id="4">第 4 层 —— 代码：边界清晰的修复<a class="headerlink" href="#4" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">发现</th>
+<th style="text-align: left;">位置</th>
+<th style="text-align: left;">证据</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">C1</td>
+<td style="text-align: left;"><strong>LWS 校验器里潜伏的空指针解引用。</strong> <code>generalValidate</code> 在下面两行的 <code>!= nil</code> 守卫<strong>之前</strong>就读了 <code>RollingUpdateConfiguration.MaxUnavailable</code>。defaulter 在跑时不可达，但被绕过的 mutating webhook 会让校验器 panic 而不是拒绝</td>
+<td style="text-align: left;"><code>pkg/webhooks/leaderworkerset_webhook.go</code></td>
+<td style="text-align: left;">见<a href="../02_api_surface_anatomy/">模块 2</a> §5.3</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C2</td>
+<td style="text-align: left;"><strong><code>topologyValueFromPod</code> 用 <code>IgnoreNotFound</code> 吞掉了不存在的 Node</strong>，返回 <code>("", nil)</code> 并设出一个<strong>匹配不到任何东西的空 node selector 值</strong>——一个无法调度、又没有清晰报错的 worker StatefulSet</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;">见<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §6</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C3</td>
+<td style="text-align: left;"><strong>拓扑报错信息插值的是空的值而不是 key</strong>：<code>"node does not have topology label: %s"</code> 完全没告诉你缺的是哪个 label</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;">与 C2 同一函数</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C4</td>
+<td style="text-align: left;"><strong>硬编码的 envtest <code>1.28.3</code></strong>，而 <code>ENVTEST_K8S_VERSION = 1.36.0</code>。通过 <code>make test-integration</code> 无害（KUBEBUILDER_ASSETS 胜出），但文档里写明的直接运行路径是坏的</td>
+<td style="text-align: left;"><code>test/integration/controllers/suite_test.go</code></td>
+<td style="text-align: left;">见<a href="../11_contributor_workflow/">模块 11</a> §3.2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C5</td>
+<td style="text-align: left;"><strong>一个陈旧的 Ginkgo entry 名字</strong>引用了 <code>subdomain policy LeadersSharedWorkersDedicated</code>，那是 KEP-173 里被否掉、从未发布的取值。真实取值是 <code>UniquePerReplica</code></td>
+<td style="text-align: left;"><code>test/integration/controllers/leaderworkerset_test.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C6</td>
+<td style="text-align: left;"><strong>DisaggregatedSet 子系统里的死代码</strong>：<code>NumRequiredRoles</code>（零引用）、<code>ComputeInitialReplicaState</code>（只有测试用）、自由函数 <code>SetInitialReplicas</code>（无引用）、<code>ServiceManager.scheme</code>（存了从不用）、<code>sortByNewestTimestamp</code> 的 <code>roleNames</code> 参数、<code>ValidateUpdate</code> 的 <code>oldDisagg</code> 参数</td>
+<td style="text-align: left;"><code>pkg/utils/disaggregatedset/</code>、<code>pkg/controllers/disaggregatedset/</code></td>
+<td style="text-align: left;">见<a href="../08_disaggregatedset/">模块 8</a> §10.1</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C7</td>
+<td style="text-align: left;"><strong>一个形同虚设的 field index。</strong> <code>lwsOwnerKey</code> 被注册了，却从未在任何 <code>client.MatchingFields</code> 查询里使用——纯粹的 informer 缓存开销。要么接上，要么删掉</td>
+<td style="text-align: left;"><code>pkg/controllers/leaderworkerset_controller.go</code></td>
+<td style="text-align: left;"><code>grep -rn "lwsOwnerKey"</code> 只找到定义和注册。见<a href="../04_lws_reconciler_internals/">模块 4</a> §1.4</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C8</td>
+<td style="text-align: left;"><strong><code>SetupIndexes</code> 的错误只记日志、不致命</strong>，导致启动期失败之后 manager 以半初始化状态继续运行</td>
+<td style="text-align: left;"><code>cmd/main.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C9</td>
+<td style="text-align: left;"><strong>过宽的 RBAC</strong>：Pod 控制器持有对 <code>nodes</code> 的 <code>update</code> 和 <code>patch</code>，而核心控制面里没有任何代码路径用到</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go:67</code></td>
+<td style="text-align: left;">见<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §5</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C10</td>
+<td style="text-align: left;"><strong><code>hashRevision</code> 里潜伏的 bug</strong>：<code>deepHashObject</code> 在写入前调用 <code>hasher.Reset()</code>，所以若 <code>Data.Raw</code> 和 <code>Data.Object</code> 同时有值，<code>Raw</code> 的字节会被静默丢弃。今天不可达</td>
+<td style="text-align: left;"><code>pkg/utils/revision/revision_utils.go</code></td>
+<td style="text-align: left;">见<a href="../04_lws_reconciler_internals/">模块 4</a> §5.2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C11</td>
+<td style="text-align: left;"><strong>DS planner 里的浮点算术</strong>——<code>int(float64(a) * float64(b) / float64(c))</code>。整数运算完全等价且不受浮点边界影响</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/planner.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">C12</td>
+<td style="text-align: left;"><strong>Pod validating webhook 是空实现</strong>——<code>validate()</code> 返回 <code>(nil, nil)</code>。要么删掉，要么给它安排用途</td>
+<td style="text-align: left;"><code>pkg/webhooks/pod_webhook.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">C13</td>
+<td style="text-align: left;"><strong>一段误导性注释</strong>：<code>setNodeSelectorForWorkerPods</code> 里描述了「后续 apply 逻辑会自动更新它」的行为，而只创建的代码并不实现它</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;">见<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C14</td>
+<td style="text-align: left;"><strong><code>initial-replicas</code> 的写失败被吞掉</strong>——只 <code>log.Error</code>，静默地把该 role 的排空基线降级为 <code>spec.Replicas</code>，产生错误的排空轨迹却没有任何错误浮出</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/executor.go</code></td>
+<td style="text-align: left;">见<a href="../08_disaggregatedset/">模块 8</a> §4.6</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">C15</td>
+<td style="text-align: left;"><strong><code>extractRollingUpdateConfig</code> 不对称</strong>：<code>unavail &gt; 0</code> 时两个字段都设；只有 <code>surge &gt; 0</code> 时只设一个；两者都为 0 时静默退回 <code>MaxSurge=1</code></td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/executor.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5">第 5 层 —— 代码：特性与校验缺口<a class="headerlink" href="#5" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">发现</th>
+<th style="text-align: left;">位置</th>
+<th style="text-align: left;">理由</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">F1</td>
+<td style="text-align: left;"><strong><code>DisaggregatedSet.status</code> 从不被写。</strong> API 声明了 <code>RoleStatuses</code> 和 <code>Conditions</code>，CRD 有 status 子资源，RBAC 也授予了，上游文档还叫用户去看它——但没有任何代码写它</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/</code></td>
+<td style="text-align: left;"><strong>项目里最好的贡献机会。</strong> 所有输入每次 reconcile 都已经取到了。见<a href="../08_disaggregatedset/">模块 8</a> §10</td>
+<td style="text-align: center;">🟠</td>
+</tr>
+<tr>
+<td style="text-align: left;">F2</td>
+<td style="text-align: left;"><strong><code>DisaggregatedSet</code> 上没有 printcolumn</strong>，所以 <code>kubectl get disaggregatedset</code> 只显示 NAME 和 AGE。天然与 F1 配对</td>
+<td style="text-align: left;"><code>api/disaggregatedset/v1/disaggregatedset_types.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">F3</td>
+<td style="text-align: left;"><strong>没有任何 LWS 专有或 DS 专有的 Prometheus 指标。</strong> KEP-766、KEP-846、KEP-849 都把指标列为 Beta 标准</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">有 KEP 背书、动机充分。见<a href="../10_operations_and_troubleshooting/">模块 10</a> §4</td>
+<td style="text-align: center;">🟠</td>
+</tr>
+<tr>
+<td style="text-align: left;">F4</td>
+<td style="text-align: left;"><strong>DS role 上的非模板 spec 变更被静默丢弃。</strong> <code>ComputeRevision</code> 只哈希 role 名 + <code>LeaderWorkerTemplate</code>，因此改 <code>networkConfig</code>、<code>startupPolicy</code>、<code>rolloutStrategy</code> 或 role <code>metadata</code> 会得到同一个 revision，既不创建新 LWS 也不 patch 已有的</td>
+<td style="text-align: left;"><code>pkg/utils/disaggregatedset/utils.go</code></td>
+<td style="text-align: left;"><strong>DS 子系统里对用户最尖锐的可见 bug。</strong> 先开 issue——修法里含有设计选择</td>
+<td style="text-align: center;">🟠</td>
+</tr>
+<tr>
+<td style="text-align: left;">F5</td>
+<td style="text-align: left;"><strong>DS 的 Service 只创建、从不修复。</strong> <code>ensureService</code> 吞掉 <code>IsAlreadyExists</code>；漂移的 selector 永远不会被协调回来。控制器也不 watch Service</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/service_manager.go</code></td>
+<td style="text-align: left;">修法：加 <code>Owns(&amp;corev1.Service{})</code> 并做 spec diff-and-patch</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F6</td>
+<td style="text-align: left;"><strong><code>volumeClaimTemplates</code> 完全没有校验</strong>——既没有 API 注释承诺的「名称与 <code>volumeMount</code> 交叉检查」，也没有不可变性检查。由于 StatefulSet 自己的该字段不可变，改动会以 <code>FailedUpdate</code> 事件而不是干净的准入错误呈现</td>
+<td style="text-align: left;"><code>pkg/webhooks/leaderworkerset_webhook.go</code></td>
+<td style="text-align: left;">见<a href="../07_scheduling_placement_and_networking/">模块 7</a> §6.1</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F7</td>
+<td style="text-align: left;"><strong>PVC 透传有损且静默</strong>——只复制 <code>accessModes</code>、<code>storageClassName</code>、<code>volumeMode</code> 和 <code>resources</code>。<code>selector</code>、<code>dataSource</code>、<code>dataSourceRef</code> 和 PVC 的 label/annotation 被无声丢弃</td>
+<td style="text-align: left;"><code>pkg/utils/controller/controller_utils.go</code></td>
+<td style="text-align: left;">最低限度是写进文档；更好的是把字段透传过去，或者显式拒绝</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F8</td>
+<td style="text-align: left;"><strong>没有名字长度校验。</strong> 真实上限是 <code>51 - int(replicas/10)</code> 个字符，超了会以一个离 LWS 很远的 StatefulSet label 错误呈现</td>
+<td style="text-align: left;"><code>pkg/webhooks/leaderworkerset_webhook.go</code></td>
+<td style="text-align: left;">见<a href="../10_operations_and_troubleshooting/">模块 10</a> §5.2</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F9</td>
+<td style="text-align: left;"><strong>KAL 不检查 <code>api/disaggregatedset/</code> 和 <code>api/config/</code>。</strong> 排除规则是 <code>path-except: "api/leaderworkerset/*"</code>。而 DS 恰恰是最新、变动最快的 API</td>
+<td style="text-align: left;"><code>.golangci-kal.yml</code></td>
+<td style="text-align: left;">预计会有 <code>commentstart</code> 违规。见<a href="../02_api_surface_anatomy/">模块 2</a> §8.2</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F10</td>
+<td style="text-align: left;"><strong>没有 DisaggregatedSet 控制器的集成测试。</strong> <code>test/integration/controllers/</code> 只有 <code>leaderworkerset_test.go</code>；DS 的覆盖靠单测加 e2e。KEP-766 的集成测试计划未达成</td>
+<td style="text-align: left;"><code>test/integration/controllers/</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟠</td>
+</tr>
+<tr>
+<td style="text-align: left;">F11</td>
+<td style="text-align: left;"><strong>实验性重启 annotation 不看自己的值</strong>（只做存在性检查），因此设成 <code>false</code> 反而会启用该特性。既然 <code>RecreateGroupAfterStart</code> 已是一等枚举值，干净的修法是显式地大声废弃它</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go:220</code></td>
+<td style="text-align: left;">见<a href="../05_pod_controller_and_failure_handling/">模块 5</a> §4.1</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F12</td>
+<td style="text-align: left;"><strong>未声明的 Helm 值。</strong> <code>metrics.prometheusNamespace</code> 和 <code>metrics.serviceMonitor</code> 有文档，却不在 <code>charts/lws/values.yaml</code> 和 chart README 里</td>
+<td style="text-align: left;"><code>charts/lws/</code></td>
+<td style="text-align: left;">见<a href="../10_operations_and_troubleshooting/">模块 10</a> §4</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">F13</td>
+<td style="text-align: left;"><strong>冗余的跨 slice <code>List</code> 调用</strong>——<code>updateScalerStatus</code> 和 <code>seedForRole</code> 各在 per-slice 列举之上再发一次。虽走缓存，但 100 个 slice 时很浪费</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F14</td>
+<td style="text-align: left;"><strong>DisaggregatedSet 完全没有不可变性校验。</strong> <code>ValidateUpdate</code> 与 <code>ValidateCreate</code> 完全相同，<code>oldDisagg</code> 未被使用。role 名字可变，而改名会静默地重建该 role 的整个集群</td>
+<td style="text-align: left;"><code>pkg/webhooks/disaggregatedset/</code></td>
+<td style="text-align: left;">先定下什么应当不可变，再去强制它</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-kep">第 6 层 —— 更大的工作，需要 KEP<a class="headerlink" href="#6-kep" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">机会</th>
+<th style="text-align: left;">理由</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">P1</td>
+<td style="text-align: left;"><strong>加一个 <code>revisionHistoryLimit</code> 字段。</strong> LWS 只保留一个 revision，所以 <code>kubectl rollout undo</code> 无从下手，回滚只能手工重新 apply 旧 manifest。Deployment 和 StatefulSet 都有先例</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P2</td>
+<td style="text-align: left;"><strong>实现 KEP-820 的 fail-fast 重启预算。</strong> <code>maxGroupRestarts</code>、一个 <code>Failed</code> condition、一个组重启计数器。目前 <code>status: provisional</code> 且零实现——注意按 K5，它的后半部分（<code>publishNotReadyAddresses</code> 开关）应当被删掉</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P3</td>
+<td style="text-align: left;"><strong>加第二个 <code>SchedulerProvider</code>。</strong> 接口是为多个而设计的，<code>SupportedSchedulerProviders</code> 却只有一项。上游 coscheduling 插件只需要一个 label，不需要 CRD</td>
+<td style="text-align: left;">🟠</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P4</td>
+<td style="text-align: left;"><strong>一个原生的「所有 worker 就绪」信号。</strong> TensorRT-LLM 示例给 Pod 授予 RBAC 让 leader 去轮询 API server——这是缺少原语的有力证据。KEP-135 的 <code>LeaderReady</code> 只解决了反方向</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P5</td>
+<td style="text-align: left;"><strong>真正的 <code>component-base</code> feature gate。</strong> 目前完全没有 feature gate 机制；开关就是 <code>Configuration</code> CRD 加一个 <code>experimental-</code> annotation。先开 issue 讨论——这是架构而非清理</td>
+<td style="text-align: left;">🟠</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P6</td>
+<td style="text-align: left;"><strong>让 leader 和 worker 有各自的 <code>volumeClaimTemplates</code>。</strong> KEP-622 明确共用一个字段。一个需要与 worker 不同存储的 leader 无法表达</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P7</td>
+<td style="text-align: left;"><strong>给 DisaggregatedSet 的 slice 做 gang 调度。</strong> KEP-848 承认只有硬约束的放置在缺少整 slice 前瞻时可能把 slice 卡死，并推迟了 gang 调度</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P8</td>
+<td style="text-align: left;"><strong>多 slice 的 External 伸缩。</strong> webhook 禁止 <code>slices &gt; 1</code> 与任何 External role 并存，标注为 <code>// Alpha:</code> 并推迟到后续 KEP（issue #948）</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_1">建议的顺序<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>第 1 层里挑一个文档修复</strong>——D1 的用户影响最大。在一件没争议的事情上把 PR 流程走熟。</li>
+<li><strong>一条 KEP 评论</strong>，而不是 PR——K5。两次 grep，真实价值，低风险。</li>
+<li><strong>第 4 层里挑一个带测试的、边界清晰的代码修复</strong>——C1、C4 或 C6。</li>
+<li><strong><code>CONTRIBUTING.md</code></strong>（G1），在你自己走过一遍流程之后。你正是写它的合适人选，恰恰因为你刚刚一路踩着坑学完。</li>
+<li><strong>为你在意的第 5 层条目开一个 issue</strong>，先看维护者怎么回应，再动手写代码。</li>
+<li><strong>F1（DisaggregatedSet status）</strong>，如果你想做点有分量的。它边界清晰，所有输入都已存在，API 也已经把形状声明好了。</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">动手之前</p>
+<p>先搜 issue tracker 和已开的 PR。本附录是在某一个 commit 上读代码整理出来的，而项目推进得很快——其中若干条可能已经被修掉、被认领，或被刻意推迟。一个与既有工作重复的 PR 会浪费 reviewer 的时间，而在一个只有四位 approver 的项目里，那是最稀缺的资源。</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

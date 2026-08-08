@@ -1,0 +1,2420 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/02_api_surface_anatomy/">
+      
+      
+        <link rel="prev" href="../01_multihost_inference_problem_space/">
+      
+      
+        <link rel="next" href="../03_group_lifecycle_and_identity/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/02_api_surface_anatomy/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 2 - API Surface Anatomy - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-2-api-surface-anatomy" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 2 - API Surface Anatomy
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/02_api_surface_anatomy/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-three-api-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Three API Groups
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-leaderworkersetspec-field-by-field" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: LeaderWorkerSetSpec, Field by Field
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: LeaderWorkerSetSpec, Field by Field">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-replicas-the-group-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 replicas — the group count
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-leaderworkertemplatesize-the-group-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 leaderWorkerTemplate.size — the group size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-leadertemplate-and-workertemplate-the-dual-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 leaderTemplate and workerTemplate — the dual template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-restartpolicy-group-failure-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 restartPolicy — group failure semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-subgrouppolicy-partitioning-within-a-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 subGroupPolicy — partitioning within a group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-rolloutstrategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 rolloutStrategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-startuppolicy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 startupPolicy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-networkconfigsubdomainpolicy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.8 networkConfig.subdomainPolicy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#29-volumeclaimtemplates-and-retention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.9 volumeClaimTemplates and retention
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-status-and-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Status and Conditions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-scale-subresource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The Scale Subresource
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-defaulting-and-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Defaulting and Validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: Defaulting and Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-defaulting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Defaulting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-validation-on-create-and-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Validation on create and update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-immutability-on-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Immutability on update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-the-metadata-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: The Metadata Contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: The Metadata Contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Annotations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-the-configuration-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: The Configuration CRD
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-generating-and-linting-the-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Generating and Linting the API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 8: Generating and Linting the API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-the-codegen-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 The codegen chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-the-kube-api-linter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 The Kube API Linter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-probe-the-api-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Probe the API Contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Probe the API Contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-read-the-api-from-the-cluster-not-the-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Read the API from the cluster, not the source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-watch-defaulting-happen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Watch defaulting happen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-falsify-each-validation-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Falsify each validation rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-verify-the-hpa-selector-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Verify the HPA selector claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-break-the-linter-on-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Break the linter on purpose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-three-api-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Three API Groups
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-leaderworkersetspec-field-by-field" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: LeaderWorkerSetSpec, Field by Field
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: LeaderWorkerSetSpec, Field by Field">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-replicas-the-group-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 replicas — the group count
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-leaderworkertemplatesize-the-group-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 leaderWorkerTemplate.size — the group size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-leadertemplate-and-workertemplate-the-dual-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 leaderTemplate and workerTemplate — the dual template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-restartpolicy-group-failure-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 restartPolicy — group failure semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-subgrouppolicy-partitioning-within-a-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 subGroupPolicy — partitioning within a group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-rolloutstrategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 rolloutStrategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-startuppolicy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 startupPolicy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-networkconfigsubdomainpolicy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.8 networkConfig.subdomainPolicy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#29-volumeclaimtemplates-and-retention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.9 volumeClaimTemplates and retention
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-status-and-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Status and Conditions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-scale-subresource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The Scale Subresource
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-defaulting-and-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Defaulting and Validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: Defaulting and Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-defaulting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Defaulting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-validation-on-create-and-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Validation on create and update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-immutability-on-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Immutability on update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-the-metadata-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: The Metadata Contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: The Metadata Contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Annotations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-the-configuration-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: The Configuration CRD
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-generating-and-linting-the-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Generating and Linting the API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 8: Generating and Linting the API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-the-codegen-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 The codegen chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-the-kube-api-linter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 The Kube API Linter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-probe-the-api-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Probe the API Contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Probe the API Contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-read-the-api-from-the-cluster-not-the-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Read the API from the cluster, not the source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-watch-defaulting-happen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Watch defaulting happen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-falsify-each-validation-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Falsify each validation rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-verify-the-hpa-selector-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Verify the HPA selector claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-break-the-linter-on-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Break the linter on purpose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-2-api-surface-anatomy">Module 2: API Surface Anatomy<a class="headerlink" href="#module-2-api-surface-anatomy" title="Permanent link">&para;</a></h1>
+<p>An API is a contract, and in Kubernetes it is a contract enforced in three places at once: the CRD's OpenAPI schema (structural validation), the admission webhooks (defaulting and semantic validation), and the controller (everything else). A field's real behaviour is the intersection of all three, and reading only the Go struct will mislead you about at least half of them.</p>
+<p>This module walks the entire LWS API surface with that layering made explicit: <strong>the three API groups</strong>, <strong><code>LeaderWorkerSetSpec</code> field by field</strong>, <strong>status and conditions</strong>, <strong>the scale subresource</strong>, <strong>the complete defaulting and validation rules</strong>, <strong>the metadata contract</strong> (every label, annotation, and environment variable), <strong>the <code>Configuration</code> CRD</strong> that configures the controller itself, and <strong>the codegen and API-linter machinery</strong> you must satisfy to land an API PR.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06), release v0.9.0. Type definitions live in <code>api/leaderworkerset/v1/leaderworkerset_types.go</code>; webhook rules in <code>pkg/webhooks/leaderworkerset_webhook.go</code>.</p>
+</div>
+<hr />
+<h2 id="part-1-three-api-groups">Part 1: Three API Groups<a class="headerlink" href="#part-1-three-api-groups" title="Permanent link">&para;</a></h2>
+<p>LWS ships three distinct API groups, and confusing them is a common early mistake — particularly because the <em>labels</em> use a different domain (<code>sigs.k8s.io</code>) from the <em>API group</em> (<code>x-k8s.io</code>).</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Group</th>
+<th style="text-align: left;">Version</th>
+<th style="text-align: left;">Kinds</th>
+<th style="text-align: left;">Purpose</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.x-k8s.io</code></td>
+<td style="text-align: left;"><code>v1</code></td>
+<td style="text-align: left;"><code>LeaderWorkerSet</code></td>
+<td style="text-align: left;">The core workload API</td>
+<td style="text-align: left;"><code>api/leaderworkerset/v1/</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>disaggregatedset.x-k8s.io</code></td>
+<td style="text-align: left;"><code>v1</code></td>
+<td style="text-align: left;"><code>DisaggregatedSet</code>, <code>DisaggregatedSetRoleScaler</code></td>
+<td style="text-align: left;">Multi-role disaggregated serving</td>
+<td style="text-align: left;"><code>api/disaggregatedset/v1/</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>config.lws.x-k8s.io</code></td>
+<td style="text-align: left;"><code>v1alpha1</code></td>
+<td style="text-align: left;"><code>Configuration</code></td>
+<td style="text-align: left;">Controller-manager configuration file, <strong>not</strong> a cluster resource</td>
+<td style="text-align: left;"><code>api/config/v1alpha1/</code></td>
+</tr>
+</tbody>
+</table>
+<p>The three CRD manifests are generated into <code>config/crd/bases/</code> and mirrored into <code>charts/lws/crds/</code>:</p>
+<div class="highlight"><pre><span></span><code>leaderworkerset.x-k8s.io_leaderworkersets.yaml
+disaggregatedset.x-k8s.io_disaggregatedsets.yaml
+disaggregatedset.x-k8s.io_disaggregatedsetrolescalers.yaml
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Labels do not match the API group</p>
+<p>Every LWS label and annotation is under <strong><code>leaderworkerset.sigs.k8s.io/</code></strong>, while the API group is <strong><code>leaderworkerset.x-k8s.io</code></strong>. DisaggregatedSet is self-consistent (<code>disaggregatedset.x-k8s.io/</code> for both). This asymmetry is historical and load-bearing — selectors and <code>kubectl</code> filters written against the wrong domain silently match nothing.</p>
+</div>
+<p>The <code>LeaderWorkerSet</code> kind is registered with short name <strong><code>lws</code></strong> and four printer columns:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">//+kubebuilder:resource:shortName={lws}</span>
+<span class="c1">//+kubebuilder:printcolumn:name=&quot;Ready&quot;,type=&quot;integer&quot;,JSONPath=&quot;.status.readyReplicas&quot;</span>
+<span class="c1">//+kubebuilder:printcolumn:name=&quot;Desired&quot;,type=&quot;integer&quot;,JSONPath=&quot;.spec.replicas&quot;</span>
+<span class="c1">//+kubebuilder:printcolumn:name=&quot;Up-to-date&quot;,type=&quot;integer&quot;,JSONPath=&quot;.status.updatedReplicas&quot;</span>
+<span class="c1">//+kubebuilder:printcolumn:name=&quot;Age&quot;,type=&quot;date&quot;,JSONPath=&quot;.metadata.creationTimestamp&quot;</span>
+</code></pre></div>
+<p>Reading <code>kubectl get lws</code> therefore gives you the rollout state at a glance: <code>Desired</code> is what you asked for, <code>Up-to-date</code> is how far the rollout has walked, and <code>Ready</code> is how much is actually serving. During a <code>maxSurge</code> rollout, none of the three needs to agree with the others.</p>
+<hr />
+<h2 id="part-2-leaderworkersetspec-field-by-field">Part 2: <code>LeaderWorkerSetSpec</code>, Field by Field<a class="headerlink" href="#part-2-leaderworkersetspec-field-by-field" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    SPEC["&lt;b&gt;LeaderWorkerSetSpec&lt;/b&gt;"]
+    SPEC --&gt; R["replicas *int32&lt;br&gt;default 1 · min 0 · max 1000000&lt;br&gt;&lt;i&gt;number of groups&lt;/i&gt;"]
+    SPEC --&gt; LWT["leaderWorkerTemplate&lt;br&gt;&lt;i&gt;required&lt;/i&gt;"]
+    SPEC --&gt; RS["rolloutStrategy&lt;br&gt;type: RollingUpdate (only value)"]
+    SPEC --&gt; SP["startupPolicy&lt;br&gt;LeaderCreated | LeaderReady&lt;br&gt;default LeaderCreated"]
+    SPEC --&gt; NC["networkConfig *&lt;br&gt;subdomainPolicy: Shared | UniquePerReplica"]
+
+    LWT --&gt; LT["leaderTemplate *PodTemplateSpec&lt;br&gt;&lt;i&gt;optional — falls back to workerTemplate&lt;/i&gt;"]
+    LWT --&gt; WT["workerTemplate PodTemplateSpec&lt;br&gt;&lt;i&gt;required&lt;/i&gt;"]
+    LWT --&gt; SZ["size *int32&lt;br&gt;default 1 · total pods per group"]
+    LWT --&gt; RP["restartPolicy&lt;br&gt;RecreateGroupOnPodRestart | RecreateGroupAfterStart&lt;br&gt;| None | Default(deprecated)"]
+    LWT --&gt; SGP["subGroupPolicy *&lt;br&gt;subGroupSize + subGroupPolicyType"]
+    LWT --&gt; VCT["volumeClaimTemplates []PVC"]
+    LWT --&gt; PVCRP["persistentVolumeClaimRetentionPolicy"]
+
+    RS --&gt; RUC["rollingUpdateConfiguration&lt;br&gt;partition · maxUnavailable · maxSurge"]</code></pre>
+<h3 id="21-replicas-the-group-count">2.1 <code>replicas</code> — the group count<a class="headerlink" href="#21-replicas-the-group-count" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:default=1</span>
+<span class="c1">// +kubebuilder:validation:Minimum=0</span>
+<span class="c1">// +kubebuilder:validation:Maximum=1000000</span>
+<span class="nx">Replicas</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="s">`json:&quot;replicas,omitempty&quot;`</span>
+</code></pre></div>
+<p>This is <strong>the number of leader-worker groups</strong>, not the number of pods. Total pods is <code>replicas × size</code>. It is the target of the scale subresource, and the webhook additionally enforces <code>int64(replicas) * int64(size) &lt;= math.MaxInt32</code> so the product cannot overflow the int32 used downstream.</p>
+<p><code>replicas: 0</code> is legal and is the idiomatic way to park an LWS without deleting it. Note that it interacts with rollout validation: the "maxUnavailable and maxSurge cannot both be 0" rule is <em>skipped</em> when <code>replicas == 0</code>.</p>
+<h3 id="22-leaderworkertemplatesize-the-group-size">2.2 <code>leaderWorkerTemplate.size</code> — the group size<a class="headerlink" href="#22-leaderworkertemplatesize-the-group-size" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:default=1</span>
+<span class="nx">Size</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="s">`json:&quot;size,omitempty&quot;`</span>
+</code></pre></div>
+<p>The <strong>total</strong> pod count per group, leader included. <code>size: 1</code> means a leader and no workers — and the controller still creates a <strong>0-replica worker StatefulSet</strong> for that group, which surprises people reading <code>kubectl get sts</code>. The webhook enforces <code>size &gt;= 1</code>.</p>
+<p><code>size</code> is <strong>mutable</strong> (KEP-552, "resizable workers"). Changing it triggers a rollout, because it changes the pod template annotation <code>leaderworkerset.sigs.k8s.io/size</code> and therefore the revision hash.</p>
+<h3 id="23-leadertemplate-and-workertemplate-the-dual-template">2.3 <code>leaderTemplate</code> and <code>workerTemplate</code> — the dual template<a class="headerlink" href="#23-leadertemplate-and-workertemplate-the-dual-template" title="Permanent link">&para;</a></h3>
+<p><code>workerTemplate</code> is required; <code>leaderTemplate</code> is optional and <strong>falls back to a deep copy of <code>workerTemplate</code></strong> when nil. This is the "identical templates" convenience path: a homogeneous group needs only one template.</p>
+<p>The two-template design exists because in most real deployments the leader is genuinely different. It runs the OpenAPI server, it is the Ray head or the <code>mpirun</code> launcher, it exposes the readiness probe the Service routes on, and it often requests slightly different resources. When you <em>do</em> supply both, they are independent <code>PodTemplateSpec</code>s — there is no merging, no strategic patch, no inheritance.</p>
+<div class="admonition note">
+<p class="admonition-title">Both templates feed the revision hash</p>
+<p>Since both templates are part of <code>leaderWorkerTemplate</code>, editing either one triggers a rollout of every group. There is no way to update only the worker template.</p>
+</div>
+<h3 id="24-restartpolicy-group-failure-semantics">2.4 <code>restartPolicy</code> — group failure semantics<a class="headerlink" href="#24-restartpolicy-group-failure-semantics" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:default=RecreateGroupOnPodRestart</span>
+<span class="c1">// +kubebuilder:validation:Enum={Default,RecreateGroupOnPodRestart,RecreateGroupAfterStart,None}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Value</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupOnPodRestart</code></td>
+<td style="text-align: left;">Any pod recreated, or any container/init-container restarted → <strong>the whole group is recreated</strong>.</td>
+<td style="text-align: left;">Default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupAfterStart</code></td>
+<td style="text-align: left;">Same, but only once <strong>every pod in the group has left <code>Pending</code></strong>. Suppresses churn during initial scheduling.</td>
+<td style="text-align: left;">Stable</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>None</code></td>
+<td style="text-align: left;">StatefulSet semantics — only the failed pod restarts.</td>
+<td style="text-align: left;">Stable</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Default</code></td>
+<td style="text-align: left;">Identical to <code>None</code>.</td>
+<td style="text-align: left;"><strong>Deprecated</strong>; the defaulting webhook silently rewrites it to <code>None</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>Default</code> → <code>None</code> rewrite happens in the mutating webhook, so a stored object never retains <code>Default</code>. If you see it in a manifest, it came from a pre-rewrite version or from a client that bypassed admission. <a href="../05_pod_controller_and_failure_handling/">Module 5</a> covers the detection mechanism.</p>
+<h3 id="25-subgrouppolicy-partitioning-within-a-group">2.5 <code>subGroupPolicy</code> — partitioning within a group<a class="headerlink" href="#25-subgrouppolicy-partitioning-within-a-group" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">SubGroupPolicy</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:validation:Enum={LeaderWorker,LeaderExcluded}</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:default=LeaderWorker</span>
+<span class="w">    </span><span class="nx">Type</span><span class="w">         </span><span class="o">*</span><span class="nx">SubGroupPolicyType</span><span class="w"> </span><span class="s">`json:&quot;subGroupPolicyType,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">SubGroupSize</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w">              </span><span class="s">`json:&quot;subGroupSize,omitempty&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Subgroups (KEP-115, KEP-257) partition a group into equal-sized units that can each get their own exclusive-topology domain — the canonical case being one subgroup per host inside a multi-host group.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Semantics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>LeaderWorker</code> (default)</td>
+<td style="text-align: left;">The leader participates in a subgroup. If <code>(size-1) % subGroupSize == 0</code>, the leader is the "extra" pod and joins the first subgroup, which then has <code>subGroupSize + 1</code> members. If <code>size % subGroupSize == 0</code>, subgroups are exactly <code>subGroupSize</code> and the leader occupies the first slot of the first one.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LeaderExcluded</code></td>
+<td style="text-align: left;">The leader is in <strong>no</strong> subgroup. Requires <code>(size-1) % subGroupSize == 0</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition danger">
+<p class="admonition-title">The upstream concepts page documents this wrong</p>
+<p><code>site/content/en/docs/concepts/_index.md</code> describes a value named <strong><code>LeaderOnly</code></strong> and says it means "a SubGroup is created exclusively for the leader." Neither the name nor the semantics exist in the code — the value is <code>LeaderExcluded</code> and it means the opposite. Fixing that page is the highest-value documentation PR currently available; see <a href="../appendix_pr_opportunities/">Appendix B</a>.</p>
+</div>
+<p><code>subGroupSize</code> is <strong>immutable</strong> once set, and cannot be added to or removed from an existing LWS. The webhook enforces all three transitions explicitly.</p>
+<h3 id="26-rolloutstrategy">2.6 <code>rolloutStrategy</code><a class="headerlink" href="#26-rolloutstrategy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">RollingUpdateConfiguration</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:default=0</span>
+<span class="w">    </span><span class="nx">Partition</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="s">`json:&quot;partition,omitempty&quot;`</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:validation:XIntOrString</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:default=1</span>
+<span class="w">    </span><span class="nx">MaxUnavailable</span><span class="w"> </span><span class="nx">intstr</span><span class="p">.</span><span class="nx">IntOrString</span><span class="w"> </span><span class="s">`json:&quot;maxUnavailable,omitempty&quot;`</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:validation:XIntOrString</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:default=0</span>
+<span class="w">    </span><span class="nx">MaxSurge</span><span class="w"> </span><span class="nx">intstr</span><span class="p">.</span><span class="nx">IntOrString</span><span class="w"> </span><span class="s">`json:&quot;maxSurge,omitempty&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>type</code> accepts only <code>RollingUpdate</code>; there is no <code>Recreate</code>. The three knobs are all group-scoped:</p>
+<ul>
+<li><strong><code>partition</code></strong> (KEP-511) — groups with index <code>&lt; partition</code> are <strong>not</strong> updated. Set it to freeze a rollout at a canary boundary. Defaults to 0. Note the documented interaction: with both <code>partition</code> and <code>maxSurge</code> set, burst replicas persist until the rollout completes <em>and</em> partition is reset to 0.</li>
+<li><strong><code>maxUnavailable</code></strong> — how many groups may be unavailable during the update. Percentages round <strong>down</strong>. <code>maxUnavailable &gt; 1</code> requires the upstream <code>MaxUnavailableStatefulSet</code> feature gate, because it is implemented by passing the value through to the leader StatefulSet.</li>
+<li><strong><code>maxSurge</code></strong> — how many groups may exist above <code>replicas</code>. Percentages round <strong>up</strong>. Costs a full extra group's worth of accelerators, which for an 8-GPU group is not a small ask.</li>
+</ul>
+<p>The arithmetic that consumes these is in <a href="../06_rollout_and_revisions/">Module 6</a>, and it is genuinely non-obvious.</p>
+<h3 id="27-startuppolicy">2.7 <code>startupPolicy</code><a class="headerlink" href="#27-startuppolicy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:default=LeaderCreated</span>
+<span class="c1">// +kubebuilder:validation:Enum={LeaderCreated,LeaderReady}</span>
+</code></pre></div>
+<p><code>LeaderCreated</code> builds the worker StatefulSet as soon as the leader pod object exists. <code>LeaderReady</code> (KEP-135) waits until the leader pod is <strong>Ready</strong>. Use <code>LeaderReady</code> when workers cannot start before the leader is listening — the classic case being an engine whose workers connect to a leader-hosted rendezvous endpoint that would otherwise refuse connections and crash-loop the workers.</p>
+<p>The cost of <code>LeaderReady</code> is serialized startup: the leader's full model load happens before any worker begins its own. For a large model that can add minutes to every group's cold start, and it interacts badly with gang scheduling, which wants all pods pending simultaneously.</p>
+<h3 id="28-networkconfigsubdomainpolicy">2.8 <code>networkConfig.subdomainPolicy</code><a class="headerlink" href="#28-networkconfigsubdomainpolicy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:validation:Enum={Shared,UniquePerReplica}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Policy</th>
+<th style="text-align: left;">Services created</th>
+<th style="text-align: left;">Leader FQDN</th>
+<th style="text-align: left;">Worker FQDN</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Shared</code> (default)</td>
+<td style="text-align: left;">one, named after the LWS</td>
+<td style="text-align: left;"><code>my-lws-0.my-lws</code></td>
+<td style="text-align: left;"><code>my-lws-0-1.my-lws</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>UniquePerReplica</code></td>
+<td style="text-align: left;">one <strong>per group</strong>, named after the leader pod</td>
+<td style="text-align: left;"><code>my-lws-0.my-lws-0</code></td>
+<td style="text-align: left;"><code>my-lws-0-1.my-lws-0</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>UniquePerReplica</code> (KEP-173) exists because a single shared headless Service produces DNS records for every pod in every group — with 100 groups of 8 pods, that is an 800-record response on every lookup, and CoreDNS latency becomes a startup problem. Per-group Services scope each lookup to one group.</p>
+<p>The webhook forbids setting <code>networkConfig</code> with a nil <code>subdomainPolicy</code>, but the field itself is mutable — which means flipping it rewrites every pod's DNS name and forces a full rollout.</p>
+<h3 id="29-volumeclaimtemplates-and-retention">2.9 <code>volumeClaimTemplates</code> and retention<a class="headerlink" href="#29-volumeclaimtemplates-and-retention" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">VolumeClaimTemplates</span><span class="w"> </span><span class="p">[]</span><span class="nx">corev1</span><span class="p">.</span><span class="nx">PersistentVolumeClaim</span><span class="w"> </span><span class="s">`json:&quot;volumeClaimTemplates,omitempty&quot;`</span>
+<span class="nx">PersistentVolumeClaimRetentionPolicy</span><span class="w"> </span><span class="o">*</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSetPersistentVolumeClaimRetentionPolicy</span>
+</code></pre></div>
+<p>Added by KEP-622, these are forwarded to both the leader and worker StatefulSets. <strong>The forwarding is lossy</strong>, and this is a real trap: <code>GetPVCApplyConfiguration</code> in <code>pkg/utils/controller/controller_utils.go</code> copies only <code>accessModes</code>, <code>storageClassName</code>, <code>volumeMode</code>, and <code>resources.{requests,limits}</code>. Selectors, <code>dataSource</code>, <code>dataSourceRef</code>, and PVC labels/annotations are <strong>silently dropped</strong>.</p>
+<p>Equally notable: the validating webhook does not check <code>volumeClaimTemplates</code> at all — not the name/<code>volumeMount</code> cross-reference the API doc comment promises, and not immutability. Both gaps are documented in <a href="../appendix_pr_opportunities/">Appendix B</a>.</p>
+<hr />
+<h2 id="part-3-status-and-conditions">Part 3: Status and Conditions<a class="headerlink" href="#part-3-status-and-conditions" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">LeaderWorkerSetStatus</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Conditions</span><span class="w">         </span><span class="p">[]</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">Condition</span><span class="w"> </span><span class="s">`json:&quot;conditions,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">ReadyReplicas</span><span class="w">      </span><span class="kt">int32</span><span class="w">              </span><span class="s">`json:&quot;readyReplicas,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">UpdatedReplicas</span><span class="w">    </span><span class="kt">int32</span><span class="w">              </span><span class="s">`json:&quot;updatedReplicas,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">Replicas</span><span class="w">           </span><span class="kt">int32</span><span class="w">              </span><span class="s">`json:&quot;replicas,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">HPAPodSelector</span><span class="w">     </span><span class="kt">string</span><span class="w">             </span><span class="s">`json:&quot;hpaPodSelector,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">ObservedGeneration</span><span class="w"> </span><span class="kt">int64</span><span class="w">              </span><span class="s">`json:&quot;observedGeneration,omitempty&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Counts</th>
+<th style="text-align: left;">Gotcha</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>replicas</code></td>
+<td style="text-align: left;">Leader StatefulSet's <code>status.replicas</code></td>
+<td style="text-align: left;"><strong>Includes surge replicas.</strong> During a <code>maxSurge</code> rollout this exceeds <code>spec.replicas</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>readyReplicas</code></td>
+<td style="text-align: left;">Groups where the leader pod is Running+Ready <strong>and</strong> the worker StatefulSet is ready</td>
+<td style="text-align: left;">Also counts burst replicas</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>updatedReplicas</code></td>
+<td style="text-align: left;">Groups whose leader pod <strong>and</strong> worker StatefulSet carry the current revision hash</td>
+<td style="text-align: left;">Also counts burst replicas</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hpaPodSelector</code></td>
+<td style="text-align: left;">A serialized selector string</td>
+<td style="text-align: left;"><strong>Computed exactly once</strong>, on first status update, and never recomputed</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>observedGeneration</code></td>
+<td style="text-align: left;"><code>metadata.generation</code> at last reconcile</td>
+<td style="text-align: left;">The standard staleness check</td>
+</tr>
+</tbody>
+</table>
+<p>The three condition types are mutually constrained rather than independent:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Condition</th>
+<th style="text-align: left;">Reason</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Available</code></td>
+<td style="text-align: left;"><code>AllGroupsReady</code></td>
+<td style="text-align: left;">At least the minimum groups are up and serving</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Progressing</code></td>
+<td style="text-align: left;"><code>GroupsProgressing</code></td>
+<td style="text-align: left;">Groups are being created or scaled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>UpdateInProgress</code></td>
+<td style="text-align: left;"><code>GroupsUpdating</code></td>
+<td style="text-align: left;">A template change is rolling out</td>
+</tr>
+</tbody>
+</table>
+<p><code>Available</code> is forced to <code>False</code> whenever <code>Progressing</code> or <code>UpdateInProgress</code> becomes <code>True</code>. <code>Progressing</code> and <code>UpdateInProgress</code> are <strong>not</strong> mutually exclusive and routinely coexist. The condition arithmetic uses partition-windowed, non-burst counters — different numbers from the three status fields above — which is covered in <a href="../04_lws_reconciler_internals/">Module 4</a>, §status.</p>
+<hr />
+<h2 id="part-4-the-scale-subresource">Part 4: The Scale Subresource<a class="headerlink" href="#part-4-the-scale-subresource" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1">//+kubebuilder:subresource:status</span>
+<span class="c1">//+kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.hpaPodSelector</span>
+</code></pre></div>
+<p>This is what makes <code>kubectl scale lws/my-lws --replicas=5</code> and HPA work. The interesting part is <code>selectorpath</code>. <code>status.hpaPodSelector</code> resolves to:</p>
+<div class="highlight"><pre><span></span><code>leaderworkerset.sigs.k8s.io/name=&lt;lws-name&gt;,leaderworkerset.sigs.k8s.io/worker-index=0
+</code></pre></div>
+<p><strong>Leader pods only.</strong> This is deliberate and worth internalising, because it changes what your HPA metrics mean.</p>
+<p>HPA computes <code>desiredReplicas = ceil(currentReplicas × currentMetric / targetMetric)</code>, where <code>currentMetric</code> for a per-pod metric is the sum over selected pods divided by the <em>number of selected pods</em>. If the selector matched all <code>replicas × size</code> pods, the denominator would be the pod count while <code>spec.replicas</code> is the group count, and the ratio would be wrong by a factor of <code>size</code>. Selecting only leaders keeps both sides in group units.</p>
+<p><strong>The practical consequence</strong>: whatever metric you scale on must be <strong>published by the leader pod and represent the whole group</strong>. A per-pod GPU utilization metric scraped from workers is invisible to this HPA. The idiomatic pattern is for the leader to aggregate group-level metrics — queue depth, running requests, KV-cache utilization — and expose them itself. The API doc comment says exactly this.</p>
+<hr />
+<h2 id="part-5-defaulting-and-validation">Part 5: Defaulting and Validation<a class="headerlink" href="#part-5-defaulting-and-validation" title="Permanent link">&para;</a></h2>
+<p>Both live in <code>pkg/webhooks/leaderworkerset_webhook.go</code>, at paths <code>/mutate-leaderworkerset-x-k8s-io-v1-leaderworkerset</code> and <code>/validate-leaderworkerset-x-k8s-io-v1-leaderworkerset</code>, both with <code>failurePolicy: Fail</code> and <code>sideEffects: None</code>.</p>
+<h3 id="51-defaulting">5.1 Defaulting<a class="headerlink" href="#51-defaulting" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Condition</th>
+<th style="text-align: left;">Default applied</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>restartPolicy</code> empty</td>
+<td style="text-align: left;"><code>RecreateGroupOnPodRestart</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>restartPolicy == "Default"</code></td>
+<td style="text-align: left;">rewritten to <code>"None"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rolloutStrategy.type</code> empty</td>
+<td style="text-align: left;"><code>RollingUpdate</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rollingUpdateConfiguration</code> nil</td>
+<td style="text-align: left;"><code>{maxUnavailable: 1, maxSurge: 0, partition: 0}</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>networkConfig</code> nil, or <code>subdomainPolicy</code> nil</td>
+<td style="text-align: left;"><code>subdomainPolicy: Shared</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-validation-on-create-and-update">5.2 Validation on create and update<a class="headerlink" href="#52-validation-on-create-and-update" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Rule</th>
+<th style="text-align: left;">Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Name must be <strong>DNS-1035</strong> (<code>NameIsDNS1035Label</code>)</td>
+<td style="text-align: left;">The name becomes a Service name, which is stricter than DNS-1123 — it must start with a letter</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>0 &lt;= replicas &lt;= 1000000</code></td>
+<td style="text-align: left;">Schema-level, duplicated in the webhook</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>size &gt;= 1</code></td>
+<td style="text-align: left;">A group must have at least a leader</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>int64(replicas) * int64(size) &lt;= MaxInt32</code></td>
+<td style="text-align: left;">Downstream arithmetic is int32</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>maxUnavailable</code>, <code>maxSurge</code>: non-negative, valid percent, <code>&lt;= 100%</code></td>
+<td style="text-align: left;"><code>ValidatePositiveIntOrPercent</code> + <code>IsNotMoreThan100Percent</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>partition &gt;= 0</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>maxUnavailable == 0 &amp;&amp; maxSurge == 0 &amp;&amp; replicas != 0</code> → error</strong></td>
+<td style="text-align: left;">A rollout with neither budget can never make progress. Note the values are <em>scaled first</em>, so <code>10%</code> of 5 replicas rounds down to 0 and trips this</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>subgroup-exclusive-topology</code> annotation without <code>subGroupSize</code> → error</td>
+<td style="text-align: left;">The annotation would have nothing to partition</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>subGroupSize &gt;= 1</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>size % subGroupSize == 0</code> <strong>or</strong> <code>(size-1) % subGroupSize == 0</code></td>
+<td style="text-align: left;">Subgroups must be equal-sized</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>subGroupSize &lt;= size</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LeaderExcluded</code> requires <code>(size-1) % subGroupSize == 0</code></td>
+<td style="text-align: left;">The leader is excluded, so only the remainder is partitioned</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53-immutability-on-update">5.3 Immutability on update<a class="headerlink" href="#53-immutability-on-update" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Transition</th>
+<th style="text-align: left;">Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>subGroupSize</code> changed</td>
+<td style="text-align: left;">Rejected (<code>ValidateImmutableField</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>subGroupPolicy</code> nil → set</td>
+<td style="text-align: left;">Rejected: "cannot enable subGroupSize after the lws is already created"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>subGroupPolicy</code> set → nil</td>
+<td style="text-align: left;">Rejected: "cannot remove subGroupSize after enabled"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>networkConfig</code> set with nil <code>subdomainPolicy</code></td>
+<td style="text-align: left;">Rejected: "cannot set subdomainPolicy as null"</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition bug">
+<p class="admonition-title">A latent nil-dereference in the validator</p>
+<p><code>generalValidate</code> reads <code>lws.Spec.RolloutStrategy.RollingUpdateConfiguration.MaxUnavailable</code> <strong>before</strong> the <code>!= nil</code> guard two lines below it. In practice the defaulter always populates the struct, so the path is unreachable — but an object created with the mutating webhook unavailable or bypassed would panic the validating webhook rather than being rejected. This is a small, well-scoped correctness PR.</p>
+</div>
+<hr />
+<h2 id="part-6-the-metadata-contract">Part 6: The Metadata Contract<a class="headerlink" href="#part-6-the-metadata-contract" title="Permanent link">&para;</a></h2>
+<p>The labels, annotations, and environment variables are as much a part of the API as the spec fields, because users select on them, mount them via the Downward API, and read them in entrypoint scripts. All constants live in <code>api/leaderworkerset/v1/leaderworkerset_types.go</code> lines 26–99.</p>
+<h3 id="61-labels">6.1 Labels<a class="headerlink" href="#61-labels" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Key</th>
+<th style="text-align: left;">Applied to</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/name</code></td>
+<td style="text-align: left;">Pod, StatefulSet, Service</td>
+<td style="text-align: left;">The LWS name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/template-revision-hash</code></td>
+<td style="text-align: left;">Pod, StatefulSet</td>
+<td style="text-align: left;">Current revision key</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/group-index</code></td>
+<td style="text-align: left;">Pod, worker StatefulSet</td>
+<td style="text-align: left;">Group ordinal, <code>0..replicas-1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/group-key</code></td>
+<td style="text-align: left;">Pod, worker StatefulSet</td>
+<td style="text-align: left;">A stable hash shared by all pods in the group</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/worker-index</code></td>
+<td style="text-align: left;">Pod</td>
+<td style="text-align: left;"><code>0</code> for the leader, <code>1..size-1</code> for workers</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/subgroup-index</code></td>
+<td style="text-align: left;">Pod</td>
+<td style="text-align: left;">Only when <code>subGroupSize</code> is set</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/subgroup-key</code></td>
+<td style="text-align: left;">Pod</td>
+<td style="text-align: left;">Stable hash shared within a subgroup</td>
+</tr>
+</tbody>
+</table>
+<p>DisaggregatedSet adds <code>disaggregatedset.x-k8s.io/{name,role,slice,revision}</code> on LWS, Service, and Pod objects.</p>
+<p>The distinction between <code>group-index</code> and <code>group-key</code> matters. <code>group-index</code> is human-readable and reused across group recreations; <code>group-key</code> is a hash that changes when the group is recreated, which is what makes it usable as an affinity key that does not accidentally match a previous incarnation of the group.</p>
+<h3 id="62-annotations">6.2 Annotations<a class="headerlink" href="#62-annotations" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Key</th>
+<th style="text-align: left;">Applied to</th>
+<th style="text-align: left;">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/size</code></td>
+<td style="text-align: left;">Pod</td>
+<td style="text-align: left;">Group size; the pod webhook <strong>requires</strong> it and errors without it</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/replicas</code></td>
+<td style="text-align: left;">Leader StatefulSet</td>
+<td style="text-align: left;">Mirrors <code>spec.replicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/leader-name</code></td>
+<td style="text-align: left;">Worker Pod</td>
+<td style="text-align: left;">The leader pod's name</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/exclusive-topology</code></td>
+<td style="text-align: left;">LWS, Pod</td>
+<td style="text-align: left;">Node-label key defining the exclusive domain</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/subgroup-exclusive-topology</code></td>
+<td style="text-align: left;">LWS, Pod</td>
+<td style="text-align: left;">Same, scoped to a subgroup</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/subgroup-size</code></td>
+<td style="text-align: left;">Pod</td>
+<td style="text-align: left;">Mirrors <code>subGroupPolicy.subGroupSize</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/subgroup-policy-type</code></td>
+<td style="text-align: left;">Leader and worker Pod</td>
+<td style="text-align: left;">Mirrors <code>subGroupPolicy.subGroupPolicyType</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/subdomainPolicy</code></td>
+<td style="text-align: left;">Leader Pod</td>
+<td style="text-align: left;">Present only when <code>UniquePerReplica</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/leader-requests-tpus</code></td>
+<td style="text-align: left;">Pod</td>
+<td style="text-align: left;">Set when the leader requests TPUs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/experimental-recreate-group-after-start</code></td>
+<td style="text-align: left;">LWS</td>
+<td style="text-align: left;">Experimental gate for <code>RecreateGroupAfterStart</code> behaviour</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Four keys are missing from the upstream reference table</p>
+<p><code>site/content/en/docs/reference/labels-annotations-and-environment-variables.md</code> omits <code>subgroup-policy-type</code>, <code>experimental-recreate-group-after-start</code>, <code>TPU_PROCESS_ADDRESSES</code>, and <code>TPU_PROCESS_PORT</code>. Adding those four rows is a well-scoped, provenance-clear first PR — the constants are all in the two files cited above.</p>
+</div>
+<h3 id="63-environment-variables">6.3 Environment variables<a class="headerlink" href="#63-environment-variables" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Variable</th>
+<th style="text-align: left;">Injected into</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>LWS_LEADER_ADDRESS</code></td>
+<td style="text-align: left;">Every container in every pod</td>
+<td style="text-align: left;">Leader FQDN, format depends on <code>subdomainPolicy</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LWS_GROUP_SIZE</code></td>
+<td style="text-align: left;">Every container</td>
+<td style="text-align: left;"><code>leaderWorkerTemplate.size</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>LWS_WORKER_INDEX</code></td>
+<td style="text-align: left;">Every container</td>
+<td style="text-align: left;"><code>0</code> for leader, <code>1..size-1</code> for workers</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TPU_WORKER_ID</code></td>
+<td style="text-align: left;">TPU pods</td>
+<td style="text-align: left;">Per-subgroup worker id</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TPU_WORKER_HOSTNAMES</code></td>
+<td style="text-align: left;">TPU pods</td>
+<td style="text-align: left;">Comma-separated peer hostnames</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TPU_NAME</code></td>
+<td style="text-align: left;">TPU pods</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TPU_PROCESS_ADDRESSES</code>, <code>TPU_PROCESS_PORT</code></td>
+<td style="text-align: left;">TPU pods</td>
+<td style="text-align: left;">Also injected; undocumented upstream</td>
+</tr>
+</tbody>
+</table>
+<p>Anything exposed only as a label or annotation can be surfaced to the container with the Downward API — the upstream reference page ends with exactly this advice, and it is the right answer for <code>group-index</code> and <code>subgroup-index</code>.</p>
+<hr />
+<h2 id="part-7-the-configuration-crd">Part 7: The <code>Configuration</code> CRD<a class="headerlink" href="#part-7-the-configuration-crd" title="Permanent link">&para;</a></h2>
+<p><code>config.lws.x-k8s.io/v1alpha1</code>, kind <code>Configuration</code>, is a <strong>config file format</strong>, not a cluster resource. The controller reads it via <code>--config</code>, and <code>pkg/config/config.go</code> parses it with <code>serializer.EnableStrict</code> — <strong>unknown fields are rejected</strong>, so a typo fails startup rather than being ignored.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Section</th>
+<th style="text-align: left;">Fields</th>
+<th style="text-align: left;">Defaults</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>webhook</code></td>
+<td style="text-align: left;"><code>port</code>, <code>host</code>, <code>certDir</code></td>
+<td style="text-align: left;"><code>9443</code>, —, <code>/tmp/k8s-webhook-server/serving-certs</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderElection</code></td>
+<td style="text-align: left;">Standard <code>LeaderElectionConfiguration</code></td>
+<td style="text-align: left;">ID <code>b8b2488c.x-k8s.io</code>, lock <code>leases</code>, 15s/10s/2s</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>metrics</code></td>
+<td style="text-align: left;"><code>bindAddress</code></td>
+<td style="text-align: left;"><code>:8443</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>health</code></td>
+<td style="text-align: left;"><code>healthProbeBindAddress</code>, <code>readinessEndpointName</code>, <code>livenessEndpointName</code></td>
+<td style="text-align: left;"><code>:8081</code>, <code>/readyz</code>, <code>/healthz</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>tls</code></td>
+<td style="text-align: left;"><code>minVersion</code>, <code>cipherSuites</code></td>
+<td style="text-align: left;">Go defaults</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>internalCertManagement</code></td>
+<td style="text-align: left;"><code>enable</code>, <code>webhookServiceName</code>, <code>webhookSecretName</code></td>
+<td style="text-align: left;"><code>true</code>, <code>lws-webhook-service</code>, <code>lws-webhook-server-cert</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gangSchedulingManagement</code></td>
+<td style="text-align: left;"><code>schedulerProvider</code></td>
+<td style="text-align: left;">unset (gang scheduling off)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>clientConnection</code></td>
+<td style="text-align: left;"><code>qps</code>, <code>burst</code></td>
+<td style="text-align: left;"><code>500</code>, <code>500</code></td>
+</tr>
+</tbody>
+</table>
+<p>Validation (<code>pkg/config/validation.go</code>, <code>pkg/config/tls.go</code>):</p>
+<ul>
+<li><code>schedulerProvider</code> must be non-empty when <code>gangSchedulingManagement</code> is present, and must be in <code>SupportedSchedulerProviders = {"volcano"}</code>.</li>
+<li><code>webhookServiceName</code> must be a DNS-1035 label; <code>webhookSecretName</code> a DNS-1123 subdomain.</li>
+<li><code>minVersion: VersionTLS13</code> combined with any <code>cipherSuites</code> is rejected (TLS 1.3 suites are not configurable in Go). <code>VersionTLS10</code> and <code>VersionTLS11</code> are rejected outright.</li>
+</ul>
+<p>Command-line flags still exist for most of these but are <strong>all marked deprecated</strong> in favour of <code>--config</code>. Precedence is flag-wins-if-explicitly-set, implemented with a <code>flagsSet</code> map populated by <code>flag.Visit</code> — so an unset flag does not clobber a config-file value with its zero default. That pattern is worth copying if you add a knob.</p>
+<div class="admonition note">
+<p class="admonition-title">There is no feature-gate machinery</p>
+<p>Grepping the repo for <code>FeatureGate</code> finds only KEP templates. Behavioural toggles are the <code>Configuration</code> CRD plus one <code>experimental-</code> annotation. KEP-407's <code>feature-gates: [PodGroupPerReplica]</code> entry describes a gate at the <em>KEP process</em> level, satisfied in code by the presence or absence of <code>gangSchedulingManagement.schedulerProvider</code>. A PR introducing real <code>component-base</code> feature gates would be a substantial and probably welcome piece of infrastructure — but discuss it in an issue first, because it is an architectural decision, not a cleanup.</p>
+</div>
+<hr />
+<h2 id="part-8-generating-and-linting-the-api">Part 8: Generating and Linting the API<a class="headerlink" href="#part-8-generating-and-linting-the-api" title="Permanent link">&para;</a></h2>
+<p>If you change anything under <code>api/</code>, three toolchains must agree before CI passes.</p>
+<pre class="mermaid"><code>flowchart LR
+    GO["api/**/*_types.go&lt;br&gt;Go structs + kubebuilder markers"]
+    GO --&gt;|"make manifests&lt;br&gt;controller-gen v0.17.2"| CRD["config/crd/bases/*.yaml"]
+    GO --&gt;|"make generate&lt;br&gt;controller-gen object"| DC["zz_generated.deepcopy.go"]
+    GO --&gt;|"make generate&lt;br&gt;hack/update-codegen.sh"| CG["client-go/&lt;br&gt;clientset · listers · informers · applyconfiguration"]
+    GO --&gt;|"make generate-apiref&lt;br&gt;genref v0.28.0"| REF["site/content/en/docs/reference/*.v1.md"]
+    CRD --&gt;|"make crds (yq)"| HELM["charts/lws/crds/*.yaml"]
+    GO --&gt;|"make lint-api&lt;br&gt;kube-api-linter"| KAL["API convention checks"]</code></pre>
+<h3 id="81-the-codegen-chain">8.1 The codegen chain<a class="headerlink" href="#81-the-codegen-chain" title="Permanent link">&para;</a></h3>
+<p><code>hack/update-codegen.sh</code> runs <code>kube::codegen::gen_client</code> over <code>api/</code> with <code>--with-watch --with-applyconfig</code>, emitting into <code>client-go/</code> under package <code>sigs.k8s.io/lws/client-go</code>. The code-generator version is pinned to whatever <code>k8s.io/api</code> resolves to (currently <strong>v0.36.3</strong>) with the comment "Use same code-generator version as k8s.io/api".</p>
+<p>The consequence for a contributor is blunt: <strong><code>make verify</code> regenerates everything and then <code>git diff --exit-code</code>s</strong> <code>config/components api client-go site/ charts/</code>. Hand-editing any generated file, or forgetting to regenerate after an API change, fails CI. Run <code>make verify</code> before pushing.</p>
+<h3 id="82-the-kube-api-linter">8.2 The Kube API Linter<a class="headerlink" href="#82-the-kube-api-linter" title="Permanent link">&para;</a></h3>
+<p><code>make lint-api</code> runs a <strong>custom-built</strong> golangci-lint binary with the <code>sigs.k8s.io/kube-api-linter</code> plugin, configured by <code>.golangci-kal.yml</code>. The binary is compiled by <code>make golangci-lint-kal</code> from <code>hack/.custom-gcl.yaml</code> — it is not downloaded, so the first run takes a while.</p>
+<p>Enabled checks, and what each one will reject in an API PR:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Linter</th>
+<th style="text-align: left;">Rejects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>commentstart</code></td>
+<td style="text-align: left;">A field's doc comment that does not start with the <strong>serialized</strong> (JSON) field name. <code>// Replicas is …</code> on <code>json:"replicas"</code> fails; <code>// replicas is …</code> passes. This is the single most common failure.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>conditions</code></td>
+<td style="text-align: left;"><code>Conditions</code> fields without the correct json tags and markers</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>conflictingmarkers</code></td>
+<td style="text-align: left;">A field with both a default and <code>+required</code> (the one configured conflict set)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>duplicatemarkers</code></td>
+<td style="text-align: left;">Exact duplicate markers on a type or field</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>jsontags</code></td>
+<td style="text-align: left;">Any field without a json tag</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>nodurations</code></td>
+<td style="text-align: left;"><code>metav1.Duration</code> / <code>time.Duration</code> in an API type</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>nofloats</code></td>
+<td style="text-align: left;">Float types in an API type</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>nonullable</code></td>
+<td style="text-align: left;">The <code>nullable</code> marker</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>notimestamp</code></td>
+<td style="text-align: left;">Fields named <code>…Timestamp</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>statusoptional</code></td>
+<td style="text-align: left;">Non-optional first-level children of <code>status</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>statussubresource</code></td>
+<td style="text-align: left;">A root object with <code>status</code> but no status subresource</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>uniquemarkers</code></td>
+<td style="text-align: left;">A single-use marker appearing more than once</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>nophase</code></td>
+<td style="text-align: left;"><code>Phase</code> fields — use conditions instead</td>
+</tr>
+</tbody>
+</table>
+<p>Notably disabled (with the comment "pending conversation on how and when to enable them"): <code>integers</code>, <code>maxlength</code>, <code>nobools</code>, <code>nomaps</code>, <code>optionalfields</code>, <code>optionalorrequired</code>, <code>requiredfields</code>, <code>ssatags</code>, <code>forbiddenmarkers</code>. If you add a <code>bool</code> or a <code>map</code>, the linter will not stop you — but a reviewer very well might, because those are Kubernetes API conventions regardless of whether the tool enforces them today.</p>
+<div class="admonition tip">
+<p class="admonition-title">KAL does not run on DisaggregatedSet</p>
+<p>The exclusion rule is <code>path-except: "api/leaderworkerset/*"</code>, so <strong><code>api/disaggregatedset/</code> and <code>api/config/</code> are not linted at all</strong>. Since DisaggregatedSet is the newest and most actively changing API, extending that path pattern — and fixing whatever it surfaces — is a concrete, contained contribution. Expect <code>commentstart</code> violations.</p>
+</div>
+<hr />
+<h2 id="lab-probe-the-api-contract">Lab: Probe the API Contract<a class="headerlink" href="#lab-probe-the-api-contract" title="Permanent link">&para;</a></h2>
+<p>This lab needs no accelerators; a <code>kind</code> cluster with LWS installed is sufficient, and it is the fastest way to build an accurate mental model of what admission actually enforces.</p>
+<h3 id="step-1-read-the-api-from-the-cluster-not-the-source">Step 1 — Read the API from the cluster, not the source<a class="headerlink" href="#step-1-read-the-api-from-the-cluster-not-the-source" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>explain<span class="w"> </span>lws.spec<span class="w"> </span>--recursive<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-60
+kubectl<span class="w"> </span>get<span class="w"> </span>crd<span class="w"> </span>leaderworkersets.leaderworkerset.x-k8s.io<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.replicas}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</code></pre></div>
+<p>Confirm the schema-level defaults and bounds match §2.1. The point of the exercise is that the CRD is the authority a client sees — the Go struct is only its source.</p>
+<h3 id="step-2-watch-defaulting-happen">Step 2 — Watch defaulting happen<a class="headerlink" href="#step-2-watch-defaulting-happen" title="Permanent link">&para;</a></h3>
+<p>Apply the most minimal valid LWS you can write:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaderworkerset.x-k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LeaderWorkerSet</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">minimal</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">workerTemplate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c</span>
+<span class="w">            </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxinc/nginx-unprivileged:1.27</span>
+</code></pre></div>
+<p>Then diff what you sent against what was stored:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>minimal<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>yq<span class="w"> </span><span class="s1">&#39;.spec&#39;</span>
+</code></pre></div>
+<p>Every field in §5.1 should have appeared. Note in particular that <code>restartPolicy</code>, <code>rolloutStrategy</code>, and <code>networkConfig.subdomainPolicy</code> are now populated, and that a <code>leaderTemplate</code> was <strong>not</strong> synthesized — the fallback happens in the controller, not the webhook.</p>
+<h3 id="step-3-falsify-each-validation-rule">Step 3 — Falsify each validation rule<a class="headerlink" href="#step-3-falsify-each-validation-rule" title="Permanent link">&para;</a></h3>
+<p>Work through §5.2 and try to violate every rule. A few that teach the most:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># DNS-1035: names must start with a letter.</span>
+kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
+<span class="s">apiVersion: leaderworkerset.x-k8s.io/v1</span>
+<span class="s">kind: LeaderWorkerSet</span>
+<span class="s">metadata: { name: 9invalid }</span>
+<span class="s">spec:</span>
+<span class="s">  leaderWorkerTemplate:</span>
+<span class="s">    workerTemplate: { spec: { containers: [{ name: c, image: nginx }] } }</span>
+<span class="s">EOF</span>
+
+<span class="c1"># The rounding trap: 10% of 5 replicas rounds down to 0, with maxSurge 0.</span>
+<span class="c1"># Expect rejection, and read the message carefully.</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>minimal<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;replicas&quot;:5,</span>
+<span class="s1">  &quot;rolloutStrategy&quot;:{&quot;rollingUpdateConfiguration&quot;:{&quot;maxUnavailable&quot;:&quot;10%&quot;,&quot;maxSurge&quot;:0}}}}&#39;</span>
+
+<span class="c1"># Subgroup divisibility: size 7, subGroupSize 3 → 7%3=1, 6%3=0 → LeaderWorker OK.</span>
+<span class="c1"># Now try LeaderExcluded with size 8, subGroupSize 3 → 7%3 != 0 → rejected.</span>
+</code></pre></div>
+<p>For each rejection, find the corresponding line in <code>pkg/webhooks/leaderworkerset_webhook.go</code>. The goal is to be able to predict the error message before you run the command.</p>
+<h3 id="step-4-verify-the-hpa-selector-claim">Step 4 — Verify the HPA selector claim<a class="headerlink" href="#step-4-verify-the-hpa-selector-claim" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>minimal<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;replicas&quot;:2,&quot;leaderWorkerTemplate&quot;:{&quot;size&quot;:3}}}&#39;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>minimal<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.hpaPodSelector}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>minimal<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.hpaPodSelector}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>You should see <strong>2</strong> pods, not 6. Now reason through what would happen to HPA's ratio arithmetic if the selector had omitted <code>worker-index=0</code>, and confirm your answer against §4.</p>
+<p>Then verify the "computed once" claim: rename nothing, but observe that <code>hpaPodSelector</code> never changes across scale operations. Ask yourself what would happen if the LWS name could change (it cannot) — this is the kind of question that makes a reviewer comfortable with an API PR.</p>
+<h3 id="step-5-break-the-linter-on-purpose">Step 5 — Break the linter on purpose<a class="headerlink" href="#step-5-break-the-linter-on-purpose" title="Permanent link">&para;</a></h3>
+<p>Clone the upstream repo and make a deliberately non-conforming API change:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/kubernetes-sigs/lws<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>lws
+<span class="c1"># In api/leaderworkerset/v1/leaderworkerset_types.go, add to LeaderWorkerSetSpec:</span>
+<span class="c1">#     // MyField is a test.</span>
+<span class="c1">#     MyField *int32 `json:&quot;myField,omitempty&quot;`</span>
+make<span class="w"> </span>lint-api
+</code></pre></div>
+<p>Expect a <code>commentstart</code> violation, because the comment says <code>MyField</code> and the json tag says <code>myField</code>. Fix it, re-run, then run the full gate:</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>verify
+</code></pre></div>
+<p>Watch it regenerate the CRDs, the deepcopy functions, the client-go tree, and the API reference docs, then diff them. This is exactly what CI does, and knowing the failure modes before you push saves a review cycle.</p>
+<p>Continue to <a href="../03_group_lifecycle_and_identity/">Module 3: Group Lifecycle and Pod Identity</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2183 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/01_multihost_inference_problem_space/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../02_api_surface_anatomy/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/01_multihost_inference_problem_space/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 1 - The Multi-Host Inference Problem Space - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-1-the-multi-host-inference-problem-space" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 1 - The Multi-Host Inference Problem Space
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/01_multihost_inference_problem_space/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-shape-of-the-workload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The Shape of the Workload
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: The Shape of the Workload">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-the-arithmetic-that-forces-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 The Arithmetic That Forces the Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-the-parallelism-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 The Parallelism Taxonomy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-prefilldecode-disaggregation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Prefill/Decode Disaggregation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-the-requirements-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 The Requirements Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-why-the-existing-apis-fall-short" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: Why the Existing APIs Fall Short
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: Why the Existing APIs Fall Short">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-job-and-jobset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Job and JobSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-framework-specific-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Framework-Specific Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-the-leaderworkerset-answer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: The LeaderWorkerSet Answer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: The LeaderWorkerSet Answer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-minimal-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The Minimal Object
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-requirements-mapped-to-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Requirements Mapped to Mechanisms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-why-two-tiers-of-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Why Two Tiers of StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-ecosystem-division-of-labour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The Ecosystem Division of Labour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-project-status-at-v090" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Project Status at v0.9.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: Project Status at v0.9.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-feature-maturity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Feature Maturity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-adoption" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Adoption
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Governance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-establish-the-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Establish the Baseline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Establish the Baseline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-provision-multi-host-accelerator-capacity-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Provision multi-host accelerator capacity (unverified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-install-lws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Install LWS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-deploy-the-baseline-and-read-the-object-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Deploy the baseline and read the object graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-falsify-the-statefulset-argument" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Falsify the StatefulSet argument
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-establish-the-failure-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Establish the failure baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-shape-of-the-workload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The Shape of the Workload
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: The Shape of the Workload">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-the-arithmetic-that-forces-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 The Arithmetic That Forces the Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-the-parallelism-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 The Parallelism Taxonomy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-prefilldecode-disaggregation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Prefill/Decode Disaggregation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-the-requirements-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 The Requirements Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-why-the-existing-apis-fall-short" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: Why the Existing APIs Fall Short
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: Why the Existing APIs Fall Short">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-job-and-jobset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Job and JobSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-framework-specific-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Framework-Specific Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-the-leaderworkerset-answer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: The LeaderWorkerSet Answer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: The LeaderWorkerSet Answer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-minimal-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The Minimal Object
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-requirements-mapped-to-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Requirements Mapped to Mechanisms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-why-two-tiers-of-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Why Two Tiers of StatefulSet
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-ecosystem-division-of-labour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The Ecosystem Division of Labour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-project-status-at-v090" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Project Status at v0.9.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: Project Status at v0.9.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-feature-maturity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Feature Maturity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-adoption" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Adoption
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Governance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-establish-the-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Establish the Baseline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Establish the Baseline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-provision-multi-host-accelerator-capacity-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Provision multi-host accelerator capacity (unverified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-install-lws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Install LWS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-deploy-the-baseline-and-read-the-object-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Deploy the baseline and read the object graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-falsify-the-statefulset-argument" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Falsify the StatefulSet argument
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-establish-the-failure-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Establish the failure baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-1-the-multi-host-inference-problem-space">Module 1: The Multi-Host Inference Problem Space<a class="headerlink" href="#module-1-the-multi-host-inference-problem-space" title="Permanent link">&para;</a></h1>
+<p>Before reading a line of LWS source, it is worth being precise about the workload. Multi-host inference is not "a distributed system" in the generic sense — it is a very specific shape, with a very specific set of demands, and almost every LWS design decision is a direct response to one of them. A reader who skips this module will find the controller code full of arbitrary-looking choices; a reader who does not will find it mostly inevitable.</p>
+<p>This module covers <strong>the parallelism taxonomy and what each dimension demands</strong>, <strong>prefill/decode disaggregation</strong>, <strong>the orchestration requirements distilled into a checklist</strong>, <strong>why Deployment, StatefulSet, Job, and JobSet each fail that checklist</strong>, <strong>the LWS answer</strong>, <strong>the ecosystem division of labour</strong>, and <strong>the state of the project at v0.9.0</strong>.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06), release v0.9.0.</p>
+</div>
+<hr />
+<h2 id="part-1-the-shape-of-the-workload">Part 1: The Shape of the Workload<a class="headerlink" href="#part-1-the-shape-of-the-workload" title="Permanent link">&para;</a></h2>
+<h3 id="11-the-arithmetic-that-forces-the-problem">1.1 The Arithmetic That Forces the Problem<a class="headerlink" href="#11-the-arithmetic-that-forces-the-problem" title="Permanent link">&para;</a></h3>
+<p>Weight memory for a dense transformer in bf16 is approximately <span class="arithmatex">\(2 \times P\)</span> bytes, where <span class="arithmatex">\(P\)</span> is the parameter count. Add optimizer-free inference overhead — activation buffers, CUDA graphs, the runtime itself — and then the KV cache, which for a batch of <span class="arithmatex">\(B\)</span> sequences of length <span class="arithmatex">\(L\)</span> costs roughly</p>
+<div class="arithmatex">\[
+2 \times L \times B \times n_{\text{layers}} \times n_{\text{kv heads}} \times d_{\text{head}} \times \text{bytes per element}
+\]</div>
+<p>The practical consequence for current frontier models:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model class</th>
+<th style="text-align: right;">bf16 weights</th>
+<th style="text-align: right;">Minimum HBM with headroom</th>
+<th style="text-align: left;">Fits on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">8B dense</td>
+<td style="text-align: right;">~16 GB</td>
+<td style="text-align: right;">~24 GB</td>
+<td style="text-align: left;">1 × L4 / A100-40</td>
+</tr>
+<tr>
+<td style="text-align: left;">70B dense</td>
+<td style="text-align: right;">~140 GB</td>
+<td style="text-align: right;">~200 GB</td>
+<td style="text-align: left;">2–4 × H100-80 (one host)</td>
+</tr>
+<tr>
+<td style="text-align: left;">405B dense</td>
+<td style="text-align: right;">~810 GB</td>
+<td style="text-align: right;">~1.1 TB</td>
+<td style="text-align: left;"><strong>2 × 8×H100 hosts</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">671B MoE (e.g. DeepSeek-class)</td>
+<td style="text-align: right;">~1.3 TB</td>
+<td style="text-align: right;">~1.8 TB</td>
+<td style="text-align: left;"><strong>4 × 8×H100 hosts</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The threshold that matters is not "does it fit on a GPU" but <strong>"does it fit inside one NVLink domain"</strong>. Inside a host, GPUs talk over NVLink/NVSwitch at hundreds of GB/s. Across hosts they talk over RDMA fabric — InfiniBand, RoCE, or a cloud equivalent such as GPUDirect-TCPX — at meaningfully lower bandwidth and higher latency. Crossing that boundary is the event that turns a scheduling problem into an <em>orchestration</em> problem, because now the placement of pods relative to each other determines whether the workload is fast, slow, or non-functional.</p>
+<h3 id="12-the-parallelism-taxonomy">1.2 The Parallelism Taxonomy<a class="headerlink" href="#12-the-parallelism-taxonomy" title="Permanent link">&para;</a></h3>
+<p>Four dimensions of parallelism appear in production inference. They compose multiplicatively, and each makes a different demand of the orchestrator.</p>
+<pre class="mermaid"><code>flowchart LR
+    subgraph HOST1 ["Host A · 8 GPUs · one NVLink domain"]
+        G0["GPU 0&lt;br&gt;TP rank 0"]
+        G1["GPU 1&lt;br&gt;TP rank 1"]
+        G2["GPU …"]
+        G3["GPU 7&lt;br&gt;TP rank 7"]
+    end
+    subgraph HOST2 ["Host B · 8 GPUs · one NVLink domain"]
+        H0["GPU 0&lt;br&gt;TP rank 0"]
+        H1["GPU 1&lt;br&gt;TP rank 1"]
+        H2["GPU …"]
+        H3["GPU 7&lt;br&gt;TP rank 7"]
+    end
+    HOST1 --&gt;|"pipeline stage 0 → 1&lt;br&gt;activations over RDMA"| HOST2
+    G0 &lt;-.-&gt;|"all-reduce per layer&lt;br&gt;over NVLink"| G3
+    H0 &lt;-.-&gt;|"all-reduce per layer"| H3</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Dimension</th>
+<th style="text-align: left;">What is split</th>
+<th style="text-align: left;">Communication pattern</th>
+<th style="text-align: left;">Bandwidth sensitivity</th>
+<th style="text-align: left;">Orchestration demand</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>TP</strong> (tensor)</td>
+<td style="text-align: left;">Every weight matrix, across ranks</td>
+<td style="text-align: left;"><code>all-reduce</code> <strong>twice per transformer layer</strong></td>
+<td style="text-align: left;">Extreme — this is why TP wants to stay inside NVLink</td>
+<td style="text-align: left;">All TP ranks must be co-located in one high-bandwidth domain, started together, and share a world size known at process start</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>PP</strong> (pipeline)</td>
+<td style="text-align: left;">Layers, into sequential stages</td>
+<td style="text-align: left;">Point-to-point activation hand-off at stage boundaries</td>
+<td style="text-align: left;">Moderate — one transfer per micro-batch per boundary</td>
+<td style="text-align: left;">Stages can span hosts; ordering and addressability of stages matter</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EP</strong> (expert)</td>
+<td style="text-align: left;">MoE experts, across ranks</td>
+<td style="text-align: left;"><code>all-to-all</code> token dispatch/combine per MoE layer</td>
+<td style="text-align: left;">High and <em>bursty</em> — traffic depends on routing</td>
+<td style="text-align: left;">Same co-location pressure as TP, plus load-imbalance sensitivity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>DP</strong> (data)</td>
+<td style="text-align: left;">Nothing; independent replicas</td>
+<td style="text-align: left;">None between replicas</td>
+<td style="text-align: left;">Zero</td>
+<td style="text-align: left;">This is the dimension that scales horizontally — and it is exactly what <code>LeaderWorkerSet.spec.replicas</code> counts</td>
+</tr>
+</tbody>
+</table>
+<p>The critical observation is that <strong>TP, PP, and EP all live <em>inside</em> one serving unit, while DP is <em>across</em> serving units.</strong> An orchestrator that only understands "number of pods" cannot express this. It needs to know that these 16 pods are two independent copies of an 8-pod thing, not sixteen of anything.</p>
+<h3 id="13-prefilldecode-disaggregation">1.3 Prefill/Decode Disaggregation<a class="headerlink" href="#13-prefilldecode-disaggregation" title="Permanent link">&para;</a></h3>
+<p>The second structural fact is that LLM inference has two phases with opposite hardware profiles.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Prefill</th>
+<th style="text-align: left;">Decode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Work</td>
+<td style="text-align: left;">Process the whole prompt, build the KV cache</td>
+<td style="text-align: left;">Generate one token at a time</td>
+</tr>
+<tr>
+<td style="text-align: left;">Parallelism available</td>
+<td style="text-align: left;">Massive — all prompt tokens at once</td>
+<td style="text-align: left;">One token per sequence per step</td>
+</tr>
+<tr>
+<td style="text-align: left;">Bottleneck</td>
+<td style="text-align: left;"><strong>Compute-bound</strong> (FLOPs)</td>
+<td style="text-align: left;"><strong>Memory-bandwidth-bound</strong> (reading weights + KV cache)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Ideal batch</td>
+<td style="text-align: left;">Small batches, long sequences</td>
+<td style="text-align: left;">Large batches, to amortize weight reads</td>
+</tr>
+<tr>
+<td style="text-align: left;">Ideal hardware</td>
+<td style="text-align: left;">Highest FLOPs available</td>
+<td style="text-align: left;">Highest HBM bandwidth and capacity</td>
+</tr>
+<tr>
+<td style="text-align: left;">Latency SLO</td>
+<td style="text-align: left;">TTFT (time to first token)</td>
+<td style="text-align: left;">ITL / TPOT (inter-token latency)</td>
+</tr>
+</tbody>
+</table>
+<p>Running both phases in the same process forces a compromise: continuous batching interleaves them, and a long prefill stalls every decode in the batch (the "head-of-line blocking" that shows up as ITL spikes). <strong>Disaggregated serving</strong> splits them into separate pools, transferring the KV cache from prefill to decode over the fabric. vLLM and SGLang both support this.</p>
+<p>The orchestration consequence is severe and is exactly what <code>DisaggregatedSet</code> exists for:</p>
+<ul>
+<li>Prefill and decode pools have <strong>different shapes</strong> (different TP degree, different GPU types, different replica counts).</li>
+<li>Their replica counts must scale <strong>independently</strong> — the optimal P:D ratio depends on prompt-to-generation length ratio and shifts with traffic.</li>
+<li>They are <strong>coupled by version</strong>. A prefill server hands a KV cache to a decode server; the two must agree on layout, quantization, and model revision. Rolling one without the other is a correctness bug, not a performance issue.</li>
+<li>Traffic routing must be <strong>revision-aware</strong>: a request's prefill and decode must land on backends of the <em>same</em> revision.</li>
+</ul>
+<p>That last requirement is the single most consequential design constraint in <a href="../08_disaggregatedset/">Module 8</a>, and it is why DisaggregatedSet creates one LeaderWorkerSet <em>per revision per role</em> rather than using LWS's own <code>partition</code> mechanism.</p>
+<h3 id="14-the-requirements-checklist">1.4 The Requirements Checklist<a class="headerlink" href="#14-the-requirements-checklist" title="Permanent link">&para;</a></h3>
+<p>Distilling Parts 1.1–1.3 into what an orchestrator must actually provide:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Requirement</th>
+<th style="text-align: left;">Driven by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>R1</strong></td>
+<td style="text-align: left;">A group of <span class="arithmatex">\(N\)</span> pods is created, scaled, updated, and deleted <strong>as one unit</strong></td>
+<td style="text-align: left;">TP/PP/EP live inside a group; DP is across groups</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R2</strong></td>
+<td style="text-align: left;">Every pod knows its <strong>rank and world size before the process starts</strong></td>
+<td style="text-align: left;">Collective libraries need <code>WORLD_SIZE</code>/<code>RANK</code> at init</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R3</strong></td>
+<td style="text-align: left;">Every pod can <strong>address every other pod</strong> by a stable name, before any pod is Ready</td>
+<td style="text-align: left;">Rendezvous happens during startup, not after</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R4</strong></td>
+<td style="text-align: left;">The group is <strong>co-located</strong> in a chosen topology domain, opt-in</td>
+<td style="text-align: left;">TP/EP bandwidth sensitivity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R5</strong></td>
+<td style="text-align: left;">Capacity for the whole group is acquired <strong>all-or-nothing</strong></td>
+<td style="text-align: left;">A half-scheduled group holds GPUs and serves nothing</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R6</strong></td>
+<td style="text-align: left;">A single pod or container failure <strong>recreates the whole group</strong></td>
+<td style="text-align: left;">Sharded state has no partial-recovery path</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R7</strong></td>
+<td style="text-align: left;">Rollout proceeds <strong>group by group</strong>, with configurable surge and unavailability</td>
+<td style="text-align: left;">Updating half a group produces a mixed-version collective</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R8</strong></td>
+<td style="text-align: left;">Horizontal scaling operates on <strong>group count</strong>, and metrics aggregate per group</td>
+<td style="text-align: left;">DP is the scaling dimension</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R9</strong></td>
+<td style="text-align: left;">Multiple <strong>differently-shaped, version-coupled</strong> groups can be managed and rolled together</td>
+<td style="text-align: left;">Prefill/decode disaggregation</td>
+</tr>
+</tbody>
+</table>
+<p>R1–R8 are LeaderWorkerSet. R9 is DisaggregatedSet.</p>
+<hr />
+<h2 id="part-2-why-the-existing-apis-fall-short">Part 2: Why the Existing APIs Fall Short<a class="headerlink" href="#part-2-why-the-existing-apis-fall-short" title="Permanent link">&para;</a></h2>
+<p>Every one of the built-in workload APIs was tried for this before LWS existed. Understanding exactly where each breaks is the fastest route to understanding why LWS looks the way it does.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">API</th>
+<th style="text-align: center;">R1 group unit</th>
+<th style="text-align: center;">R2 rank</th>
+<th style="text-align: center;">R3 stable DNS</th>
+<th style="text-align: center;">R5 gang</th>
+<th style="text-align: center;">R6 group restart</th>
+<th style="text-align: center;">R7 group rollout</th>
+<th style="text-align: center;">R8 group scale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Deployment</strong></td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>StatefulSet</strong></td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">partial</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">✗</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Job</strong></td>
+<td style="text-align: center;">✓ (completion)</td>
+<td style="text-align: center;">✓ (indexed)</td>
+<td style="text-align: center;">partial</td>
+<td style="text-align: center;">via plugins</td>
+<td style="text-align: center;">✗</td>
+<td style="text-align: center;">n/a</td>
+<td style="text-align: center;">n/a</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>JobSet</strong></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">n/a</td>
+<td style="text-align: center;">n/a</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>LeaderWorkerSet</strong></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓ (alpha)</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+</tbody>
+</table>
+<h3 id="21-deployment">2.1 Deployment<a class="headerlink" href="#21-deployment" title="Permanent link">&para;</a></h3>
+<p>Deployment's model is <em>interchangeable, anonymous, individually-replaceable</em> replicas. Every one of those three words is wrong for a sharded model server. Pods get random name suffixes, so there is no rank. There is no per-pod DNS. The rolling update replaces pods individually, so mid-rollout you have a collective with mismatched weights. It is not a near-miss; it is the opposite design.</p>
+<h3 id="22-statefulset">2.2 StatefulSet<a class="headerlink" href="#22-statefulset" title="Permanent link">&para;</a></h3>
+<p>StatefulSet gets much closer and is, in fact, what LWS builds on. It gives ordinal identity (<code>sts-0</code>, <code>sts-1</code>, …), stable per-pod DNS via a headless Service, <code>podManagementPolicy: Parallel</code> for simultaneous creation, and PVC templates.</p>
+<p>Where it breaks is <strong>dimensionality</strong>. A StatefulSet has exactly one <code>replicas</code> knob. For a multi-host model you need two: how many pods per group, and how many groups. Encoding both in one number (<code>replicas = groups × size</code>) destroys every group-level operation:</p>
+<ul>
+<li>Rolling update walks pods by ordinal, so it would update pod 7 of group 0 and pod 0 of group 1 as unrelated events — guaranteeing a mixed-version collective.</li>
+<li>Scaling by one adds one pod to a group that needed a whole group.</li>
+<li>HPA cannot express "add a replica of the 8-pod thing".</li>
+<li>Failure handling is per-pod by construction.</li>
+</ul>
+<p>There is also no notion of a leader — no single pod to route to, aggregate metrics on, or run the engine's front end.</p>
+<h3 id="23-job-and-jobset">2.3 Job and JobSet<a class="headerlink" href="#23-job-and-jobset" title="Permanent link">&para;</a></h3>
+<p>Indexed Job gives you <code>JOB_COMPLETION_INDEX</code>, which is a real rank. <a href="https://github.com/kubernetes-sigs/jobset">JobSet</a> — LWS's sibling project in SIG-Apps — composes multiple Jobs into a gang-scheduled, DNS-addressable unit, and is genuinely excellent for multi-host <em>training</em>.</p>
+<p>The mismatch is <strong>run-to-completion semantics</strong>. A Job is done when its pods exit successfully; a serving endpoint never exits successfully. Concretely this means: no rolling update (you replace the whole JobSet), no scale subresource for HPA, backoff/retry semantics tuned for batch failure rather than for a hot-standby endpoint, and a lifecycle where "succeeded" is a terminal state you never want to reach.</p>
+<p>The upstream position is that JobSet and LWS are complements, not competitors: <strong>JobSet for training, LWS for serving.</strong> The two share a substantial amount of design DNA — gang scheduling, exclusive placement, per-replica DNS — which is why patterns learned in one transfer to the other.</p>
+<h3 id="24-framework-specific-operators">2.4 Framework-Specific Operators<a class="headerlink" href="#24-framework-specific-operators" title="Permanent link">&para;</a></h3>
+<p>Ray, MPI Operator, TorchElastic and friends all solve rank assignment and rendezvous, and are widely used. Their cost is that they bring an entire framework's control plane into your serving path, they are framework-specific, and their failure semantics are the framework's rather than Kubernetes'. LWS's position is that rank assignment and group lifecycle belong in the <em>workload API</em>, and the framework should be a detail of the container image — which is why LWS integrates with Ray-based vLLM deployments rather than replacing them (<a href="../09_inference_engine_integration/">Module 9</a>).</p>
+<hr />
+<h2 id="part-3-the-leaderworkerset-answer">Part 3: The LeaderWorkerSet Answer<a class="headerlink" href="#part-3-the-leaderworkerset-answer" title="Permanent link">&para;</a></h2>
+<h3 id="31-the-minimal-object">3.1 The Minimal Object<a class="headerlink" href="#31-the-minimal-object" title="Permanent link">&para;</a></h3>
+<p>Here is a complete two-host tensor-parallel deployment, reduced to the fields that matter.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaderworkerset.x-k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LeaderWorkerSet</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">                              </span><span class="c1"># R8: two independent model servers</span>
+<span class="w">  </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">                                </span><span class="c1"># R1: each server is 2 pods (leader + 1 worker)</span>
+<span class="w">    </span><span class="nt">restartPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RecreateGroupOnPodRestart</span><span class="w">  </span><span class="c1"># R6: default</span>
+<span class="w">    </span><span class="nt">leaderTemplate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-leader</span>
+<span class="w">            </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm/vllm-openai:latest</span>
+<span class="w">            </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> limits</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">workerTemplate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-worker</span>
+<span class="w">            </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm/vllm-openai:latest</span>
+<span class="w">            </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> limits</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">rolloutStrategy</span><span class="p">:</span><span class="w">                         </span><span class="c1"># R7</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RollingUpdate</span>
+<span class="w">    </span><span class="nt">rollingUpdateConfiguration</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">      </span><span class="nt">maxSurge</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</code></pre></div>
+<p>Four pods total, in two groups of two, each group spanning two hosts with 8 GPUs each — 16-way tensor parallelism per group. The API expresses the group count and the group size as separate numbers, and everything else follows.</p>
+<div class="admonition note">
+<p class="admonition-title">The group name is the API</p>
+<p>Note the two-level naming: leader pods are <code>vllm-0</code>, <code>vllm-1</code>; workers are <code>vllm-0-1</code>, <code>vllm-1-1</code>. The leader pod's name <strong>is</strong> the group name and is used as the owner and the identity anchor throughout the controller. <a href="../03_group_lifecycle_and_identity/">Module 3</a> covers this in full.</p>
+</div>
+<h3 id="32-requirements-mapped-to-mechanisms">3.2 Requirements Mapped to Mechanisms<a class="headerlink" href="#32-requirements-mapped-to-mechanisms" title="Permanent link">&para;</a></h3>
+<p>This table is the roadmap for the rest of the notes.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Req</th>
+<th style="text-align: left;">Mechanism</th>
+<th style="text-align: left;">Where it lives</th>
+<th style="text-align: left;">Module</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">R1</td>
+<td style="text-align: left;">Leader StatefulSet with one leader pod per group; a worker StatefulSet owned by each leader pod</td>
+<td style="text-align: left;"><code>pkg/controllers/leaderworkerset_controller.go</code>, <code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;"><a href="../03_group_lifecycle_and_identity/">3</a>, <a href="../04_lws_reconciler_internals/">4</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R2</td>
+<td style="text-align: left;"><code>LWS_WORKER_INDEX</code>, <code>LWS_GROUP_SIZE</code> injected by a mutating webhook</td>
+<td style="text-align: left;"><code>pkg/webhooks/pod_webhook.go</code></td>
+<td style="text-align: left;"><a href="../03_group_lifecycle_and_identity/">3</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R3</td>
+<td style="text-align: left;"><code>LWS_LEADER_ADDRESS</code> + headless Service with <code>publishNotReadyAddresses: true</code>; <code>subdomainPolicy</code> Shared or UniquePerReplica</td>
+<td style="text-align: left;"><code>pkg/utils/controller/controller_utils.go</code>, KEP-173</td>
+<td style="text-align: left;"><a href="../03_group_lifecycle_and_identity/">3</a>, <a href="../07_scheduling_placement_and_networking/">7</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R4</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/exclusive-topology</code> annotation → injected pod affinity/anti-affinity</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;"><a href="../05_pod_controller_and_failure_handling/">5</a>, <a href="../07_scheduling_placement_and_networking/">7</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R5</td>
+<td style="text-align: left;"><code>SchedulerProvider</code> interface → Volcano <code>PodGroup</code>, behind the <code>PodGroupPerReplica</code> feature gate</td>
+<td style="text-align: left;"><code>pkg/schedulerprovider/</code>, KEP-407</td>
+<td style="text-align: left;"><a href="../07_scheduling_placement_and_networking/">7</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R6</td>
+<td style="text-align: left;"><code>restartPolicy</code> + container-restart detection in the pod controller</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;"><a href="../05_pod_controller_and_failure_handling/">5</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R7</td>
+<td style="text-align: left;">Partition walk-down over the leader StatefulSet, plus <code>maxSurge</code>/<code>maxUnavailable</code></td>
+<td style="text-align: left;"><code>rollingUpdateParameters()</code></td>
+<td style="text-align: left;"><a href="../06_rollout_and_revisions/">6</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R8</td>
+<td style="text-align: left;"><code>+kubebuilder:subresource:scale</code> with <code>selectorpath=.status.hpaPodSelector</code>, leader-pods-only selector</td>
+<td style="text-align: left;"><code>api/leaderworkerset/v1/leaderworkerset_types.go</code></td>
+<td style="text-align: left;"><a href="../02_api_surface_anatomy/">2</a>, <a href="../06_rollout_and_revisions/">6</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">R9</td>
+<td style="text-align: left;"><code>DisaggregatedSet</code> managing N LeaderWorkerSets, one per (slice, revision, role)</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/</code></td>
+<td style="text-align: left;"><a href="../08_disaggregatedset/">8</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-why-two-tiers-of-statefulset">3.3 Why Two Tiers of StatefulSet<a class="headerlink" href="#33-why-two-tiers-of-statefulset" title="Permanent link">&para;</a></h3>
+<p>The most-questioned design decision in LWS is the two-tier structure: one leader StatefulSet for the whole LWS, plus one worker StatefulSet per group, owned by the leader <em>pod</em>. The obvious alternative — one flat StatefulSet of <code>replicas × size</code> pods — fails immediately, as §2.2 showed. The less obvious alternative — the LWS controller creating worker StatefulSets directly — is worth understanding, because the rejected option explains a lot of code.</p>
+<p>Making the <strong>leader pod</strong> the owner of the worker StatefulSet buys three things:</p>
+<ol>
+<li><strong>Garbage collection is free.</strong> Deleting a leader pod cascades to its worker StatefulSet, which cascades to its worker pods. Group teardown — during scale-down, rolling update, or <code>RecreateGroupOnPodRestart</code> — is a single delete plus Kubernetes' own GC. There is no finalizer, and indeed <code>Reconcile</code> returns immediately if <code>DeletionTimestamp</code> is set.</li>
+<li><strong>Group lifecycle is anchored to a real object.</strong> The leader pod's existence <em>is</em> the group's existence, which gives the controller a natural place to hang labels (<code>group-index</code>, <code>group-key</code>) and a natural key for the scale subresource selector.</li>
+<li><strong>The rollout gets a free ordering primitive.</strong> Because leader pods are members of a StatefulSet, LWS can drive a group-by-group rollout using the StatefulSet controller's own <code>partition</code> mechanism, rather than implementing ordered replacement itself.</li>
+</ol>
+<p>The cost, and it is real: worker StatefulSets are <strong>not</strong> in the LWS controller's <code>Owns()</code> graph, so the controller needs a second, label-based watch to notice their changes. That is <code>enqueueLWSRequests</code> in <a href="../04_lws_reconciler_internals/">Module 4</a>, and forgetting it exists is a common source of "why didn't my reconcile fire" confusion.</p>
+<hr />
+<h2 id="part-4-the-ecosystem-division-of-labour">Part 4: The Ecosystem Division of Labour<a class="headerlink" href="#part-4-the-ecosystem-division-of-labour" title="Permanent link">&para;</a></h2>
+<p>LWS is deliberately small. Knowing what it <em>refuses</em> to do is as important as knowing what it does, because a PR that adds a responsibility LWS has explicitly delegated will not be merged.</p>
+<pre class="mermaid"><code>flowchart TD
+    subgraph L4 ["Serving stacks (compose everything below)"]
+        LLMD["llm-d&lt;br&gt;CNCF sandbox · vLLM + P/D + prefix cache"]
+        DYN["NVIDIA Dynamo"]
+        LLMAZ["llmaz · OME · Kubeflow Trainer · AXLearn"]
+    end
+    subgraph L3 ["Traffic"]
+        GIE["Gateway API Inference Extension&lt;br&gt;model-aware routing, load-aware LB"]
+    end
+    subgraph L2 ["Workload APIs"]
+        LWSAPI["&lt;b&gt;LeaderWorkerSet&lt;/b&gt;&lt;br&gt;group as unit of replication"]
+        DS["&lt;b&gt;DisaggregatedSet&lt;/b&gt;&lt;br&gt;N version-coupled roles"]
+        JS["JobSet&lt;br&gt;(training counterpart)"]
+    end
+    subgraph L1 ["Capacity and scheduling"]
+        KUEUE["Kueue&lt;br&gt;quota, admission, TAS, DWS flex-start"]
+        VOLC["Volcano / Kube-scheduler&lt;br&gt;gang scheduling via PodGroup"]
+        HPA["HPA / KEDA&lt;br&gt;via /scale subresource"]
+    end
+    subgraph L0 ["Kubernetes primitives"]
+        STS["StatefulSet&lt;br&gt;ordinals · DNS · PVC · parallel creation"]
+    end
+
+    LLMD --&gt; DS
+    DYN --&gt; LWSAPI
+    LLMAZ --&gt; LWSAPI
+    GIE --&gt; LWSAPI
+    DS --&gt; LWSAPI
+    LWSAPI --&gt; STS
+    KUEUE -.-&gt;|"admits"| LWSAPI
+    VOLC -.-&gt;|"gang-schedules"| LWSAPI
+    HPA -.-&gt;|"scales"| LWSAPI</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Concern</th>
+<th style="text-align: left;">Owner</th>
+<th style="text-align: left;">LWS's role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Ordinals, stable DNS, PVC binding, parallel pod creation</td>
+<td style="text-align: left;">StatefulSet</td>
+<td style="text-align: left;">Creates StatefulSets and configures them</td>
+</tr>
+<tr>
+<td style="text-align: left;">Quota, queueing, admission, topology-aware scheduling, DWS flex-start</td>
+<td style="text-align: left;">Kueue</td>
+<td style="text-align: left;">Wears a <code>kueue.x-k8s.io/queue-name</code> label; otherwise passive</td>
+</tr>
+<tr>
+<td style="text-align: left;">Gang scheduling</td>
+<td style="text-align: left;">Volcano (via <code>SchedulerProvider</code>)</td>
+<td style="text-align: left;">Creates a <code>PodGroup</code> per group and labels pods into it</td>
+</tr>
+<tr>
+<td style="text-align: left;">Horizontal autoscaling</td>
+<td style="text-align: left;">HPA / KEDA</td>
+<td style="text-align: left;">Exposes <code>/scale</code>; publishes a leader-only pod selector</td>
+</tr>
+<tr>
+<td style="text-align: left;">Model-aware request routing, prefix-cache-aware load balancing</td>
+<td style="text-align: left;">Gateway API Inference Extension</td>
+<td style="text-align: left;">None — routing is out of scope</td>
+</tr>
+<tr>
+<td style="text-align: left;">Model download, quantization, engine flags</td>
+<td style="text-align: left;">The container image</td>
+<td style="text-align: left;">None</td>
+</tr>
+<tr>
+<td style="text-align: left;">Prefill/decode role coordination</td>
+<td style="text-align: left;"><strong>DisaggregatedSet</strong></td>
+<td style="text-align: left;">Same project, layer above</td>
+</tr>
+</tbody>
+</table>
+<p>Two co-design relationships are worth knowing about when reading issues and PRs. <strong><a href="https://github.com/llm-d/llm-d">llm-d</a></strong> (CNCF sandbox) is the reference consumer that both APIs are co-designed with, and several KEPs cite llm-d requirements directly. <strong>JobSet</strong> is the sibling API; when a mechanism exists in one and not the other, the question "should this be shared?" comes up in review, and the honest answer is usually "eventually, via a common library that does not yet exist."</p>
+<hr />
+<h2 id="part-5-project-status-at-v090">Part 5: Project Status at v0.9.0<a class="headerlink" href="#part-5-project-status-at-v090" title="Permanent link">&para;</a></h2>
+<h3 id="51-feature-maturity">5.1 Feature Maturity<a class="headerlink" href="#51-feature-maturity" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">KEP</th>
+<th style="text-align: left;">Maturity</th>
+<th style="text-align: left;">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Core group API (leader + workers, dual template)</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>leaderworkerset.x-k8s.io/v1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Rolling update with <code>maxUnavailable</code>/<code>maxSurge</code></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>maxUnavailable &gt; 1</code> needs the upstream <code>MaxUnavailableStatefulSet</code> gate</td>
+</tr>
+<tr>
+<td style="text-align: left;">ControllerRevision-based rollout</td>
+<td style="text-align: left;">KEP-238</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">Enables rollback and revision-aware status</td>
+</tr>
+<tr>
+<td style="text-align: left;">Exclusive topology placement</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">Annotation-driven</td>
+</tr>
+<tr>
+<td style="text-align: left;">Restart policies / group failure handling</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>Default</code> value deprecated in favour of <code>None</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Startup policy (<code>LeaderReady</code>)</td>
+<td style="text-align: left;">KEP-135</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">Subgroups</td>
+<td style="text-align: left;">KEP-115, KEP-257</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>LeaderWorker</code> and <code>LeaderExcluded</code> policy types</td>
+</tr>
+<tr>
+<td style="text-align: left;">Headless Service per group</td>
+<td style="text-align: left;">KEP-173</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"><code>subdomainPolicy: UniquePerReplica</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">User-settable <code>partition</code></td>
+<td style="text-align: left;">KEP-511</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">Canary and xPyD rollouts</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>volumeClaimTemplates</code></td>
+<td style="text-align: left;">KEP-622</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;">Note the field-forwarding gaps in <a href="../07_scheduling_placement_and_networking/">Module 7</a></td>
+</tr>
+<tr>
+<td style="text-align: left;">Resizable <code>size</code></td>
+<td style="text-align: left;">KEP-552</td>
+<td style="text-align: left;">Stable</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">Gang scheduling</td>
+<td style="text-align: left;">KEP-407</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;">Volcano only; <code>PodGroupPerReplica</code> feature gate; API may change</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>RecreateGroupAfterStart</code></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;"><strong>Experimental</strong></td>
+<td style="text-align: left;">Annotation-gated, not a spec field</td>
+</tr>
+<tr>
+<td style="text-align: left;">DisaggregatedSet</td>
+<td style="text-align: left;">KEP-766</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;">Shipped in v0.9.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">DisaggregatedSet slices</td>
+<td style="text-align: left;">KEP-846</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">DisaggregatedSet placement policy</td>
+<td style="text-align: left;">KEP-848</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">DisaggregatedSet per-role HPA</td>
+<td style="text-align: left;">KEP-849</td>
+<td style="text-align: left;"><strong>Alpha</strong></td>
+<td style="text-align: left;"><code>DisaggregatedSetRoleScaler</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Fail-fast restart budget</td>
+<td style="text-align: left;">KEP-820</td>
+<td style="text-align: left;"><strong>Proposal only</strong></td>
+<td style="text-align: left;"><code>status: provisional</code>, no implementation in <code>pkg/</code></td>
+</tr>
+</tbody>
+</table>
+<p>The alpha column is where the contribution opportunities are. See <a href="../appendix_pr_opportunities/">Appendix B</a>.</p>
+<h3 id="52-adoption">5.2 Adoption<a class="headerlink" href="#52-adoption" title="Permanent link">&para;</a></h3>
+<p>Public adopters listed upstream: <strong>AWS</strong> (EKS multi-node TensorRT-LLM + Triton, and an EFA-enabled EKS Blueprints pattern for multi-node vLLM), <strong>DaoCloud</strong> (default mechanism for cross-node large models), <strong>Google Cloud</strong> (multi-host gen-AI serving on GKE; DeepSeek-R1 671B and Llama 3.1 405B guides), <strong>NVIDIA</strong> (recommended deployment for multi-node NIM), and <strong>Red Hat</strong> (Leader Worker Set Operator on OpenShift via OperatorHub).</p>
+<p>Listed integrations: AXLearn, Kubeflow Trainer, llm-d, llmaz, NVIDIA Dynamo, OME, SGLang, and vLLM.</p>
+<p>The practical value of this list for a contributor is that it tells you <strong>who will feel your change</strong>. An API change to <code>leaderWorkerTemplate</code> touches every one of these; a change to the DisaggregatedSet planner touches llm-d and essentially no one else, which is why alpha DS changes move considerably faster through review.</p>
+<h3 id="53-governance">5.3 Governance<a class="headerlink" href="#53-governance" title="Permanent link">&para;</a></h3>
+<p>LWS lives in <code>kubernetes-sigs</code> under <strong>SIG-Apps</strong>. Discussion happens in <code>#sig-apps</code> on Kubernetes Slack and on the <code>kubernetes-sig-apps</code> mailing list. Approvers at the root <code>OWNERS</code> level are a small set — <code>ahg-g</code>, <code>Edwinhr716</code>, <code>kerthcet</code> recur across <code>OWNERS</code>, <code>site/OWNERS</code>, and the KEP approver lists — so review bandwidth, not disagreement, is usually the rate limiter on a PR. Non-trivial features require a KEP; <a href="../11_contributor_workflow/">Module 11</a> walks that process.</p>
+<hr />
+<h2 id="lab-establish-the-baseline">Lab: Establish the Baseline<a class="headerlink" href="#lab-establish-the-baseline" title="Permanent link">&para;</a></h2>
+<p>The goal is a working two-host tensor-parallel deployment you can return to in every later module. Everything after this assumes you have it.</p>
+<div class="admonition warning">
+<p class="admonition-title">Scale and verification</p>
+<p>This lab needs <strong>two nodes with 8 GPUs each</strong> in a single high-bandwidth domain, and a model large enough to genuinely require both. A single-GPU stand-in will run the API paths and teach you nothing about R3, R4, or R5. Commands below are transcribed from upstream examples and GKE documentation and are marked <strong>unverified</strong> where not executed against a live cluster.</p>
+</div>
+<h3 id="step-1-provision-multi-host-accelerator-capacity-unverified">Step 1 — Provision multi-host accelerator capacity (unverified)<a class="headerlink" href="#step-1-provision-multi-host-accelerator-capacity-unverified" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># GKE: a 2-node A3 High pool. Placement policy keeps the nodes in one</span>
+<span class="c1"># high-bandwidth domain, which is what makes cross-host TP viable.</span>
+gcloud<span class="w"> </span>container<span class="w"> </span>node-pools<span class="w"> </span>create<span class="w"> </span>a3-pool<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cluster<span class="o">=</span>lws-lab<span class="w"> </span>--region<span class="o">=</span>us-central1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--machine-type<span class="o">=</span>a3-highgpu-8g<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--accelerator<span class="o">=</span><span class="nv">type</span><span class="o">=</span>nvidia-h100-80gb,count<span class="o">=</span><span class="m">8</span>,gpu-driver-version<span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--num-nodes<span class="o">=</span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--placement-type<span class="o">=</span>COMPACT<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--enable-gvnic
+</code></pre></div>
+<p>Capacity for these machine types is region-limited. If <code>COMPACT</code> placement cannot be satisfied, either request a reservation or use Dynamic Workload Scheduler flex-start — and note that flex-start changes the scheduling story enough to matter in <a href="../07_scheduling_placement_and_networking/">Module 7</a>.</p>
+<h3 id="step-2-install-lws">Step 2 — Install LWS<a class="headerlink" href="#step-2-install-lws" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">VERSION</span><span class="o">=</span>v0.9.0
+kubectl<span class="w"> </span>apply<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://github.com/kubernetes-sigs/lws/releases/download/<span class="nv">$VERSION</span>/manifests.yaml
+
+kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/lws-controller-manager
+kubectl<span class="w"> </span>api-resources<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;leaderworkerset|disaggregatedset&#39;</span>
+</code></pre></div>
+<p>You should see both <code>leaderworkersets</code> (short name <code>lws</code>) and, since v0.9.0, <code>disaggregatedsets</code> and <code>disaggregatedsetrolescalers</code>.</p>
+<h3 id="step-3-deploy-the-baseline-and-read-the-object-graph">Step 3 — Deploy the baseline and read the object graph<a class="headerlink" href="#step-3-deploy-the-baseline-and-read-the-object-graph" title="Permanent link">&para;</a></h3>
+<p>Use the upstream vLLM example as the starting point, then answer these from the live cluster rather than from the YAML:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws,sts,svc,pods<span class="w"> </span>-o<span class="w"> </span>wide
+kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision
+</code></pre></div>
+<p>Confirm each of the following, which are the claims from Part 3.3:</p>
+<ol>
+<li>There is <strong>one</strong> StatefulSet named after the LWS, with <code>replicas</code> equal to <code>spec.replicas</code>.</li>
+<li>There is <strong>one additional</strong> StatefulSet per group, named after its leader pod.</li>
+<li><code>kubectl get sts &lt;group-name&gt; -o jsonpath='{.spec.ordinals.start}'</code> returns <code>1</code>.</li>
+<li><code>kubectl get sts &lt;group-name&gt; -o jsonpath='{.metadata.ownerReferences[0].kind}'</code> returns <code>Pod</code>, not <code>LeaderWorkerSet</code>.</li>
+<li><code>kubectl get svc &lt;lws-name&gt; -o jsonpath='{.spec.publishNotReadyAddresses}'</code> returns <code>true</code>.</li>
+</ol>
+<h3 id="step-4-falsify-the-statefulset-argument">Step 4 — Falsify the StatefulSet argument<a class="headerlink" href="#step-4-falsify-the-statefulset-argument" title="Permanent link">&para;</a></h3>
+<p>Prove §2.2 to yourself rather than taking it on faith. Scale the LWS by one group and watch what changes:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>scale<span class="w"> </span>lws/vllm<span class="w"> </span>--replicas<span class="o">=</span><span class="m">3</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+<p>Then count: how many pods appeared, and in what order relative to each other? Now consider what a StatefulSet with <code>replicas: 6</code> would have done on a <code>kubectl scale --replicas=7</code>. The difference between "one more group" and "one more pod" is the entire justification for the API.</p>
+<h3 id="step-5-establish-the-failure-baseline">Step 5 — Establish the failure baseline<a class="headerlink" href="#step-5-establish-the-failure-baseline" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Kill one worker in group 0 and watch the blast radius.</span>
+kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>vllm-0-1
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-w
+</code></pre></div>
+<p>Record which pods were recreated. This is R6 and the default <code>RecreateGroupOnPodRestart</code> policy in action; you will revisit exactly this experiment with a different <code>restartPolicy</code> in <a href="../05_pod_controller_and_failure_handling/">Module 5</a>.</p>
+<h3 id="checkpoint-questions">Checkpoint questions<a class="headerlink" href="#checkpoint-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Why does the <em>leader</em> StatefulSet not set <code>.spec.ordinals.start</code>, while every worker StatefulSet does?</li>
+<li>If you deleted the leader pod of group 1 directly, what would clean up its worker StatefulSet — the LWS controller, or Kubernetes garbage collection?</li>
+<li>Your model needs 16-way TP but only 8 GPUs fit in an NVLink domain. What does that imply about <code>size</code>, and what does it imply about R4?</li>
+</ul>
+<p>Continue to <a href="../02_api_surface_anatomy/">Module 2: API Surface Anatomy</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

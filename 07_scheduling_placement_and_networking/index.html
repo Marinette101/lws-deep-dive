@@ -1,0 +1,1973 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/07_scheduling_placement_and_networking/">
+      
+      
+        <link rel="prev" href="../06_rollout_and_revisions/">
+      
+      
+        <link rel="next" href="../08_disaggregatedset/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/07_scheduling_placement_and_networking/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 7 - Scheduling, Placement, and Networking - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-7-scheduling-placement-and-networking" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 7 - Scheduling, Placement, and Networking
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/07_scheduling_placement_and_networking/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-placement-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The Placement Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-exclusive-topology-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: Exclusive Topology Placement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: Exclusive Topology Placement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-injected-affinity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The injected affinity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-subgroup-level-exclusivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Subgroup-level exclusivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-the-leaderworker-asymmetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 The leader/worker asymmetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-not-versioned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Not versioned
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-gang-scheduling-kep-407-alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Gang Scheduling (KEP-407, Alpha)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: Gang Scheduling (KEP-407, Alpha)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-what-shipped-versus-what-the-kep-describes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 What shipped versus what the KEP describes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-the-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 The interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-the-volcano-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 The Volcano provider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-enabling-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Enabling it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-alpha-caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Alpha caveats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-topology-aware-scheduling-with-kueue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Topology-Aware Scheduling with Kueue
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: Topology-Aware Scheduling with Kueue">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-choosing-between-the-three" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Choosing between the three
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-subdomain-policy-at-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Subdomain Policy at Scale
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-volumeclaimtemplates-kep-622" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: volumeClaimTemplates (KEP-622)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: volumeClaimTemplates (KEP-622)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-two-gaps-worth-knowing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Two gaps worth knowing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-worker-resizing-kep-552" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: Worker Resizing (KEP-552)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-place-a-group-deliberately" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Place a Group Deliberately
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Place a Group Deliberately">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-exclusive-topology-on-kind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A — Exclusive topology on kind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a2-prove-the-exists-term-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A2 — Prove the Exists term matters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a3-two-level-exclusivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A3 — Two-level exclusivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-gang-scheduling-with-volcano-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B — Gang scheduling with Volcano (unverified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b2-the-rbac-trap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B2 — The RBAC trap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-c-kueue-tas-unverified-needs-real-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part C — Kueue TAS (unverified, needs real topology)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-the-placement-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: The Placement Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-exclusive-topology-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: Exclusive Topology Placement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: Exclusive Topology Placement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-injected-affinity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The injected affinity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-subgroup-level-exclusivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Subgroup-level exclusivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-the-leaderworker-asymmetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 The leader/worker asymmetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-not-versioned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Not versioned
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-gang-scheduling-kep-407-alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Gang Scheduling (KEP-407, Alpha)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: Gang Scheduling (KEP-407, Alpha)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-what-shipped-versus-what-the-kep-describes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 What shipped versus what the KEP describes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-the-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 The interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-the-volcano-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 The Volcano provider
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-enabling-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Enabling it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-alpha-caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Alpha caveats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-topology-aware-scheduling-with-kueue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Topology-Aware Scheduling with Kueue
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: Topology-Aware Scheduling with Kueue">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-choosing-between-the-three" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Choosing between the three
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-subdomain-policy-at-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Subdomain Policy at Scale
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-volumeclaimtemplates-kep-622" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: volumeClaimTemplates (KEP-622)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: volumeClaimTemplates (KEP-622)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-two-gaps-worth-knowing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Two gaps worth knowing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-worker-resizing-kep-552" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: Worker Resizing (KEP-552)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-place-a-group-deliberately" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Place a Group Deliberately
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Place a Group Deliberately">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-exclusive-topology-on-kind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A — Exclusive topology on kind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a2-prove-the-exists-term-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A2 — Prove the Exists term matters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a3-two-level-exclusivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A3 — Two-level exclusivity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-gang-scheduling-with-volcano-unverified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B — Gang scheduling with Volcano (unverified)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b2-the-rbac-trap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B2 — The RBAC trap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-c-kueue-tas-unverified-needs-real-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part C — Kueue TAS (unverified, needs real topology)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-7-scheduling-placement-and-networking">Module 7: Scheduling, Placement, and Networking<a class="headerlink" href="#module-7-scheduling-placement-and-networking" title="Permanent link">&para;</a></h1>
+<p>A group is only as good as its placement. Sixteen pods spread across eight racks will run your model and deliver a fraction of the throughput of the same sixteen pods in one NVLink domain — and a group whose leader schedules while its workers do not is worse than a group that never scheduled at all, because it holds accelerators and serves nothing.</p>
+<p>This module covers the three mechanisms LWS provides for that problem, in increasing order of ambition: <strong>exclusive topology placement</strong> (LWS's own, always available), <strong>gang scheduling</strong> (delegated to Volcano, alpha), and <strong>topology-aware scheduling</strong> (delegated to Kueue). It also covers <strong>subdomain policy trade-offs at scale</strong>, <strong><code>volumeClaimTemplates</code></strong>, and <strong>worker resizing</strong> — the two remaining stable KEPs that did not fit elsewhere.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06), release v0.9.0. Primary sources: <code>pkg/webhooks/pod_webhook.go</code>, <code>pkg/controllers/pod_controller.go</code>, <code>pkg/schedulerprovider/</code>, <code>pkg/utils/utils.go</code>, and KEPs 407, 552, 622.</p>
+</div>
+<hr />
+<h2 id="part-1-the-placement-problem">Part 1: The Placement Problem<a class="headerlink" href="#part-1-the-placement-problem" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    P["A group of N pods&lt;br&gt;must land somewhere"]
+    P --&gt; Q1{"Must they be&lt;br&gt;close together?"}
+    Q1 --&gt;|no| N1["Nothing to do"]
+    Q1 --&gt;|yes| Q2{"How close, and&lt;br&gt;who decides?"}
+    Q2 --&gt; M1["&lt;b&gt;Exclusive topology&lt;/b&gt;&lt;br&gt;LWS annotation → pod affinity&lt;br&gt;'one group per domain, exclusively'&lt;br&gt;&lt;i&gt;stable, no dependencies&lt;/i&gt;"]
+    Q2 --&gt; M2["&lt;b&gt;Kueue TAS&lt;/b&gt;&lt;br&gt;podset-required-topology annotation&lt;br&gt;'this podset within one domain'&lt;br&gt;&lt;i&gt;needs Kueue&lt;/i&gt;"]
+    P --&gt; Q3{"Must they be&lt;br&gt;admitted together?"}
+    Q3 --&gt;|yes| M3["&lt;b&gt;Gang scheduling&lt;/b&gt;&lt;br&gt;Volcano PodGroup with minMember&lt;br&gt;'all N or none'&lt;br&gt;&lt;i&gt;alpha, needs Volcano&lt;/i&gt;"]</code></pre>
+<p>These are three different guarantees, frequently conflated:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Mechanism</th>
+<th style="text-align: left;">Guarantee</th>
+<th style="text-align: left;">Failure mode it prevents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Exclusive topology</td>
+<td style="text-align: left;">Every pod of the group is in the <strong>same</strong> domain, and <strong>no other group</strong> shares it</td>
+<td style="text-align: left;">Cross-rack tensor parallelism; noisy neighbours in the same NVLink domain</td>
+</tr>
+<tr>
+<td style="text-align: left;">Topology-aware scheduling</td>
+<td style="text-align: left;">The group is placed within a domain <strong>at a chosen level of the hierarchy</strong>, preferring tighter levels</td>
+<td style="text-align: left;">Placement that satisfies "same rack" when "same host" was available</td>
+</tr>
+<tr>
+<td style="text-align: left;">Gang scheduling</td>
+<td style="text-align: left;"><strong>All or none</strong> of the group is admitted</td>
+<td style="text-align: left;">Leader scheduled, workers Pending, accelerators held hostage</td>
+</tr>
+</tbody>
+</table>
+<p>Exclusive topology without gang scheduling is the combination most people start with, and it is precisely the combination that produces the deadlock from <a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §6: the leader claims a domain, the workers cannot fit in it, and the group is stuck forever.</p>
+<hr />
+<h2 id="part-2-exclusive-topology-placement">Part 2: Exclusive Topology Placement<a class="headerlink" href="#part-2-exclusive-topology-placement" title="Permanent link">&para;</a></h2>
+<p>Driven entirely by an annotation on the LWS:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/exclusive-topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cloud.google.com/gce-topology-block</span>
+</code></pre></div>
+<p>The value is a <strong>node label key</strong> that defines what "a domain" means: <code>kubernetes.io/hostname</code> for per-host, a rack label for per-rack, a cloud provider's block label for a network block.</p>
+<h3 id="21-the-injected-affinity">2.1 The injected affinity<a class="headerlink" href="#21-the-injected-affinity" title="Permanent link">&para;</a></h3>
+<p><code>SetExclusiveAffinities(pod, groupUniqueKey, topologyKey, podAffinityKey)</code> in <code>pkg/webhooks/pod_webhook.go</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">exclusiveAffinityApplied</span><span class="p">(</span><span class="o">*</span><span class="nx">pod</span><span class="p">,</span><span class="w"> </span><span class="nx">topologyKey</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// idempotent</span>
+
+<span class="nx">pod</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Affinity</span><span class="p">.</span><span class="nx">PodAffinity</span><span class="p">.</span><span class="nx">RequiredDuringSchedulingIgnoredDuringExecution</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="o">...</span><span class="p">,</span><span class="w"> </span><span class="nx">corev1</span><span class="p">.</span><span class="nx">PodAffinityTerm</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">LabelSelector</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelector</span><span class="p">{</span><span class="nx">MatchExpressions</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorRequirement</span><span class="p">{</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">podAffinityKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorOpIn</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">groupUniqueKey</span><span class="p">}},</span>
+<span class="w">    </span><span class="p">}},</span>
+<span class="w">    </span><span class="nx">TopologyKey</span><span class="p">:</span><span class="w"> </span><span class="nx">topologyKey</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="nx">pod</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Affinity</span><span class="p">.</span><span class="nx">PodAntiAffinity</span><span class="p">.</span><span class="nx">RequiredDuringSchedulingIgnoredDuringExecution</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="o">...</span><span class="p">,</span><span class="w"> </span><span class="nx">corev1</span><span class="p">.</span><span class="nx">PodAffinityTerm</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">LabelSelector</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelector</span><span class="p">{</span><span class="nx">MatchExpressions</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorRequirement</span><span class="p">{</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">podAffinityKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorOpExists</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">podAffinityKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorOpNotIn</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">groupUniqueKey</span><span class="p">}},</span>
+<span class="w">    </span><span class="p">}},</span>
+<span class="w">    </span><span class="nx">TopologyKey</span><span class="p">:</span><span class="w"> </span><span class="nx">topologyKey</span><span class="p">,</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>Read in plain language:</p>
+<ul>
+<li><strong>Affinity</strong>: "co-locate me, in this topology domain, with pods that share my <code>group-key</code>."</li>
+<li><strong>Anti-affinity</strong>: "repel any pod that <strong>has</strong> a <code>group-key</code> <strong>and</strong> whose <code>group-key</code> is not mine."</li>
+</ul>
+<p>The <code>Exists</code> term in the anti-affinity is the load-bearing detail. Without it, the <code>NotIn</code> selector would also match pods that have no <code>group-key</code> label at all — every DaemonSet, every unrelated workload — and the group would refuse to schedule anywhere populated. With it, only <em>other LWS groups</em> are repelled.</p>
+<p>Both terms are <code>RequiredDuringSchedulingIgnoredDuringExecution</code>. There is no soft variant, which means exclusive topology is a hard constraint that can leave a group Pending indefinitely rather than degrading gracefully.</p>
+<p>Idempotence is via <code>exclusiveAffinityApplied(pod, topologyKey)</code>, which requires <strong>both</strong> a PodAffinity term and a PodAntiAffinity term with that exact <code>TopologyKey</code> to consider the work done.</p>
+<h3 id="22-subgroup-level-exclusivity">2.2 Subgroup-level exclusivity<a class="headerlink" href="#22-subgroup-level-exclusivity" title="Permanent link">&para;</a></h3>
+<p>The subgroup variant is byte-identical except that <code>podAffinityKey</code> is <code>leaderworkerset.sigs.k8s.io/subgroup-key</code> and the topology key comes from <code>subgroup-exclusive-topology</code>. Both can apply to the same pod, producing two affinity terms and two anti-affinity terms.</p>
+<p>The canonical two-level configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/exclusive-topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cloud.google.com/gce-topology-block</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/subgroup-exclusive-topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubernetes.io/hostname</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
+<span class="w">    </span><span class="nt">subGroupPolicy</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">subGroupSize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+</code></pre></div>
+<p>"The whole 16-pod group lives in one network block, and each 8-pod subgroup lives on one host." That is exactly the topology a 16-way tensor-parallel model wants: NVLink within each host, high-bandwidth fabric between them, and no other group competing for either.</p>
+<h3 id="23-the-leaderworker-asymmetry">2.3 The leader/worker asymmetry<a class="headerlink" href="#23-the-leaderworker-asymmetry" title="Permanent link">&para;</a></h3>
+<p>As established in <a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §6, placement is implemented differently on the two sides:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Leader</th>
+<th style="text-align: left;">Workers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Mechanism</td>
+<td style="text-align: left;">Pod affinity + anti-affinity, injected at <strong>admission</strong></td>
+<td style="text-align: left;">Plain <code>nodeSelector</code> on the worker StatefulSet, set <strong>after the leader is scheduled</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Sees</td>
+<td style="text-align: left;">The topology <em>key</em></td>
+<td style="text-align: left;">The topology <em>value</em> read off the leader's node</td>
+</tr>
+</tbody>
+</table>
+<p>The leader schedules first and claims a domain by value; the workers are then pinned to that literal value. <code>setNodeSelectorForWorkerPods</code> returns early if <code>pod.Spec.NodeName == ""</code>, because there is no value to read yet.</p>
+<div class="admonition warning">
+<p class="admonition-title">The asymmetry is the failure mode</p>
+<p>Because the leader schedules <em>before</em> the workers' feasibility is known, the scheduler has no way to reject a domain that cannot hold the whole group. Exclusive topology therefore guarantees co-location <strong>if the group schedules at all</strong>, and offers nothing when it cannot. That gap is the entire argument for gang scheduling.</p>
+</div>
+<h3 id="24-not-versioned">2.4 Not versioned<a class="headerlink" href="#24-not-versioned" title="Permanent link">&para;</a></h3>
+<p>The <code>exclusive-topology</code> annotation is metadata, and metadata is excluded from the revision patch (<a href="../04_lws_reconciler_internals/">Module 4</a>, §5.1). Changing it does <strong>not</strong> cut a revision and does <strong>not</strong> trigger a rollout. Existing groups keep their old placement; only groups created afterwards get the new one.</p>
+<p>If you need to re-place an existing fleet, you must force a rollout by some other means — changing the image tag, or deleting groups. This surprises people, and it is worth a sentence in the upstream docs that is not currently there.</p>
+<hr />
+<h2 id="part-3-gang-scheduling-kep-407-alpha">Part 3: Gang Scheduling (KEP-407, Alpha)<a class="headerlink" href="#part-3-gang-scheduling-kep-407-alpha" title="Permanent link">&para;</a></h2>
+<h3 id="31-what-shipped-versus-what-the-kep-describes">3.1 What shipped versus what the KEP describes<a class="headerlink" href="#31-what-shipped-versus-what-the-kep-describes" title="Permanent link">&para;</a></h3>
+<p>KEP-407 is at <code>status: provisional</code>, <code>stage: alpha</code>, and the divergence between the proposal and the implementation is large enough that reading the KEP alone will mislead you.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">KEP-407 says</th>
+<th style="text-align: left;">Code actually has</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Feature gate <code>PodGroupPerReplica</code></td>
+<td style="text-align: left;"><strong>No feature gate exists.</strong> <code>grep -rn "PodGroupPerReplica"</code> matches only <code>keps/407-gang-scheduling/kep.yaml:35</code>. <code>pkg/features</code> does not exist; nothing imports <code>utilfeature</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>BaseResourceProvider</code>, <code>SchedulerProvider</code>, <code>ReplicaResourceProvider</code> interfaces</td>
+<td style="text-align: left;"><strong>Only <code>SchedulerProvider</code></strong> was built</td>
+</tr>
+<tr>
+<td style="text-align: left;">PodGroup named <code>lws.Name-groupIndex</code></td>
+<td style="text-align: left;"><code>GetPodGroupName(lwsName, groupIndex, revision)</code> → e.g. <code>lws-1-dd6699c7c</code> — the <strong>revision hash is appended</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">Enabled by a config field, <code>gangSchedulingManagement.schedulerProvider</code></td>
+</tr>
+</tbody>
+</table>
+<p>The revision hash in the PodGroup name is not a detail. It means a rolling update produces a <strong>new PodGroup per group</strong> rather than mutating the existing one, which is what makes gang scheduling compose correctly with <code>maxSurge</code> (surge groups get their own PodGroups) and with rollback.</p>
+<h3 id="32-the-interface">3.2 The interface<a class="headerlink" href="#32-the-interface" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">SchedulerProvider</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">CreatePodGroupIfNotExists</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">lws</span><span class="w"> </span><span class="o">*</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">,</span><span class="w"> </span><span class="nx">leaderPod</span><span class="w"> </span><span class="o">*</span><span class="nx">corev1</span><span class="p">.</span><span class="nx">Pod</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+<span class="w">    </span><span class="nx">InjectPodGroupMetadata</span><span class="p">(</span><span class="nx">pod</span><span class="w"> </span><span class="o">*</span><span class="nx">corev1</span><span class="p">.</span><span class="nx">Pod</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+<span class="p">}</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">SupportedSchedulerProviders</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">sets</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;volcano&quot;</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">PodGroupNameFmt</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;%s-%s-%s&quot;</span>
+</code></pre></div>
+<p>Two methods, called from two different places:</p>
+<ul>
+<li><strong><code>InjectPodGroupMetadata</code></strong> is called from the <strong>pod mutating webhook</strong>, so <em>every</em> pod in the group gets stamped.</li>
+<li><strong><code>CreatePodGroupIfNotExists</code></strong> is called from the <strong>pod controller</strong>, on leader pods only, and importantly <strong>before the <code>Size == 1</code> short-circuit</strong> — so even a single-pod group gets a PodGroup.</li>
+</ul>
+<p>The split exists because different schedulers want different things. Volcano wants an annotation (<code>scheduling.k8s.io/group-name</code>) plus a <code>PodGroup</code> CRD; the upstream coscheduling plugin wants a label (<code>scheduling.x-k8s.io/pod-group</code>); YuniKorn needs no CRD at all and could return <code>nil</code> from both. Adding a provider means implementing two methods and adding a string to <code>SupportedSchedulerProviders</code>.</p>
+<h3 id="33-the-volcano-provider">3.3 The Volcano provider<a class="headerlink" href="#33-the-volcano-provider" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>sequenceDiagram
+    participant PW as Pod Webhook
+    participant PC as Pod Controller
+    participant API as kube-apiserver
+    participant V as Volcano Scheduler
+
+    Note over PW: every pod in the group
+    PW-&gt;&gt;PW: InjectPodGroupMetadata
+    Note over PW: annotations["scheduling.k8s.io/group-name"]&lt;br/&gt;= "&lt;lws&gt;-&lt;groupIndex&gt;-&lt;revisionHash&gt;"
+    PW--&gt;&gt;API: mutated pod (unschedulable until gang is met)
+    Note over PC: leader pod only
+    PC-&gt;&gt;API: Get PodGroup by that name
+    API--&gt;&gt;PC: NotFound
+    PC-&gt;&gt;API: Create PodGroup&lt;br/&gt;minMember, minResources, queue&lt;br/&gt;owner = leader Pod
+    V-&gt;&gt;API: watch PodGroup + annotated pods
+    V-&gt;&gt;V: admit all N together, or none</code></pre>
+<p><code>CreatePodGroupIfNotExists</code> builds the PodGroup with:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Labels</td>
+<td style="text-align: left;"><code>name</code>, <code>group-index</code>, <code>template-revision-hash</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotations</td>
+<td style="text-align: left;">Every LWS annotation with the literal prefix <code>volcano.sh/</code> (<code>inheritVolcanoAnnotations</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Spec.MinMember</code></td>
+<td style="text-align: left;"><code>*lws.Spec.LeaderWorkerTemplate.Size</code> — <strong>overridden to <code>1</code> when <code>StartupPolicy == LeaderReady</code></strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Spec.MinResources</code></td>
+<td style="text-align: left;"><code>utils.CalculatePGMinResources(lws)</code> — always the <strong>full group's</strong> requests, even in <code>LeaderReady</code> mode</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Spec.Queue</code></td>
+<td style="text-align: left;"><code>lws.Annotations["scheduling.volcano.sh/queue-name"]</code> if present</td>
+</tr>
+<tr>
+<td style="text-align: left;">Owner</td>
+<td style="text-align: left;">The <strong>leader Pod</strong>, so the PodGroup is GC'd with the group</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>LeaderReady</code> handling is the subtle part and worth spelling out. Under <code>LeaderReady</code>, workers do not exist until the leader is Ready, so a gang of <code>size</code> can never be satisfied — the scheduler would deadlock waiting for pods that will not be created. Setting <code>minMember: 1</code> lets the leader schedule alone. But <code>minResources</code> stays at the <strong>whole group's</strong> requests, so Volcano still reserves capacity for all the workers up front. Without that, the leader would schedule into a domain that cannot hold its workers, reintroducing exactly the failure gang scheduling exists to prevent.</p>
+<p><code>utils.CalculatePGMinResources(lws)</code> computes this as <code>resourcehelper.PodRequests</code> on the leader template (falling back to the worker template when <code>leaderTemplate</code> is nil), plus <code>quotav1.Add</code> of the worker template's requests <code>size - 1</code> times.</p>
+<p>Note also the queue annotation quirk: <code>scheduling.volcano.sh/queue-name</code> does <strong>not</strong> match the <code>volcano.sh/</code> inheritance prefix, which is why it needs separate handling. If you add a second scheduler provider, expect a similar wart.</p>
+<h3 id="34-enabling-it">3.4 Enabling it<a class="headerlink" href="#34-enabling-it" title="Permanent link">&para;</a></h3>
+<p>There is <strong>no CLI flag</strong>. Gang scheduling is config-file only:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">config.lws.x-k8s.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Configuration</span>
+<span class="nt">gangSchedulingManagement</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">schedulerProvider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">volcano</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Install method</th>
+<th style="text-align: left;">How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Helm</td>
+<td style="text-align: left;"><code>--set gangSchedulingManagement.schedulerProvider=volcano</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Kustomize</td>
+<td style="text-align: left;">Edit the <code>lws-manager-config</code> ConfigMap <strong>and</strong> enable the <code>../components/volcano</code> component in <code>config/default/kustomization.yaml</code> (it is commented out by default)</td>
+</tr>
+</tbody>
+</table>
+<p>The kustomize component matters: <code>config/components/volcano/manager_role_patch.yaml</code> adds <code>scheduling.volcano.sh/podgroups: create,get,list,watch</code> to <code>manager-role</code>. Setting the config field without enabling the component gives you a controller that tries to create PodGroups and gets RBAC-denied.</p>
+<p>When <code>cfg.GangSchedulingManagement == nil</code>, the provider is <code>nil</code> and both the webhook and the pod controller skip provider calls entirely — zero overhead.</p>
+<h3 id="35-alpha-caveats">3.5 Alpha caveats<a class="headerlink" href="#35-alpha-caveats" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Volcano only.</strong> The interface is designed for more, but <code>SupportedSchedulerProviders</code> has one entry. Adding the upstream coscheduling plugin is a well-scoped contribution with a clear interface to implement against.</li>
+<li><strong>The API may change.</strong> The README labels this "Alpha level, API may change in the future," and the KEP is still <code>provisional</code> with <code>stable: v0.9.0</code> in its milestone block — a milestone that has passed without the KEP graduating.</li>
+<li><strong>e2e is explicitly unresolved.</strong> The KEP says "needs to discuss whether we need to implement e2e testing." There is a <code>test/e2e/e2e_gang_scheduling_test.go</code>, so some coverage exists; whether it satisfies the graduation criteria is an open question a contributor could usefully answer.</li>
+<li><strong>The KEP's own risk section</strong> names maintenance cost as more schedulers integrate, and notes that schedulers supporting only <code>minMember</code> (without <code>minResources</code>) cannot cleanly support all <code>StartupPolicy</code> values.</li>
+</ul>
+<hr />
+<h2 id="part-4-topology-aware-scheduling-with-kueue">Part 4: Topology-Aware Scheduling with Kueue<a class="headerlink" href="#part-4-topology-aware-scheduling-with-kueue" title="Permanent link">&para;</a></h2>
+<p>Kueue's Topology Aware Scheduling (TAS) is a different tool for an adjacent problem: rather than "one group per domain, exclusively", it expresses "place this podset within one domain at level X of the hierarchy."</p>
+<p>LWS integrates by wearing labels and annotations; there is no LWS code involved at all.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaderworkerset.x-k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LeaderWorkerSet</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">kueue.x-k8s.io/queue-name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span><span class="w">          </span><span class="c1"># admission via Kueue</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">leaderTemplate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">kueue.x-k8s.io/podset-required-topology</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cloud.google.com/gce-topology-block&quot;</span>
+<span class="w">          </span><span class="nt">kueue.x-k8s.io/podset-group-name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vllm-multi-host&quot;</span>
+<span class="w">    </span><span class="nt">workerTemplate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">kueue.x-k8s.io/podset-required-topology</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cloud.google.com/gce-topology-block&quot;</span>
+<span class="w">          </span><span class="nt">kueue.x-k8s.io/podset-group-name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vllm-multi-host&quot;</span>
+</code></pre></div>
+<p>Two things make this work:</p>
+<ol>
+<li><strong>Per-template annotations.</strong> The annotations go on <code>leaderTemplate.metadata</code> and <code>workerTemplate.metadata</code>, not on the LWS itself. LWS passes pod-template metadata through, so Kueue sees them on the pods.</li>
+<li><strong><code>podset-group-name</code>.</strong> Leader pods and worker pods are two distinct podsets from Kueue's perspective; the shared group name is what tells TAS to place them together.</li>
+</ol>
+<p>Kueue also brings admission control and Dynamic Workload Scheduler flex-start integration, which for scarce accelerator capacity is often more valuable than the topology placement itself. A group that waits in a queue is much better operationally than a group that is Pending against the scheduler with no visibility.</p>
+<div class="admonition bug">
+<p class="admonition-title">The upstream TAS example does not work as written</p>
+<p><code>site/content/en/docs/examples/tas.md</code> declares topology levels as <code>cloud.google.com/gce-topology-block</code> and friends, but the LWS annotations in the same page reference <strong><code>cloud.provider.com/topology-block</code></strong> — a placeholder domain that matches no declared level. Copy-pasting the example gives you an LWS that Kueue cannot place.</p>
+<p>The page also pins <code>vllm/vllm-openai:v0.8.5</code>, well behind current vLLM, and its <code>{{&lt; tabpane &gt;}}</code> contains exactly one tab, which renders oddly. All three are in <a href="../appendix_pr_opportunities/">Appendix B</a>.</p>
+</div>
+<h3 id="41-choosing-between-the-three">4.1 Choosing between the three<a class="headerlink" href="#41-choosing-between-the-three" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Situation</th>
+<th style="text-align: left;">Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Single-host groups, no contention</td>
+<td style="text-align: left;">Nothing</td>
+</tr>
+<tr>
+<td style="text-align: left;">Multi-host group, dedicated cluster</td>
+<td style="text-align: left;">Exclusive topology</td>
+</tr>
+<tr>
+<td style="text-align: left;">Multi-host group, shared cluster, capacity contention</td>
+<td style="text-align: left;">Exclusive topology <strong>+ gang scheduling</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Multiple teams, quota, scarce accelerators, DWS flex-start</td>
+<td style="text-align: left;">Kueue (+ TAS), possibly with exclusive topology</td>
+</tr>
+<tr>
+<td style="text-align: left;">Hierarchical placement preferences (host &gt; rack &gt; block)</td>
+<td style="text-align: left;">Kueue TAS — exclusive topology only expresses one level per annotation</td>
+</tr>
+</tbody>
+</table>
+<p>Exclusive topology and Kueue TAS are not mutually exclusive but do overlap; running both means two independent constraint systems must agree, and when they do not, the symptom is an unschedulable pod with a long and unhelpful scheduler message.</p>
+<hr />
+<h2 id="part-5-subdomain-policy-at-scale">Part 5: Subdomain Policy at Scale<a class="headerlink" href="#part-5-subdomain-policy-at-scale" title="Permanent link">&para;</a></h2>
+<p><a href="../03_group_lifecycle_and_identity/">Module 3</a> covered the mechanics. The operational trade-off deserves its own treatment, because it is a real scaling limit.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"><code>Shared</code> (default)</th>
+<th style="text-align: left;"><code>UniquePerReplica</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Service objects</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"><code>replicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DNS records per lookup</td>
+<td style="text-align: left;"><code>replicas × size</code></td>
+<td style="text-align: left;"><code>size</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Created by</td>
+<td style="text-align: left;">LWS reconciler</td>
+<td style="text-align: left;">Pod reconciler</td>
+</tr>
+<tr>
+<td style="text-align: left;">Owner</td>
+<td style="text-align: left;">The LWS</td>
+<td style="text-align: left;">The <strong>leader Pod</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Lifetime</td>
+<td style="text-align: left;">As long as the LWS</td>
+<td style="text-align: left;">Recreated on every group recreation</td>
+</tr>
+</tbody>
+</table>
+<p>At 100 groups of 8 pods, a <code>Shared</code> headless Service resolves to 800 A records on every <code>LWS_LEADER_ADDRESS</code> lookup. Every pod in every group does that lookup at startup, and again on every reconnect. CoreDNS becomes a measurable component of cold-start latency, and in the worst case a source of rendezvous timeouts.</p>
+<p><code>UniquePerReplica</code> trades that for 100 extra Service objects — more work for kube-proxy, EndpointSlice controllers, and CoreDNS's own watch load. The break-even is workload-specific; the honest guidance is that <code>Shared</code> is fine into the tens of groups and worth revisiting above that.</p>
+<p>Because the field is mutable and changes every pod's FQDN, switching it forces a full rollout during which old and new groups have different address shapes. Any external client that hardcodes an FQDN will break. Choose at design time if you can.</p>
+<hr />
+<h2 id="part-6-volumeclaimtemplates-kep-622">Part 6: <code>volumeClaimTemplates</code> (KEP-622)<a class="headerlink" href="#part-6-volumeclaimtemplates-kep-622" title="Permanent link">&para;</a></h2>
+<p>Added in v0.8.0 so that LWS-generated StatefulSets can use real ReadWriteOnce volumes instead of <code>emptyDir</code> — which matters when a model is larger than the node's ephemeral storage.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">volumeClaimTemplates</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-cache</span>
+<span class="w">        </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">accessModes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;ReadWriteOnce&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium-rwo</span>
+<span class="w">          </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500Gi</span>
+<span class="w">    </span><span class="nt">persistentVolumeClaimRetentionPolicy</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">whenDeleted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Delete</span>
+<span class="w">      </span><span class="nt">whenScaled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Retain</span>
+</code></pre></div>
+<p>The stated design decision: <strong>leader and worker StatefulSets share the same <code>volumeClaimTemplates</code> field.</strong> There are no separate templates for each. If your leader needs a different volume from your workers, this API cannot express it — a real limitation and a plausible future KEP.</p>
+<p>If <code>persistentVolumeClaimRetentionPolicy</code> is unset it inherits StatefulSet's defaults: <code>whenDeleted: Retain</code>, <code>whenScaled: Retain</code>. For model caches on expensive storage classes, <code>whenScaled: Retain</code> means a scale-down leaves the PVCs behind, still billing.</p>
+<h3 id="61-two-gaps-worth-knowing">6.1 Two gaps worth knowing<a class="headerlink" href="#61-two-gaps-worth-knowing" title="Permanent link">&para;</a></h3>
+<p><strong>The forwarding is lossy.</strong> <code>GetPVCApplyConfiguration</code> copies only <code>accessModes</code>, <code>storageClassName</code>, <code>volumeMode</code>, and <code>resources.{requests,limits}</code>. Silently dropped: <code>selector</code>, <code>dataSource</code>, <code>dataSourceRef</code>, and any labels or annotations on the PVC template. If you are cloning model volumes from a VolumeSnapshot, your <code>dataSource</code> disappears without a warning.</p>
+<p><strong>There is no validation at all.</strong> The validating webhook does not touch <code>volumeClaimTemplates</code> — not the name/<code>volumeMount</code> cross-check the API doc comment promises ("Every claim in this list must have at least one matching (by name) volumeMount in one container in the template"), and not immutability. Grep confirms the only code touching the field is <code>GetPVCApplyConfiguration</code> and the two <code>WithVolumeClaimTemplates</code> calls.</p>
+<p>The immutability gap is the sharper one: StatefulSet's own <code>volumeClaimTemplates</code> are immutable, so editing them on an LWS produces an apply that the API server rejects, surfacing as a <code>FailedUpdate</code> event rather than a clean admission error. Adding webhook validation here is a contained, well-motivated PR.</p>
+<p>The KEP's Non-Goals section is literally <code>n/a</code>, and its unit/integration/e2e test-plan subsections are empty placeholders — so there is documentation work here too.</p>
+<hr />
+<h2 id="part-7-worker-resizing-kep-552">Part 7: Worker Resizing (KEP-552)<a class="headerlink" href="#part-7-worker-resizing-kep-552" title="Permanent link">&para;</a></h2>
+<p>Covered in <a href="../06_rollout_and_revisions/">Module 6</a>, §8.2, but it belongs in the KEP inventory: <code>size</code> is mutable, changing it triggers a normal rollout via the <code>size</code> pod annotation, and <strong>the <code>ResizePolicy</code> field the KEP describes does not exist in the codebase</strong>. The Implementation History records the pivot — <code>2025-08-05: Implementation revised to avoid additions to the API surface</code> — but the KEP body was never updated.</p>
+<p>The explicit non-goal is more interesting than the feature: <strong>no in-place resize</strong>, because "it adds more complexities like dynamically changing the topology envs at runtime." Since <code>LWS_GROUP_SIZE</code> and <code>TPU_WORKER_HOSTNAMES</code> are injected at admission and read at process start, in-place resize would require both a mechanism to update them and an engine willing to re-read them. Neither exists.</p>
+<p>KEP-552 is also the only content KEP with <strong>no <code>latest-milestone</code>, no <code>stage</code>, and no <code>milestone</code> block</strong> in its <code>kep.yaml</code>.</p>
+<hr />
+<h2 id="lab-place-a-group-deliberately">Lab: Place a Group Deliberately<a class="headerlink" href="#lab-place-a-group-deliberately" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Scale</p>
+<p>Part A runs on <code>kind</code> with three or more worker nodes — no accelerators needed, and <code>kind</code> makes it easy to fake topology labels. Parts B and C need <strong>real multi-host accelerator capacity</strong> and are marked unverified.</p>
+</div>
+<h3 id="part-a-exclusive-topology-on-kind">Part A — Exclusive topology on kind<a class="headerlink" href="#part-a-exclusive-topology-on-kind" title="Permanent link">&para;</a></h3>
+<p>Create a four-node kind cluster and fake a two-rack topology:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>kind-worker<span class="w">  </span>kind-worker2<span class="w"> </span>topology.example.com/rack<span class="o">=</span>rack-a
+kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>kind-worker3<span class="w"> </span>kind-worker4<span class="w"> </span>topology.example.com/rack<span class="o">=</span>rack-b
+</code></pre></div>
+<p>Deploy two LWSes, each <code>replicas: 1, size: 2</code>, both annotated:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/exclusive-topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology.example.com/rack</span>
+</code></pre></div>
+<p>Verify:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="s1">&#39;NAME:.metadata.name,NODE:.spec.nodeName&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>&lt;leader&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.affinity}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>&lt;leader-name&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.template.spec.nodeSelector}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>Confirm all three claims from Part 2:</p>
+<ol>
+<li>Each group is entirely within one rack.</li>
+<li>The two groups are in <strong>different</strong> racks (the anti-affinity worked).</li>
+<li>The leader has affinity terms; the worker StatefulSet has a plain <code>nodeSelector</code> naming the rack <strong>value</strong>.</li>
+</ol>
+<p>Now deploy a third LWS with the same annotation. It should be Pending forever — there is no third rack. Read the scheduler's message and note how unhelpful it is; this is what an exclusive-topology capacity problem looks like in production.</p>
+<h3 id="part-a2-prove-the-exists-term-matters">Part A2 — Prove the <code>Exists</code> term matters<a class="headerlink" href="#part-a2-prove-the-exists-term-matters" title="Permanent link">&para;</a></h3>
+<p>Deploy a DaemonSet with no LWS labels. Confirm the LWS groups still schedule alongside it. Then reason through what the anti-affinity would do if the <code>Exists</code> requirement were removed from the selector — specifically, which pods would start matching <code>NotIn</code>, and why every node in the cluster would become infeasible.</p>
+<h3 id="part-a3-two-level-exclusivity">Part A3 — Two-level exclusivity<a class="headerlink" href="#part-a3-two-level-exclusivity" title="Permanent link">&para;</a></h3>
+<p>Add subgroups:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/exclusive-topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology.example.com/rack</span>
+<span class="w">    </span><span class="nt">leaderworkerset.sigs.k8s.io/subgroup-exclusive-topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubernetes.io/hostname</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+<span class="w">    </span><span class="nt">subGroupPolicy</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">subGroupSize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</code></pre></div>
+<p>Then dump the leader's affinity and count the terms. You should see <strong>two</strong> <code>podAffinity</code> terms and <strong>two</strong> <code>podAntiAffinity</code> terms, with different <code>topologyKey</code>s and different label keys (<code>group-key</code> versus <code>subgroup-key</code>).</p>
+<h3 id="part-b-gang-scheduling-with-volcano-unverified">Part B — Gang scheduling with Volcano (unverified)<a class="headerlink" href="#part-b-gang-scheduling-with-volcano-unverified" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>https://raw.githubusercontent.com/volcano-sh/volcano/v1.12.1/installer/volcano-development.yaml
+
+<span class="c1"># Enable in LWS — BOTH the config field and the RBAC component are required.</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>lws<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span>--version<span class="o">=</span>v0.9.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>lws-system<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>gangSchedulingManagement.schedulerProvider<span class="o">=</span>volcano
+</code></pre></div>
+<p>Deploy an LWS whose group cannot fit, and compare against Part A's third LWS:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>podgroups
+kubectl<span class="w"> </span>get<span class="w"> </span>podgroup<span class="w"> </span>&lt;lws&gt;-0-&lt;revhash&gt;<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>yq<span class="w"> </span><span class="s1">&#39;.spec&#39;</span>
+</code></pre></div>
+<p>Verify:</p>
+<ul>
+<li>The PodGroup name ends in the revision hash, matching §3.1.</li>
+<li><code>minMember == size</code>, and <code>minResources</code> is the whole group's requests.</li>
+<li>Its owner is the <strong>leader Pod</strong>.</li>
+<li>Every pod carries <code>scheduling.k8s.io/group-name</code> with that name.</li>
+</ul>
+<p>Then set <code>startupPolicy: LeaderReady</code>, recreate, and confirm <code>minMember</code> drops to <code>1</code> while <code>minResources</code> stays at the full group. Explain to yourself why both halves of that are necessary.</p>
+<p>Finally, trigger a rollout and watch a <strong>new</strong> PodGroup appear rather than the existing one being mutated. That is the revision hash in the name doing its job.</p>
+<h3 id="part-b2-the-rbac-trap">Part B2 — The RBAC trap<a class="headerlink" href="#part-b2-the-rbac-trap" title="Permanent link">&para;</a></h3>
+<p>Set <code>gangSchedulingManagement.schedulerProvider=volcano</code> <strong>without</strong> enabling the <code>../components/volcano</code> kustomize component (kustomize installs only). Watch the controller logs:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>logs<span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;podgroup\|forbidden&#39;</span>
+</code></pre></div>
+<p>You should see RBAC denials on <code>podgroups</code>. This is a common misconfiguration and worth being able to recognize instantly.</p>
+<h3 id="part-c-kueue-tas-unverified-needs-real-topology">Part C — Kueue TAS (unverified, needs real topology)<a class="headerlink" href="#part-c-kueue-tas-unverified-needs-real-topology" title="Permanent link">&para;</a></h3>
+<p>Follow the upstream TAS example, but <strong>fix the bug from §4</strong>: make the <code>podset-required-topology</code> annotation reference a topology level you actually declared, not <code>cloud.provider.com/topology-block</code>.</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>kueue<span class="w"> </span>oci://registry.k8s.io/kueue/charts/kueue<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="o">=</span><span class="s2">&quot;0.16.1&quot;</span><span class="w"> </span>--create-namespace<span class="w"> </span>--namespace<span class="o">=</span>kueue-system
+</code></pre></div>
+<p>Then confirm placement:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="s1">&#39;NAME:.metadata.name,NODE:.spec.nodeName&#39;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>workloads
+</code></pre></div>
+<p>Having reproduced the bug and the fix, you have a complete, tested documentation PR. That is a good first contribution: small, obviously correct, and verified against a live cluster.</p>
+<h3 id="checkpoint-questions">Checkpoint questions<a class="headerlink" href="#checkpoint-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Exclusive topology guarantees co-location "if the group schedules at all." Construct the precise interleaving of scheduler decisions that produces a permanently-stuck group, and say which of Volcano's two PodGroup fields prevents it.</li>
+<li>Under <code>LeaderReady</code>, <code>minMember</code> is 1 but <code>minResources</code> is the whole group. What breaks if you set <code>minResources</code> to just the leader's requests?</li>
+<li>Changing <code>exclusive-topology</code> does not trigger a rollout. Given the revision-patch exclusion list from <a href="../04_lws_reconciler_internals/">Module 4</a>, is that a bug or a design decision? Argue both sides — this is exactly the kind of question a KEP would need to answer.</li>
+</ul>
+<p>Continue to <a href="../08_disaggregatedset/">Module 8: DisaggregatedSet</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

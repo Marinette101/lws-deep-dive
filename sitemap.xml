@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/01_multihost_inference_problem_space/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/01_multihost_inference_problem_space/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/01_multihost_inference_problem_space/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/02_api_surface_anatomy/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/02_api_surface_anatomy/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/02_api_surface_anatomy/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/03_group_lifecycle_and_identity/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/03_group_lifecycle_and_identity/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/03_group_lifecycle_and_identity/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/04_lws_reconciler_internals/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/04_lws_reconciler_internals/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/04_lws_reconciler_internals/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/05_pod_controller_and_failure_handling/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/05_pod_controller_and_failure_handling/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/05_pod_controller_and_failure_handling/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/06_rollout_and_revisions/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/06_rollout_and_revisions/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/06_rollout_and_revisions/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/07_scheduling_placement_and_networking/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/07_scheduling_placement_and_networking/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/07_scheduling_placement_and_networking/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/08_disaggregatedset/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/08_disaggregatedset/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/08_disaggregatedset/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/09_inference_engine_integration/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/09_inference_engine_integration/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/09_inference_engine_integration/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/10_operations_and_troubleshooting/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/10_operations_and_troubleshooting/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/10_operations_and_troubleshooting/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/11_contributor_workflow/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/11_contributor_workflow/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/11_contributor_workflow/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/appendix_glossary/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/appendix_glossary/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/appendix_glossary/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/appendix_pr_opportunities/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/appendix_pr_opportunities/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/appendix_pr_opportunities/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/appendix_reading_list/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/appendix_reading_list/"/>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/appendix_reading_list/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/01_multihost_inference_problem_space/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/01_multihost_inference_problem_space/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/01_multihost_inference_problem_space/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/02_api_surface_anatomy/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/02_api_surface_anatomy/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/02_api_surface_anatomy/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/03_group_lifecycle_and_identity/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/03_group_lifecycle_and_identity/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/03_group_lifecycle_and_identity/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/04_lws_reconciler_internals/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/04_lws_reconciler_internals/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/04_lws_reconciler_internals/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/05_pod_controller_and_failure_handling/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/05_pod_controller_and_failure_handling/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/05_pod_controller_and_failure_handling/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/06_rollout_and_revisions/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/06_rollout_and_revisions/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/06_rollout_and_revisions/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/07_scheduling_placement_and_networking/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/07_scheduling_placement_and_networking/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/07_scheduling_placement_and_networking/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/08_disaggregatedset/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/08_disaggregatedset/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/08_disaggregatedset/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/09_inference_engine_integration/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/09_inference_engine_integration/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/09_inference_engine_integration/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/10_operations_and_troubleshooting/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/10_operations_and_troubleshooting/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/10_operations_and_troubleshooting/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/11_contributor_workflow/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/11_contributor_workflow/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/11_contributor_workflow/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/appendix_glossary/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/appendix_glossary/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/appendix_glossary/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/appendix_pr_opportunities/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/appendix_pr_opportunities/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/appendix_pr_opportunities/"/>
+    </url>
+    <url>
+        <loc>https://marinette101.github.io/lws-deep-dive/zh/appendix_reading_list/</loc>
+        <lastmod>2026-08-08</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="zh" href="https://marinette101.github.io/lws-deep-dive/zh/appendix_reading_list/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://marinette101.github.io/lws-deep-dive/appendix_reading_list/"/>
+    </url>
+</urlset>

@@ -1,0 +1,1839 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/06_rollout_and_revisions/">
+      
+      
+        <link rel="prev" href="../05_pod_controller_and_failure_handling/">
+      
+      
+        <link rel="next" href="../07_scheduling_placement_and_networking/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/06_rollout_and_revisions/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 6 - Rollouts, Revisions, and Scaling - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-6-rollouts-revisions-and-scaling" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 6 - Rollouts, Revisions, and Scaling
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/06_rollout_and_revisions/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-what-updated-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: What "Updated" Means
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-base-arithmetic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Base Arithmetic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-the-five-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: The Five Cases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-partition-walk-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The Partition Walk-Down
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-surge-reclamation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Surge Reclamation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-a-full-worked-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: A Full Worked Trace
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-partition-as-a-user-knob" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: partition as a User Knob
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: partition as a User Knob">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-xpyd-ratio-preservation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 xPyD ratio preservation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-the-condition-and-truncation-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 The condition and truncation interaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Scaling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 8: Scaling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-horizontal-scaling-via-replicas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Horizontal scaling via replicas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-vertical-scaling-via-size-kep-552" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Vertical scaling via size (KEP-552)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-9-the-maxunavailablestatefulset-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 9: The MaxUnavailableStatefulSet Dependency
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-make-the-arithmetic-visible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Make the Arithmetic Visible
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Make the Arithmetic Visible">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-reproduce-the-nine-stage-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Reproduce the nine-stage trace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-watch-surge-reclamation-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Watch surge reclamation explicitly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-prove-move-c-the-unavailability-accounting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Prove move (c) — the unavailability accounting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-exercise-the-canary-floor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Exercise the canary floor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-scale-mid-rollout-and-find-case-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Scale mid-rollout and find Case 4
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-verify-the-maxunavailablestatefulset-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6 — Verify the MaxUnavailableStatefulSet gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-what-updated-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: What "Updated" Means
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-base-arithmetic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Base Arithmetic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-the-five-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: The Five Cases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-partition-walk-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The Partition Walk-Down
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-surge-reclamation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Surge Reclamation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-a-full-worked-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: A Full Worked Trace
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-partition-as-a-user-knob" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: partition as a User Knob
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: partition as a User Knob">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-xpyd-ratio-preservation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 xPyD ratio preservation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-the-condition-and-truncation-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 The condition and truncation interaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Scaling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 8: Scaling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-horizontal-scaling-via-replicas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Horizontal scaling via replicas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-vertical-scaling-via-size-kep-552" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Vertical scaling via size (KEP-552)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-9-the-maxunavailablestatefulset-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 9: The MaxUnavailableStatefulSet Dependency
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-make-the-arithmetic-visible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Make the Arithmetic Visible
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Make the Arithmetic Visible">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-reproduce-the-nine-stage-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Reproduce the nine-stage trace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-watch-surge-reclamation-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Watch surge reclamation explicitly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-prove-move-c-the-unavailability-accounting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Prove move (c) — the unavailability accounting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-exercise-the-canary-floor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Exercise the canary floor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-scale-mid-rollout-and-find-case-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Scale mid-rollout and find Case 4
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-verify-the-maxunavailablestatefulset-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6 — Verify the MaxUnavailableStatefulSet gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-6-rollouts-revisions-and-scaling">Module 6: Rollouts, Revisions, and Scaling<a class="headerlink" href="#module-6-rollouts-revisions-and-scaling" title="Permanent link">&para;</a></h1>
+<p>Updating a Deployment is easy because its replicas are interchangeable. Updating an LWS is not, because each replica is a multi-pod collective that must be replaced atomically, and because taking one group down means taking <code>size</code> accelerators out of service at once. On an 8-GPU-per-group deployment, a careless <code>maxUnavailable</code> is the difference between a smooth rollout and a capacity incident.</p>
+<p><code>rollingUpdateParameters()</code> is a hundred lines of arithmetic that reduces the whole problem to two numbers — a <strong>partition</strong> and a <strong>replica count</strong> — which are then handed to the StatefulSet controller. This module derives both, line by line, and then traces the upstream worked example through the actual code to show that the derivation is right.</p>
+<p>Covered here: <strong>what "updated" means</strong>, <strong>the base arithmetic</strong>, <strong>the five cases</strong>, <strong>the partition walk-down</strong>, <strong>surge reclamation</strong>, <strong>a full worked trace</strong>, <strong><code>partition</code> as a user-facing canary knob</strong>, <strong>scaling</strong>, and <strong>the <code>MaxUnavailableStatefulSet</code> dependency</strong>.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06), release v0.9.0. Primary source: <code>pkg/controllers/leaderworkerset_controller.go</code>, plus KEP-511 and KEP-552.</p>
+</div>
+<hr />
+<h2 id="part-1-what-updated-means">Part 1: What "Updated" Means<a class="headerlink" href="#part-1-what-updated-means" title="Permanent link">&para;</a></h2>
+<p>Everything downstream depends on a per-group boolean pair. <code>getReplicaStates(ctx, lws, stsReplicas, revisionKey) []replicaState</code> builds a fixed-length slice indexed by group:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">replicaState</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ready</span><span class="w">   </span><span class="kt">bool</span>
+<span class="w">    </span><span class="nx">updated</span><span class="w"> </span><span class="kt">bool</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The construction is more careful than it looks:</p>
+<ol>
+<li>Leader pods are listed by <code>{name, worker-index: "0"}</code> and placed into a slice of length <code>stsReplicas</code> using <code>utils.SortByIndex</code> keyed on the <code>group-index</code> label. Out-of-range or unparseable indices are <strong>dropped</strong>, leaving zero-valued entries — which read as <code>{ready: false, updated: false}</code>.</li>
+<li>Worker StatefulSets are listed by <code>{name}</code> and sorted the same way.</li>
+<li>For index <code>idx</code>, the expected name is <code>fmt.Sprintf("%s-%d", lws.Name, idx)</code>. <strong>If the pod at that slot has a different name</strong> — or the StatefulSet does, when <code>Size &gt; 1</code> — the slot is <code>{false, false}</code>. This is how "not yet created" and "currently being rebuilt" are represented without a separate state.</li>
+<li>Otherwise:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="nx">leaderUpdated</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">revisionutils</span><span class="p">.</span><span class="nx">GetRevisionKey</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">sortedPods</span><span class="p">[</span><span class="nx">idx</span><span class="p">])</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">revisionKey</span>
+<span class="nx">leaderReady</span><span class="w">   </span><span class="o">:=</span><span class="w"> </span><span class="nx">podutils</span><span class="p">.</span><span class="nx">PodRunningAndReady</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">sortedPods</span><span class="p">[</span><span class="nx">idx</span><span class="p">])</span>
+<span class="k">if</span><span class="w"> </span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="p">.</span><span class="nx">Size</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">updated</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">leaderUpdated</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">revisionutils</span><span class="p">.</span><span class="nx">GetRevisionKey</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">sortedSts</span><span class="p">[</span><span class="nx">idx</span><span class="p">])</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">revisionKey</span>
+<span class="w">    </span><span class="nx">ready</span><span class="w">   </span><span class="p">=</span><span class="w"> </span><span class="nx">leaderReady</span><span class="w">   </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">statefulsetutils</span><span class="p">.</span><span class="nx">StatefulsetReady</span><span class="p">(</span><span class="nx">sortedSts</span><span class="p">[</span><span class="nx">idx</span><span class="p">])</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A group is <strong>updated</strong> only if <em>both</em> its leader pod and its worker StatefulSet carry the current revision key, and <strong>ready</strong> only if the leader pod is Running-and-Ready <em>and</em>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">StatefulsetReady</span><span class="p">(</span><span class="nx">sts</span><span class="w"> </span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">*</span><span class="nx">sts</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">sts</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">AvailableReplicas</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">           </span><span class="nx">sts</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">CurrentRevision</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">sts</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">UpdateRevision</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Note that <code>revisionKey</code> — the value of <code>leaderworkerset.sigs.k8s.io/template-revision-hash</code> — is the <strong>only</strong> definition of "updated". There is no template comparison anywhere in the rollout path. The label propagates automatically: the LWS controller puts it on the leader StatefulSet's pod template, the StatefulSet controller copies it to new leader pods, and the pod controller stamps the worker StatefulSet and its pod template with the <em>leader pod's</em> key.</p>
+<hr />
+<h2 id="part-2-the-base-arithmetic">Part 2: The Base Arithmetic<a class="headerlink" href="#part-2-the-base-arithmetic" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nx">maxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w">       </span><span class="p">=</span><span class="w"> </span><span class="nx">intstr</span><span class="p">.</span><span class="nx">GetScaledValueFromIntOrPercent</span><span class="p">(</span><span class="o">&amp;...</span><span class="nx">MaxSurge</span><span class="p">,</span><span class="w">       </span><span class="nb">int</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">),</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span><span class="w">   </span><span class="c1">// round UP</span>
+<span class="nx">maxUnavailable</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">intstr</span><span class="p">.</span><span class="nx">GetScaledValueFromIntOrPercent</span><span class="p">(</span><span class="o">&amp;...</span><span class="nx">MaxUnavailable</span><span class="p">,</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">),</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span><span class="w">  </span><span class="c1">// round DOWN</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">burstReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="nx">maxSurge</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Quantity</th>
+<th style="text-align: left;">Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>maxSurge</code></td>
+<td style="text-align: left;">Percentages round <strong>up</strong>, then clamped to <code>lwsReplicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>maxUnavailable</code></td>
+<td style="text-align: left;">Percentages round <strong>down</strong> — this is the rounding that makes <code>10%</code> of 5 replicas become 0 and trips the webhook</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>burstReplicas</code></td>
+<td style="text-align: left;"><code>lwsReplicas + maxSurge</code> — the ceiling on the leader StatefulSet's replica count</td>
+</tr>
+</tbody>
+</table>
+<p>And a deferred clamp that applies to <strong>every</strong> return path:</p>
+<div class="highlight"><pre><span></span><code><span class="k">defer</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">stsPartition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">stsPartition</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">RolloutStrategy</span><span class="p">.</span><span class="nx">RollingUpdateConfiguration</span><span class="p">.</span><span class="nx">Partition</span><span class="p">)</span>
+<span class="p">}()</span>
+</code></pre></div>
+<p>This is KEP-511's user-facing <code>partition</code> acting as a <strong>floor</strong>. No matter what the algorithm computes, the partition never goes below the value the user set. That single line is the whole canary mechanism.</p>
+<hr />
+<h2 id="part-3-the-five-cases">Part 3: The Five Cases<a class="headerlink" href="#part-3-the-five-cases" title="Permanent link">&para;</a></h2>
+<p><code>rollingUpdateParameters</code> evaluates five cases in order and returns from the first that matches.</p>
+<pre class="mermaid"><code>flowchart TD
+    C1{"Case 1&lt;br&gt;sts == nil?"}
+    C1 --&gt;|yes| R1["return (0, lwsReplicas)&lt;br&gt;&lt;i&gt;fresh LWS; parallel creation&lt;/i&gt;"]
+    C1 --&gt;|no| C2{"Case 2&lt;br&gt;a new revision was&lt;br&gt;just created?"}
+    C2 --&gt;|yes| R2["partition = min(lwsReplicas, stsReplicas)&lt;br&gt;scale-up pending? → (partition, lwsReplicas)&lt;br&gt;else → (partition, wantReplicas(lwsReplicas))"]
+    C2 --&gt;|no| C3{"Case 3&lt;br&gt;partition == 0 and&lt;br&gt;stsReplicas == lwsReplicas?"}
+    C3 --&gt;|yes| R3["return (0, lwsReplicas)&lt;br&gt;&lt;i&gt;rollout complete&lt;/i&gt;"]
+    C3 --&gt;|"no, but&lt;br&gt;stsReplicas &amp;lt; lwsReplicas"| R3b["return (partition, lwsReplicas)&lt;br&gt;&lt;i&gt;freeze partition, finish scaling up&lt;/i&gt;"]
+    C3 --&gt;|no| C4{"Case 4&lt;br&gt;replicas annotation !=&lt;br&gt;spec.replicas?"}
+    C4 --&gt;|yes| R4["partition = min(partition, burstReplicas)&lt;br&gt;return (partition, wantReplicas(unready))"]
+    C4 --&gt;|no| R5["&lt;b&gt;Case 5 — steady rolling update&lt;/b&gt;&lt;br&gt;rollingStep = maxUnavailable + maxSurge − (burst − stsReplicas)&lt;br&gt;partition = rollingUpdatePartition(states, …)&lt;br&gt;return (partition, wantReplicas(unready))"]</code></pre>
+<p><strong>Case 1</strong> is a fresh LWS. Partition 0 because pods are created in parallel — there is nothing to hold back.</p>
+<p><strong>Case 2</strong> fires on the reconcile where a new ControllerRevision was just cut. <code>partition := min(lwsReplicas, stsReplicas)</code> sets the partition <strong>above every existing group</strong>, so nothing updates yet; the burst replicas are created first. If <code>stsReplicas &lt; lwsReplicas</code> — a scale-up was pending when the template changed — it returns <code>lwsReplicas</code> so the scale-up completes with the <em>new</em> template, which is cheaper than creating old-revision groups and immediately replacing them.</p>
+<p><strong>Case 3</strong> detects a completed rollout: <code>partition == 0 &amp;&amp; stsReplicas == lwsReplicas</code>. It also handles a pure scale-up mid-rollout by freezing the partition and letting replicas grow.</p>
+<p><strong>Case 4</strong> is where the <code>leaderworkerset.sigs.k8s.io/replicas</code> annotation earns its existence. It is stamped on the leader StatefulSet by every apply, so it is a persisted record of "the <code>spec.replicas</code> value at the last apply." If it disagrees with the current <code>spec.replicas</code>, someone scaled the LWS mid-rollout. The response is <code>partition = min(partition, burstReplicas)</code> — clamp the partition into the new range — and continue. A malformed or missing annotation is a <strong>hard error return</strong>, which is worth knowing if you ever hand-edit the leader StatefulSet.</p>
+<p><strong>Case 5</strong> is the steady state, and it is Part 4.</p>
+<hr />
+<h2 id="part-4-the-partition-walk-down">Part 4: The Partition Walk-Down<a class="headerlink" href="#part-4-the-partition-walk-down" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nx">rollingStep</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">maxUnavailable</span>
+<span class="c1">// Make sure that we always respect the maxUnavailable, or</span>
+<span class="c1">// we&#39;ll violate it when reclaiming bursted replicas.</span>
+<span class="nx">rollingStep</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nx">burstReplicas</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">stsReplicas</span><span class="p">))</span>
+<span class="nx">partition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">rollingUpdatePartition</span><span class="p">(</span><span class="nx">states</span><span class="p">,</span><span class="w"> </span><span class="nx">stsReplicas</span><span class="p">,</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="nx">rollingStep</span><span class="p">),</span><span class="w"> </span><span class="nx">partition</span><span class="p">)</span>
+</code></pre></div>
+<p>Since <code>burstReplicas - stsReplicas</code> is the surge capacity <strong>not yet materialized</strong>, the expression simplifies to:</p>
+<div class="arithmatex">\[
+\text{rollingStep} = \text{maxUnavailable} + \text{surge already created}
+\]</div>
+<p>That is the real insight. Surge replicas are extra serving capacity, so every surge replica that actually exists lets you take one more group down without violating the availability budget. At full burst, the step is <code>maxUnavailable + maxSurge</code>; before any surge pods exist, it is just <code>maxUnavailable</code>.</p>
+<p>Now the function itself, which is the densest code in the project:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">rollingUpdatePartition</span><span class="p">(</span><span class="nx">states</span><span class="w"> </span><span class="p">[]</span><span class="nx">replicaState</span><span class="p">,</span><span class="w"> </span><span class="nx">stsReplicas</span><span class="p">,</span><span class="w"> </span><span class="nx">rollingStep</span><span class="p">,</span><span class="w"> </span><span class="nx">currentPartition</span><span class="w"> </span><span class="kt">int32</span><span class="p">)</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">continuousReadyReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">calculateContinuousReadyReplicas</span><span class="p">(</span><span class="nx">states</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">rollingStepPartition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">utils</span><span class="p">.</span><span class="nx">NonZeroValue</span><span class="p">(</span><span class="nx">stsReplicas</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">continuousReadyReplicas</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">rollingStep</span><span class="p">)</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">unavailable</span><span class="w"> </span><span class="kt">int32</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">rollingStepPartition</span><span class="p">);</span><span class="w"> </span><span class="nx">idx</span><span class="o">++</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">ready</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">unavailable</span><span class="o">++</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">partition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">rollingStepPartition</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">unavailable</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">partition</span><span class="p">,</span><span class="w"> </span><span class="nx">stsReplicas</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nx">rollingStepPartition</span><span class="p">;</span><span class="w"> </span><span class="nx">idx</span><span class="o">--</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">ready</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">updated</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">partition</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">break</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">partition</span><span class="p">,</span><span class="w"> </span><span class="nx">currentPartition</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Five moves, each with a distinct job:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Move</th>
+<th style="text-align: left;">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>a</strong></td>
+<td style="text-align: left;"><code>calculateContinuousReadyReplicas</code> counts, <strong>from the tail downward</strong>, groups that are <code>ready &amp;&amp; updated</code>, stopping at the first that is not</td>
+<td style="text-align: left;">Establishes how much of the high-index end is already done</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>b</strong></td>
+<td style="text-align: left;"><code>rollingStepPartition = stsReplicas − continuousReady − rollingStep</code></td>
+<td style="text-align: left;">Push the partition one full step below the finished tail</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>c</strong></td>
+<td style="text-align: left;">Count not-ready groups <strong>below</strong> <code>rollingStepPartition</code> and add that count back</td>
+<td style="text-align: left;">Groups that are already unhealthy have <em>already spent</em> the availability budget; do not spend it twice</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>d</strong></td>
+<td style="text-align: left;">Walk <strong>downward</strong> from <code>partition</code> while the group is already-updated <strong>or</strong> already-not-ready, never below <code>rollingStepPartition</code></td>
+<td style="text-align: left;">Updating a group that is already updated or already down is free — take it</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>e</strong></td>
+<td style="text-align: left;"><code>min(partition, currentPartition)</code></td>
+<td style="text-align: left;"><strong>The monotonicity invariant: the partition only ever moves downward</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Move (c) is the one people miss. Without it, an LWS with two crashed low-index groups and <code>maxUnavailable: 2</code> would take two <em>more</em> groups down for the rollout, running four groups short of capacity.</p>
+<p>Move (e), combined with the deferred <code>max(..., spec.partition)</code> from Part 2, gives the complete invariant:</p>
+<blockquote>
+<p>The partition is <strong>monotonically non-increasing</strong> within a rollout, and <strong>never crosses the user's canary floor</strong>.</p>
+</blockquote>
+<p>Finally, the unready count that drives replica sizing:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">calculateLWSUnreadyReplicas</span><span class="p">(</span><span class="nx">states</span><span class="w"> </span><span class="p">[]</span><span class="nx">replicaState</span><span class="p">,</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="w"> </span><span class="kt">int32</span><span class="p">)</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">unreadyCount</span><span class="w"> </span><span class="kt">int32</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="p">;</span><span class="w"> </span><span class="nx">idx</span><span class="o">++</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">states</span><span class="p">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">!</span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">ready</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">!</span><span class="nx">states</span><span class="p">[</span><span class="nx">idx</span><span class="p">].</span><span class="nx">updated</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">unreadyCount</span><span class="o">++</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">unreadyCount</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>It scans only <code>[0, lwsReplicas)</code> — <strong>surge replicas beyond the desired count never count as unready</strong>, which is what makes surge reclamation terminate.</p>
+<hr />
+<h2 id="part-5-surge-reclamation">Part 5: Surge Reclamation<a class="headerlink" href="#part-5-surge-reclamation" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">calculateRollingUpdateReplicas</span><span class="p">(</span><span class="nx">lwsReplicas</span><span class="p">,</span><span class="w"> </span><span class="nx">maxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">maxUnavailable</span><span class="p">,</span><span class="w"> </span><span class="nx">unreadyReplicas</span><span class="w"> </span><span class="kt">int32</span><span class="p">)</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">burstReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">maxSurge</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">unreadyReplicas</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">requiredSurgeReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">utils</span><span class="p">.</span><span class="nx">NonZeroValue</span><span class="p">(</span><span class="nx">unreadyReplicas</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">maxUnavailable</span><span class="p">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">lwsReplicas</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">requiredSurgeReplicas</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">burstReplicas</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Two regimes:</p>
+<ul>
+<li><strong>Many groups still unready</strong> (<code>unready &gt; maxSurge</code>): stay at full burst. You need every extra replica.</li>
+<li><strong>Few groups still unready</strong> (<code>unready &lt;= maxSurge</code>): keep only <code>max(0, unready − maxUnavailable)</code> surge replicas. The remaining unready groups fit inside the <code>maxUnavailable</code> budget, so the surge capacity is no longer needed.</li>
+</ul>
+<p>Surge is therefore reclaimed <strong>gradually</strong>, not all at once at the end — and because reclamation is driven by unready count, it can shrink and grow again if groups become unhealthy mid-rollout.</p>
+<p>The wrapper <code>wantReplicas()</code> emits <code>GroupsProgressing</code>/<code>Delete</code> events when shrinking: <code>"deleting surge replica %s-%d"</code> for one, <code>"deleting surge replicas from %s-%d to %s-%d"</code> for several. Those events are the cleanest signal that reclamation is happening.</p>
+<hr />
+<h2 id="part-6-a-full-worked-trace">Part 6: A Full Worked Trace<a class="headerlink" href="#part-6-a-full-worked-trace" title="Permanent link">&para;</a></h2>
+<p>The upstream documentation gives a nine-stage table for <code>replicas: 4, maxUnavailable: 2, maxSurge: 2</code>. Here it is again with the arithmetic derived from the code at each step, which is the part the upstream page omits.</p>
+<p>Constants: <code>lwsReplicas = 4</code>, <code>maxSurge = 2</code>, <code>maxUnavailable = 2</code>, <code>burstReplicas = 6</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: center;">Partition</th>
+<th style="text-align: center;">Replicas</th>
+<th style="text-align: center;">R0</th>
+<th style="text-align: center;">R1</th>
+<th style="text-align: center;">R2</th>
+<th style="text-align: center;">R3</th>
+<th style="text-align: center;">R4</th>
+<th style="text-align: center;">R5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Stage 1</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Stage 2</strong></td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Stage 3</strong></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Stage 4</strong></td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">❎</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">⏳</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Stage 5</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Stage 6</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Stage 7</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Stage 8</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">⏳</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Stage 9</strong></td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<p>✅ updated and ready · ❎ not updated (but ready) · ⏳ updating (not ready)</p>
+<p><strong>Stage 1 → 2.</strong> The template changes, so <code>leaderWorkerSetUpdated</code> is true → <strong>Case 2</strong>. <code>partition = min(4, 4) = 4</code>. <code>stsReplicas &gt;= lwsReplicas</code>, so replicas is <code>wantReplicas(4)</code>: unready <code>4 &gt; maxSurge 2</code> → full burst → <strong>6</strong>. The partition sits above every existing group, so nothing is torn down; two surge groups R4 and R5 are created at the new revision.</p>
+<p><strong>Stage 2 → 3.</strong> Case 5. <code>stsReplicas = 6</code>, so all surge is materialized: <code>rollingStep = 2 + 2 − (6−6) = 4</code>. R5 is not ready, so <code>continuousReadyReplicas = 0</code>. Hence <code>rollingStepPartition = 6 − 0 − 4 = 2</code>. R0 and R1 are ready, so <code>unavailable = 0</code> and <code>partition = 2</code>. Move (d) inspects R2: ready and <em>not</em> updated → break. <strong>Partition 2.</strong> Groups R2 and R3 begin updating.</p>
+<p><strong>Stage 3 → 4.</strong> R4 becomes ready+updated; R5 is still not ready, so <code>continuousReadyReplicas</code> is still 0 and <code>rollingStepPartition</code> is still 2. Move (d) now finds R2 not ready → <code>partition = 2</code>, then <code>idx--</code> drops below <code>rollingStepPartition</code> and the loop ends. <strong>Partition stays 2</strong> — which is exactly the upstream note "since the last Replica is not ready, Partition will not change."</p>
+<p><strong>Stage 4 → 5.</strong> R5 becomes ready+updated. Counting from the tail: R5 ✅, R4 ✅, R3 not ready → stop, so <code>continuousReadyReplicas = 2</code>. Now <code>rollingStepPartition = 6 − 2 − 4 = 0</code>, <code>unavailable</code> over the empty range is 0, and move (d) breaks immediately at R0 (ready, not updated). <strong>Partition 0.</strong> R0 and R1 begin updating.</p>
+<p><strong>Stage 5 → 6.</strong> R2 and R3 finish. No partition change; it is already 0.</p>
+<p><strong>Stage 6 → 7.</strong> Now the replica count moves. <code>calculateLWSUnreadyReplicas</code> scans only <code>[0, 4)</code>: R0 and R1 are unready → <code>unready = 2</code>. Since <code>2 &lt;= maxSurge 2</code>, <code>requiredSurgeReplicas = max(0, 2 − 2) = 0</code> → replicas <strong>4</strong>. Both surge replicas are deleted, emitting <code>"deleting surge replicas from my-lws-4 to my-lws-5"</code>.</p>
+<p>Note what just happened: the two groups deleted were the <strong>updated</strong> ones, while R0 and R1 are still updating. That is fine — indices 4 and 5 are outside <code>[0, lwsReplicas)</code> by definition, and R0/R1's slots will be filled by the new revision.</p>
+<p><strong>Stage 7 → 9.</strong> R1 finishes (<code>unready = 1</code>, still <code>&lt;= maxSurge</code>, <code>max(0, 1−2) = 0</code> → replicas stays 4), then R0. At <code>unready = 0</code> with <code>partition == 0</code> and <code>stsReplicas == lwsReplicas</code>, Case 3 fires, <code>updateDone</code> becomes true, and <code>TruncateRevisions</code> deletes the old ControllerRevision.</p>
+<div class="admonition tip">
+<p class="admonition-title">The reasoning shortcut</p>
+<p>If you remember one thing, make it move (a): <strong>the partition is anchored to the ready-and-updated tail.</strong> Everything else is adjustments. A rollout that is stuck almost always means the tail is not growing — some high-index group is not becoming ready — and the partition therefore cannot descend.</p>
+</div>
+<hr />
+<h2 id="part-7-partition-as-a-user-knob">Part 7: <code>partition</code> as a User Knob<a class="headerlink" href="#part-7-partition-as-a-user-knob" title="Permanent link">&para;</a></h2>
+<p>KEP-511 exposed <code>rollingUpdateConfiguration.partition</code> so that users can hold a rollout at a chosen boundary. Groups <code>[0, partition)</code> are frozen; groups <code>[partition, replicas)</code> update.</p>
+<h3 id="71-canary">7.1 Canary<a class="headerlink" href="#71-canary" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">  </span><span class="nt">rolloutStrategy</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">rollingUpdateConfiguration</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">partition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span><span class="w">      </span><span class="c1"># only groups 8 and 9 take the new template</span>
+</code></pre></div>
+<p>Change the template, wait, evaluate, then lower <code>partition</code> to widen the blast radius: 8 → 5 → 0.</p>
+<h3 id="72-xpyd-ratio-preservation">7.2 xPyD ratio preservation<a class="headerlink" href="#72-xpyd-ratio-preservation" title="Permanent link">&para;</a></h3>
+<p>The KEP's motivating case is prefill/decode disaggregation done with two LWSes. During a rollout you want the prefill:decode version ratio to hold — updating all prefill before any decode means new-version prefill servers handing KV cache to old-version decode servers. Stepping both LWSes' partitions in lockstep preserves the ratio at every point.</p>
+<p>This is exactly the problem <code>DisaggregatedSet</code> was created to solve properly (<a href="../08_disaggregatedset/">Module 8</a>); the manual partition dance is what people did before it existed, and it is still what you do if your roles are not in a DisaggregatedSet.</p>
+<h3 id="73-the-condition-and-truncation-interaction">7.3 The condition and truncation interaction<a class="headerlink" href="#73-the-condition-and-truncation-interaction" title="Permanent link">&para;</a></h3>
+<p>KEP-511 changed two things beyond adding the field, and both are easy to trip over:</p>
+<ul>
+<li><code>UpdateInProgress</code> and <code>Available</code> are computed over groups <strong>with index ≥ <code>partition</code></strong>, not all groups. A frozen group that is unhealthy does not make the <em>rollout</em> look stuck.</li>
+<li><code>updateConditions</code> returns <code>allUpdateDone</code> — computed over <strong>all</strong> replicas — rather than the windowed value, and that is what gates <code>TruncateRevisions</code>. Without this, a partitioned rollout would garbage-collect the very revision the held-back groups are still running.</li>
+</ul>
+<p>The practical upshot: <strong>while <code>partition &gt; 0</code>, both revisions persist</strong>. That is your rollback path, and it disappears the moment you set <code>partition: 0</code> and the rollout completes.</p>
+<div class="admonition warning">
+<p class="admonition-title">Rollback is a manual re-apply</p>
+<p>As covered in <a href="../04_lws_reconciler_internals/">Module 4</a>, LWS keeps exactly one revision after a completed rollout and has no <code>revisionHistoryLimit</code>. <code>kubectl rollout undo</code> does not work on an LWS. Keep the previous manifest in version control, because the cluster will not keep it for you.</p>
+</div>
+<hr />
+<h2 id="part-8-scaling">Part 8: Scaling<a class="headerlink" href="#part-8-scaling" title="Permanent link">&para;</a></h2>
+<p>Three different things are commonly called "scaling," and they behave differently.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Change</th>
+<th style="text-align: center;">Cuts a revision?</th>
+<th style="text-align: center;">Triggers a rollout?</th>
+<th style="text-align: left;">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>spec.replicas</code></td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">No</td>
+<td style="text-align: left;">Groups are added or removed at the current revision</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>leaderWorkerTemplate.size</code></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: left;">Every group is recreated with the new pod count</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rolloutStrategy.*</code></td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">No</td>
+<td style="text-align: left;">Changes how the <em>next</em> rollout behaves</td>
+</tr>
+</tbody>
+</table>
+<h3 id="81-horizontal-scaling-via-replicas">8.1 Horizontal scaling via <code>replicas</code><a class="headerlink" href="#81-horizontal-scaling-via-replicas" title="Permanent link">&para;</a></h3>
+<p><code>spec.replicas</code> is excluded from the revision patch (<a href="../04_lws_reconciler_internals/">Module 4</a>, §5.1), so scaling never rolls anything. New groups are created at the current revision; removed groups are deleted leader-first, which cascades.</p>
+<p>HPA drives this through the scale subresource, using the leader-only selector from <a href="../02_api_surface_anatomy/">Module 2</a>, §4. The metric must be <strong>published by the leader and represent the whole group</strong>.</p>
+<p>Scaling <em>during</em> a rollout is handled by Case 4, via the <code>replicas</code> annotation on the leader StatefulSet. It works, but it makes the rollout arithmetic harder to reason about; if you can, let a rollout finish first.</p>
+<h3 id="82-vertical-scaling-via-size-kep-552">8.2 Vertical scaling via <code>size</code> (KEP-552)<a class="headerlink" href="#82-vertical-scaling-via-size-kep-552" title="Permanent link">&para;</a></h3>
+<p><code>size</code> is mutable. Changing it changes the <code>leaderworkerset.sigs.k8s.io/size</code> annotation on the pod template, which changes the revision hash, which triggers a normal group-by-group rollout. Every group is recreated with the new pod count.</p>
+<div class="admonition note">
+<p class="admonition-title">KEP-552 describes an API that was never built</p>
+<p>The KEP proposes a <code>ResizePolicy</code> field with values <code>None</code> and <code>Recreate</code>. <strong><code>grep -rn "ResizePolicy" api/ pkg/</code> returns nothing.</strong> The Implementation History records <code>2025-08-05: Implementation revised to avoid additions to the API surface</code> — what shipped is simply "<code>size</code> is mutable, and the size annotation makes the rollout happen naturally." The KEP body was never updated to match, so it still documents a field that does not exist.</p>
+<p>Updating the KEP to describe what shipped is a genuinely useful documentation PR, and an easy one: the evidence is a single grep. The KEP also notes an explicit non-goal — <strong>no in-place resize</strong> — because "it adds more complexities like dynamically changing the topology envs at runtime."</p>
+</div>
+<p>That non-goal is the important part. <code>LWS_GROUP_SIZE</code> and <code>TPU_WORKER_HOSTNAMES</code> are injected at admission and read at process start; there is no mechanism to update them in a running container, and no inference engine would react correctly if there were. Group resizing therefore <em>must</em> be a recreate.</p>
+<hr />
+<h2 id="part-9-the-maxunavailablestatefulset-dependency">Part 9: The <code>MaxUnavailableStatefulSet</code> Dependency<a class="headerlink" href="#part-9-the-maxunavailablestatefulset-dependency" title="Permanent link">&para;</a></h2>
+<p><code>maxUnavailable &gt; 1</code> is implemented by passing a value through to the leader StatefulSet's <code>rollingUpdate.maxUnavailable</code>, which is an upstream Kubernetes feature.</p>
+<p>That field graduated to <strong>beta, enabled by default, in Kubernetes 1.35</strong>. On earlier versions the gate must be enabled explicitly on the API server and controller manager, and without it the StatefulSet controller ignores the field and rolls pods one at a time — so your <code>maxUnavailable: 4</code> silently behaves as 1.</p>
+<div class="admonition danger">
+<p class="admonition-title">The upstream docs contradict themselves here</p>
+<ul>
+<li><code>site/content/en/docs/concepts/rollout-strategy/_index.md</code>: "<code>MaxUnavailable</code> was graduated to Beta in Kubernetes 1.35, which means that it is enabled by default."</li>
+<li><code>site/content/en/docs/installation/_index.md</code>: "you must enable the <code>MaxUnavailableStatefulSet</code> feature gate, which is <strong>still in alpha since Kubernetes v1.24</strong>."</li>
+</ul>
+<p>Both pages are shipped in v0.9.0. Reconciling them is a small, high-value documentation PR — see <a href="../appendix_pr_opportunities/">Appendix B</a>. The <code>rollout-strategy</code> page is the correct one; the <code>installation</code> page was not updated when the gate graduated.</p>
+<p>The same <code>installation</code> page also omits that <code>rollingUpdateConfiguration.partition</code> is a user-settable field at all, treating it purely as a controller-internal variable.</p>
+</div>
+<p>The diagnostic is straightforward: if you set <code>maxUnavailable: 4</code> and observe groups updating strictly one at a time, check the gate before reading any of the arithmetic above.</p>
+<hr />
+<h2 id="lab-make-the-arithmetic-visible">Lab: Make the Arithmetic Visible<a class="headerlink" href="#lab-make-the-arithmetic-visible" title="Permanent link">&para;</a></h2>
+<p>Everything in this lab runs on <code>kind</code> with a trivial container. The rollout algorithm is completely orthogonal to accelerators, and using a fast-starting image makes the state transitions observable rather than a ten-minute wait.</p>
+<h3 id="step-1-reproduce-the-nine-stage-trace">Step 1 — Reproduce the nine-stage trace<a class="headerlink" href="#step-1-reproduce-the-nine-stage-trace" title="Permanent link">&para;</a></h3>
+<p>Deploy <code>replicas: 4, size: 2, maxUnavailable: 2, maxSurge: 2</code> with a container that takes about 20 seconds to become Ready (a <code>readinessProbe</code> with <code>initialDelaySeconds: 20</code> works well — long enough to see the stages, short enough to stay awake).</p>
+<p>In one terminal:</p>
+<div class="highlight"><pre><span></span><code>watch<span class="w"> </span>-n1<span class="w"> </span><span class="s1">&#39;kubectl get lws my-lws -o jsonpath=&quot;P=$(kubectl get sts my-lws -o jsonpath={.spec.updateStrategy.rollingUpdate.partition}) R=$(kubectl get sts my-lws -o jsonpath={.spec.replicas})&quot;; echo; kubectl get pods -l leaderworkerset.sigs.k8s.io/worker-index=0 -o custom-columns=&quot;NAME:.metadata.name,REV:.metadata.labels.leaderworkerset\.sigs\.k8s\.io/template-revision-hash,READY:.status.conditions[?(@.type==\&quot;Ready\&quot;)].status&quot;&#39;</span>
+</code></pre></div>
+<p>In another, trigger the rollout:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;replace&quot;,</span>
+<span class="s1">  &quot;path&quot;:&quot;/spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/image&quot;,</span>
+<span class="s1">  &quot;value&quot;:&quot;nginxinc/nginx-unprivileged:1.28&quot;}]&#39;</span>
+</code></pre></div>
+<p>Record <code>(partition, replicas)</code> at each transition and match them against the table in Part 6. Where your observations differ, work out which of the five cases fired and why — the most common divergence is that your pods become ready faster than the reconcile loop samples, collapsing several stages into one.</p>
+<h3 id="step-2-watch-surge-reclamation-explicitly">Step 2 — Watch surge reclamation explicitly<a class="headerlink" href="#step-2-watch-surge-reclamation-explicitly" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span><span class="nv">reason</span><span class="o">=</span>GroupsProgressing<span class="w"> </span>-w<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>surge
+</code></pre></div>
+<p>You should see <code>deleting surge replicas from my-lws-4 to my-lws-5</code> at Stage 7. Confirm from Part 5 why it happens at exactly that moment and not earlier: the trigger is <code>unready &lt;= maxSurge</code>.</p>
+<h3 id="step-3-prove-move-c-the-unavailability-accounting">Step 3 — Prove move (c) — the unavailability accounting<a class="headerlink" href="#step-3-prove-move-c-the-unavailability-accounting" title="Permanent link">&para;</a></h3>
+<p>Before starting a rollout, deliberately break two low-index groups:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;replace&quot;,</span>
+<span class="s1">  &quot;path&quot;:&quot;/spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/readinessProbe/exec/command&quot;,</span>
+<span class="s1">  &quot;value&quot;:[&quot;false&quot;]}]&#39;</span><span class="w">   </span><span class="c1"># or break groups 0 and 1 individually</span>
+</code></pre></div>
+<p>Now trigger a template rollout with <code>maxUnavailable: 2, maxSurge: 0</code> and observe how many groups are torn down simultaneously. Without move (c) it would be two more on top of the two already broken; with it, the partition is pushed back up by the <code>unavailable</code> count and the rollout takes down fewer.</p>
+<p>Compute the expected partition by hand from <code>rollingUpdatePartition</code> before you look, then compare.</p>
+<h3 id="step-4-exercise-the-canary-floor">Step 4 — Exercise the canary floor<a class="headerlink" href="#step-4-exercise-the-canary-floor" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;rolloutStrategy&quot;:{&quot;rollingUpdateConfiguration&quot;:{&quot;partition&quot;:3}}}}&#39;</span>
+<span class="c1"># change the image</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/worker-index<span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="s1">&#39;NAME:.metadata.name,REV:.metadata.labels.leaderworkerset\.sigs\.k8s\.io/template-revision-hash&#39;</span>
+</code></pre></div>
+<p>Only group 3 should carry the new revision key. Then verify the truncation interaction from §7.3:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws
+</code></pre></div>
+<p>Two revisions, persisting indefinitely. Walk <code>partition</code> down to 0 and watch the second disappear once the rollout completes.</p>
+<h3 id="step-5-scale-mid-rollout-and-find-case-4">Step 5 — Scale mid-rollout and find Case 4<a class="headerlink" href="#step-5-scale-mid-rollout-and-find-case-4" title="Permanent link">&para;</a></h3>
+<p>Start a rollout, and while it is in progress:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>scale<span class="w"> </span>lws/my-lws<span class="w"> </span>--replicas<span class="o">=</span><span class="m">6</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.metadata.annotations.leaderworkerset\.sigs\.k8s\.io/replicas}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>Watch the annotation change from <code>4</code> to <code>6</code> on the next apply. Before that apply lands, the annotation and <code>spec.replicas</code> disagree, and Case 4 clamps the partition. Read the Case 4 branch and confirm what would go wrong if the annotation did not exist — specifically, why the controller cannot just compare against the StatefulSet's current replica count.</p>
+<h3 id="step-6-verify-the-maxunavailablestatefulset-gate">Step 6 — Verify the <code>MaxUnavailableStatefulSet</code> gate<a class="headerlink" href="#step-6-verify-the-maxunavailablestatefulset-gate" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>version<span class="w"> </span>--short
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.updateStrategy.rollingUpdate.maxUnavailable}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>Set <code>maxUnavailable: 3</code> on the LWS and confirm the value propagates to the StatefulSet — it will, regardless of the gate. Then trigger a rollout and count how many groups actually go down at once. If it is one, the gate is off, and you have reproduced the exact confusion the contradictory upstream docs create.</p>
+<h3 id="checkpoint-questions">Checkpoint questions<a class="headerlink" href="#checkpoint-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Why does move (e) use <code>min</code> while the deferred clamp uses <code>max</code>? What invariant does each protect, and what breaks if you swap them?</li>
+<li>At Stage 7 the algorithm deletes the two <em>updated</em> surge replicas while two <em>un-updated</em> groups remain. Why is that not a capacity regression?</li>
+<li><code>calculateLWSUnreadyReplicas</code> scans <code>[0, lwsReplicas)</code> rather than <code>[0, len(states))</code>. Construct the non-terminating rollout you would get if it scanned the whole slice.</li>
+</ul>
+<p>Continue to <a href="../07_scheduling_placement_and_networking/">Module 7: Scheduling, Placement, and Networking</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

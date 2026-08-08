@@ -1,0 +1,1617 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/appendix_pr_opportunities/">
+      
+      
+        <link rel="prev" href="../appendix_glossary/">
+      
+      
+        <link rel="next" href="../appendix_reading_list/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/appendix_pr_opportunities/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Appendix B - PR Opportunity Backlog - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#appendix-b-pr-opportunity-backlog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Appendix B - PR Opportunity Backlog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/appendix_pr_opportunities/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tier-1-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1 — Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-2-project-metadata-and-governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2 — Project Metadata and Governance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-3-kep-corpus-hygiene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 3 — KEP Corpus Hygiene
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-4-code-contained-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 4 — Code: Contained Fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-5-code-feature-and-validation-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 5 — Code: Feature and Validation Gaps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-6-larger-work-kep-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 6 — Larger Work, KEP Required
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#suggested-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Suggested Sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tier-1-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1 — Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-2-project-metadata-and-governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2 — Project Metadata and Governance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-3-kep-corpus-hygiene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 3 — KEP Corpus Hygiene
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-4-code-contained-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 4 — Code: Contained Fixes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-5-code-feature-and-validation-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 5 — Code: Feature and Validation Gaps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-6-larger-work-kep-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 6 — Larger Work, KEP Required
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#suggested-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Suggested Sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="appendix-b-pr-opportunity-backlog">Appendix B: PR Opportunity Backlog<a class="headerlink" href="#appendix-b-pr-opportunity-backlog" title="Permanent link">&para;</a></h1>
+<p>Every concrete upstream contribution opportunity surfaced while writing these notes, with the file path, the evidence, and a difficulty rating. Each entry was found by reading the code, not by reading the issue tracker — so before starting anything, <strong>check whether an issue or PR already exists</strong>, and open an issue first for anything beyond the trivial tier.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>All findings verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06), release v0.9.0. Line references may drift; the greps given will not.</p>
+</div>
+<p><strong>Difficulty legend</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">🟢</td>
+<td style="text-align: left;">An afternoon. No design discussion needed. Evidence fits in the PR description</td>
+</tr>
+<tr>
+<td style="text-align: left;">🟡</td>
+<td style="text-align: left;">A day or two. May need a small test, or a reviewer conversation about approach</td>
+</tr>
+<tr>
+<td style="text-align: left;">🟠</td>
+<td style="text-align: left;">A week or more. Needs an issue first, and possibly a KEP</td>
+</tr>
+<tr>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: left;">Needs a KEP and a design discussion before any code</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="tier-1-documentation">Tier 1 — Documentation<a class="headerlink" href="#tier-1-documentation" title="Permanent link">&para;</a></h2>
+<p>The highest ratio of user impact to effort in the project. Every one of these is a place where following the docs produces a wrong result.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">Finding</th>
+<th style="text-align: left;">Where</th>
+<th style="text-align: left;">Evidence</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">D1</td>
+<td style="text-align: left;"><strong>Documents a <code>SubGroupType: LeaderOnly</code> value that does not exist</strong>, and describes the <em>opposite</em> semantics. The real value is <code>LeaderExcluded</code>, meaning the leader is in <strong>no</strong> subgroup</td>
+<td style="text-align: left;"><code>site/content/en/docs/concepts/_index.md</code></td>
+<td style="text-align: left;"><code>grep -n "LeaderExcluded\|LeaderOnly" api/leaderworkerset/v1/leaderworkerset_types.go</code>. See <a href="../03_group_lifecycle_and_identity/">Module 3</a>, §6.2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D2</td>
+<td style="text-align: left;"><strong>Two pages contradict each other on <code>MaxUnavailableStatefulSet</code></strong>: <code>rollout-strategy</code> says beta and default-on since 1.35; <code>installation</code> says "still in alpha since v1.24"</td>
+<td style="text-align: left;"><code>concepts/rollout-strategy/_index.md</code> vs <code>installation/_index.md</code></td>
+<td style="text-align: left;">Both ship in v0.9.0. See <a href="../06_rollout_and_revisions/">Module 6</a>, §9</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D3</td>
+<td style="text-align: left;"><strong>Four keys missing from the reference table</strong>: <code>subgroup-policy-type</code>, <code>experimental-recreate-group-after-start</code>, <code>TPU_PROCESS_ADDRESSES</code>, <code>TPU_PROCESS_PORT</code></td>
+<td style="text-align: left;"><code>reference/labels-annotations-and-environment-variables.md</code></td>
+<td style="text-align: left;">Constants in <code>leaderworkerset_types.go:90,98</code> and <code>pkg/utils/accelerators/tpu.go</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D4</td>
+<td style="text-align: left;"><strong>Says to disable <code>internalCertManager</code></strong>; the real field is <code>internalCertManagement.enable</code>. Also an ungrammatical opening sentence, and kustomize steps less complete than what <code>hack/e2e-test.sh</code> actually does</td>
+<td style="text-align: left;"><code>manage/cert_manager.md</code></td>
+<td style="text-align: left;"><code>api/config/v1alpha1/configuration_types.go</code>. See <a href="../10_operations_and_troubleshooting/">Module 10</a>, §3</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D5</td>
+<td style="text-align: left;"><strong>The Helm CRD deletion hazard is absent from the troubleshooting page</strong> — the most destructive known failure mode, documented only in installation and the chart README</td>
+<td style="text-align: left;"><code>troubleshooting/_index.md</code></td>
+<td style="text-align: left;">Upstream issue #880. See <a href="../10_operations_and_troubleshooting/">Module 10</a>, §2.1</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D6</td>
+<td style="text-align: left;"><strong>Copy-pasted port-forward</strong>: <code>svc/vllm-leader</code> on the TensorRT-LLM page, where no such Service exists. The <code>kubectl get pods</code> output also contradicts the prose</td>
+<td style="text-align: left;"><code>examples/tensorrt-llm.md</code></td>
+<td style="text-align: left;">See <a href="../09_inference_engine_integration/">Module 9</a>, §2.3</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D7</td>
+<td style="text-align: left;"><strong>The TAS example cannot work as written</strong>: topology levels are declared as <code>cloud.google.com/gce-topology-block</code> but the LWS annotations reference <code>cloud.provider.com/topology-block</code>. Also pins <code>vllm/vllm-openai:v0.8.5</code>, and has a one-tab <code>tabpane</code></td>
+<td style="text-align: left;"><code>examples/tas.md</code></td>
+<td style="text-align: left;">See <a href="../07_scheduling_placement_and_networking/">Module 7</a>, §4</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D8</td>
+<td style="text-align: left;"><strong>The deprecated <code>Default</code> restart-policy value is undocumented site-wide.</strong> Users cannot learn that it exists or that it means <code>None</code>, not "the default"</td>
+<td style="text-align: left;"><code>concepts/failure-handling/_index.md</code></td>
+<td style="text-align: left;"><code>leaderworkerset_types.go:346</code>. Also fix the "distributed influence" typo</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D9</td>
+<td style="text-align: left;"><strong>The experimental annotation's documented value is misleading.</strong> The page shows <code>: true</code> and the test wrapper sets <code>"enable"</code>; the code is a <strong>presence check</strong> and ignores the value entirely</td>
+<td style="text-align: left;"><code>concepts/failure-handling/_index.md</code></td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go:220</code>. See <a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §4.1</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D10</td>
+<td style="text-align: left;"><strong>Stale image</strong>: <code>nginx:1.14.2</code>, where the rest of the site uses <code>nginxinc/nginx-unprivileged:1.27</code></td>
+<td style="text-align: left;"><code>examples/hpa.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D11</td>
+<td style="text-align: left;"><strong><code>kubectl get endpoints</code> is deprecated</strong> (use EndpointSlice); plus a "llamap.cpp" typo</td>
+<td style="text-align: left;"><code>examples/llamacpp.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D12</td>
+<td style="text-align: left;"><strong>Two pages both have <code>weight: 5</code></strong>, so their ordering is undefined</td>
+<td style="text-align: left;"><code>examples/hpa.md</code>, <code>examples/tas.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D13</td>
+<td style="text-align: left;"><strong>A directory name contains a space</strong>: <code>site/content/en/docs/contribution guidelines/</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D14</td>
+<td style="text-align: left;"><strong>Contradictory community contacts</strong>: <code>CONTRIBUTING.md</code> says <code>#sig-apps</code> / <code>kubernetes-sig-apps</code>; the site's contribution guidelines say Slack <code>C071WA7R9LY</code> / <code>wg-serving</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">See <a href="../11_contributor_workflow/">Module 11</a>, §7.3</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D15</td>
+<td style="text-align: left;"><strong>The troubleshooting page contradicts itself</strong>: cause says "&lt; 1.27", fix says "≥ 1.26"</td>
+<td style="text-align: left;"><code>troubleshooting/_index.md</code></td>
+<td style="text-align: left;">See <a href="../10_operations_and_troubleshooting/">Module 10</a>, §5.1</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D16</td>
+<td style="text-align: left;"><strong>Four shipped features have no conceptual documentation</strong>: <code>subdomainPolicy</code>, user-settable <code>partition</code>, resizable <code>size</code>, and gang scheduling</td>
+<td style="text-align: left;"><code>site/content/en/docs/concepts/</code></td>
+<td style="text-align: left;">Modules <a href="../03_group_lifecycle_and_identity/">3</a>, <a href="../06_rollout_and_revisions/">6</a>, <a href="../07_scheduling_placement_and_networking/">7</a></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">D17</td>
+<td style="text-align: left;"><strong>The overview's feature list omits gang scheduling</strong>, which <code>README.md</code> does list. The two lists have drifted</td>
+<td style="text-align: left;"><code>overview/_index.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D18</td>
+<td style="text-align: left;"><strong>A vestigial trailing section</strong> ("Install with Helm chart — Please refer to the release page") duplicating the full Helm section above it</td>
+<td style="text-align: left;"><code>installation/_index.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">D19</td>
+<td style="text-align: left;"><strong>The pre-v0.9.0 DS upgrade snippet applies only one of two DS CRDs</strong>, omitting <code>disaggregatedsetrolescalers</code> which the chart ships</td>
+<td style="text-align: left;"><code>installation/_index.md</code></td>
+<td style="text-align: left;"><code>charts/lws/crds/</code> has three files</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="tier-2-project-metadata-and-governance">Tier 2 — Project Metadata and Governance<a class="headerlink" href="#tier-2-project-metadata-and-governance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">Finding</th>
+<th style="text-align: left;">Where</th>
+<th style="text-align: left;">Evidence</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">G1</td>
+<td style="text-align: left;"><strong><code>CONTRIBUTING.md</code> is entirely unmodified boilerplate</strong>, down to a leftover HTML comment. Nothing about <code>make test</code>, <code>make verify</code>, envtest, wrappers, KEPs, or the GNU sed requirement</td>
+<td style="text-align: left;"><code>CONTRIBUTING.md</code></td>
+<td style="text-align: left;">See <a href="../11_contributor_workflow/">Module 11</a>, §7.4. <strong>Arguably the highest-leverage contributor PR in the repo</strong></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">G2</td>
+<td style="text-align: left;"><strong><code>RELEASE.md</code> is template text and actively wrong</strong> — still says "The Kubernetes <strong>Template Project</strong>", describes a <code>git tag -s</code> flow that does not match <code>make artifacts</code> / <code>make prepare-release-branch</code> / <code>cloudbuild.yaml</code> / <code>hack/cherry_pick_pull.sh</code></td>
+<td style="text-align: left;"><code>RELEASE.md</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">G3</td>
+<td style="text-align: left;"><strong><code>SECURITY_CONTACTS</code> lists an emeritus approver</strong> — <code>liurupeng</code> is <code>emeritus_approvers</code> in <code>OWNERS</code></td>
+<td style="text-align: left;"><code>SECURITY_CONTACTS</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">G4</td>
+<td style="text-align: left;"><strong><code>hack/genref/config.yaml</code> targets the Kubernetes 1.28 API reference</strong> while the project builds against <code>k8s.io/api v0.36.3</code>. Every cross-link in the generated reference points at 1.28 docs</td>
+<td style="text-align: left;"><code>hack/genref/config.yaml</code></td>
+<td style="text-align: left;">One-line change</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="tier-3-kep-corpus-hygiene">Tier 3 — KEP Corpus Hygiene<a class="headerlink" href="#tier-3-kep-corpus-hygiene" title="Permanent link">&para;</a></h2>
+<p>Every one of these is a self-contained documentation fix, and each is a good excuse to read a KEP closely.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">Finding</th>
+<th style="text-align: left;">Where</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">K1</td>
+<td style="text-align: left;"><strong><code>kep-number: 127</code> in a directory named <code>115</code></strong>, and <code>creation-date: yyyy-mm-dd</code> never filled in</td>
+<td style="text-align: left;"><code>keps/115-Subgroup-support/kep.yaml</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K2</td>
+<td style="text-align: left;"><strong>Title and number copy-pasted from KEP-238</strong></td>
+<td style="text-align: left;"><code>keps/257-Subgroup-leader-only/kep.yaml</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K3</td>
+<td style="text-align: left;"><strong>Describes a <code>ResizePolicy</code> API field that was never built.</strong> Implementation History records the pivot (<code>2025-08-05: Implementation revised to avoid additions to the API surface</code>) but the body was never updated. Also the only content KEP with no <code>latest-milestone</code>, no <code>stage</code>, and no <code>milestone</code> block</td>
+<td style="text-align: left;"><code>keps/552-worker-resizing/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K4</td>
+<td style="text-align: left;"><strong>Describes a <code>PodGroupPerReplica</code> feature gate, three provider interfaces, and a PodGroup naming scheme that all differ from what shipped.</strong> <code>grep -rn "PodGroupPerReplica"</code> matches only <code>kep.yaml:35</code></td>
+<td style="text-align: left;"><code>keps/407-gang-scheduling/</code></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">K5</td>
+<td style="text-align: left;"><strong>The <code>publishNotReadyAddresses</code> premise is stale.</strong> LWS's own headless Services hardcode <code>true</code> and a test asserts it, so a knob defaulting to <code>false</code> would be a regression risk. Also, Implementation History dates predate the <code>creation-date</code> in <code>kep.yaml</code></td>
+<td style="text-align: left;"><code>keps/820-distributed-preflight-check/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K6</td>
+<td style="text-align: left;"><strong>KEP-766 says <code>RolloutStrategy</code> is not propagated to child LWSes; <code>lws_manager.go</code> propagates it</strong> (inertly). Either the text or the code should change</td>
+<td style="text-align: left;"><code>keps/766-DisaggregatedSet/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K7</td>
+<td style="text-align: left;"><strong><code>status.selector</code> "written once at scaler creation"</strong> per KEP-849, but the implementation rewrites it identically on every reconcile</td>
+<td style="text-align: left;"><code>keps/849-DisaggregatedSet-HPA/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K8</td>
+<td style="text-align: left;"><strong>Several KEPs at <code>status: implementable</code> still have <code>&lt;test&gt;: &lt;link to test coverage&gt;</code> placeholders</strong>, and 135/173/511/552/622 lack <code>stage:</code> / <code>milestone:</code> blocks</td>
+<td style="text-align: left;"><code>keps/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">K9</td>
+<td style="text-align: left;"><strong><code>spec.slices</code> has <code>Maximum=100</code> in code but no maximum in the KEP's API block</strong></td>
+<td style="text-align: left;"><code>keps/846-disaggregatedset-slices/</code></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">K5 is the best first interaction with the maintainers</p>
+<p>It costs two greps, improves a live proposal, and is a comment rather than a PR — a low-risk way to introduce yourself.</p>
+</div>
+<hr />
+<h2 id="tier-4-code-contained-fixes">Tier 4 — Code: Contained Fixes<a class="headerlink" href="#tier-4-code-contained-fixes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">Finding</th>
+<th style="text-align: left;">Where</th>
+<th style="text-align: left;">Evidence</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">C1</td>
+<td style="text-align: left;"><strong>Latent nil dereference in the LWS validator.</strong> <code>generalValidate</code> reads <code>RollingUpdateConfiguration.MaxUnavailable</code> <strong>before</strong> the <code>!= nil</code> guard two lines below. Unreachable while the defaulter runs, but a bypassed mutating webhook panics the validator instead of rejecting</td>
+<td style="text-align: left;"><code>pkg/webhooks/leaderworkerset_webhook.go</code></td>
+<td style="text-align: left;">See <a href="../02_api_surface_anatomy/">Module 2</a>, §5.3</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C2</td>
+<td style="text-align: left;"><strong><code>topologyValueFromPod</code> swallows a missing Node</strong> via <code>IgnoreNotFound</code>, returning <code>("", nil)</code> and setting an <strong>empty node selector value</strong> that matches nothing — an unschedulable worker StatefulSet with no clear error</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;">See <a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §6</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C3</td>
+<td style="text-align: left;"><strong>The topology error message interpolates the empty value, not the key</strong>: <code>"node does not have topology label: %s"</code> tells you nothing about which label is missing</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;">Same function as C2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C4</td>
+<td style="text-align: left;"><strong>Hardcoded envtest <code>1.28.3</code></strong> while <code>ENVTEST_K8S_VERSION = 1.36.0</code>. Harmless via <code>make test-integration</code> (KUBEBUILDER_ASSETS wins), but the documented direct-run path is broken</td>
+<td style="text-align: left;"><code>test/integration/controllers/suite_test.go</code></td>
+<td style="text-align: left;">See <a href="../11_contributor_workflow/">Module 11</a>, §3.2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C5</td>
+<td style="text-align: left;"><strong>A stale Ginkgo entry name</strong> references <code>subdomain policy LeadersSharedWorkersDedicated</code>, a value rejected in KEP-173 and never shipped. The real value is <code>UniquePerReplica</code></td>
+<td style="text-align: left;"><code>test/integration/controllers/leaderworkerset_test.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C6</td>
+<td style="text-align: left;"><strong>Dead code in the DisaggregatedSet subsystem</strong>: <code>NumRequiredRoles</code> (zero references), <code>ComputeInitialReplicaState</code> (tests only), the free <code>SetInitialReplicas</code> (unreferenced), <code>ServiceManager.scheme</code> (stored, never used), <code>sortByNewestTimestamp</code>'s <code>roleNames</code> parameter, <code>ValidateUpdate</code>'s <code>oldDisagg</code> parameter</td>
+<td style="text-align: left;"><code>pkg/utils/disaggregatedset/</code>, <code>pkg/controllers/disaggregatedset/</code></td>
+<td style="text-align: left;">See <a href="../08_disaggregatedset/">Module 8</a>, §10.1</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C7</td>
+<td style="text-align: left;"><strong>A vestigial field index.</strong> <code>lwsOwnerKey</code> is registered but never used in any <code>client.MatchingFields</code> query — pure informer-cache overhead. Either wire it up or remove it</td>
+<td style="text-align: left;"><code>pkg/controllers/leaderworkerset_controller.go</code></td>
+<td style="text-align: left;"><code>grep -rn "lwsOwnerKey"</code> finds only the definition and the registration. See <a href="../04_lws_reconciler_internals/">Module 4</a>, §1.4</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C8</td>
+<td style="text-align: left;"><strong><code>SetupIndexes</code>' error is logged but not fatal</strong>, leaving the manager running partially initialised after a startup-time failure</td>
+<td style="text-align: left;"><code>cmd/main.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C9</td>
+<td style="text-align: left;"><strong>Over-broad RBAC</strong>: the pod controller holds <code>update</code> and <code>patch</code> on <code>nodes</code>, exercised by no code path in the core control plane</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go:67</code></td>
+<td style="text-align: left;">See <a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §5</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C10</td>
+<td style="text-align: left;"><strong>A latent bug in <code>hashRevision</code></strong>: <code>deepHashObject</code> calls <code>hasher.Reset()</code> before writing, so if both <code>Data.Raw</code> and <code>Data.Object</code> were populated the <code>Raw</code> bytes would be silently discarded. Unreachable today</td>
+<td style="text-align: left;"><code>pkg/utils/revision/revision_utils.go</code></td>
+<td style="text-align: left;">See <a href="../04_lws_reconciler_internals/">Module 4</a>, §5.2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C11</td>
+<td style="text-align: left;"><strong>Float arithmetic in the DS planner</strong> — <code>int(float64(a) * float64(b) / float64(c))</code>. Integer math is exactly equivalent and immune to FP edge cases</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/planner.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">C12</td>
+<td style="text-align: left;"><strong>The pod validating webhook is a no-op</strong> — <code>validate()</code> returns <code>(nil, nil)</code>. Either remove it or give it a purpose</td>
+<td style="text-align: left;"><code>pkg/webhooks/pod_webhook.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">C13</td>
+<td style="text-align: left;"><strong>A misleading comment</strong> in <code>setNodeSelectorForWorkerPods</code> describes update behaviour ("the following applying logic will automatically update it") that the create-only code does not implement</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go</code></td>
+<td style="text-align: left;">See <a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §2</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">C14</td>
+<td style="text-align: left;"><strong><code>initial-replicas</code> write failures are swallowed</strong> — only <code>log.Error</code>, silently degrading that role's drain baseline to <code>spec.Replicas</code> and producing a wrong drain trajectory with no surfaced error</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/executor.go</code></td>
+<td style="text-align: left;">See <a href="../08_disaggregatedset/">Module 8</a>, §4.6</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">C15</td>
+<td style="text-align: left;"><strong><code>extractRollingUpdateConfig</code> asymmetry</strong>: <code>unavail &gt; 0</code> sets both fields; only-<code>surge &gt; 0</code> sets one; both-zero silently reverts to <code>MaxSurge=1</code></td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/executor.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="tier-5-code-feature-and-validation-gaps">Tier 5 — Code: Feature and Validation Gaps<a class="headerlink" href="#tier-5-code-feature-and-validation-gaps" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">Finding</th>
+<th style="text-align: left;">Where</th>
+<th style="text-align: left;">Rationale</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">F1</td>
+<td style="text-align: left;"><strong><code>DisaggregatedSet.status</code> is never written.</strong> The API declares <code>RoleStatuses</code> and <code>Conditions</code>, the CRD has the subresource, RBAC is granted, and the upstream docs tell users to look at it — but no code writes it</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/</code></td>
+<td style="text-align: left;"><strong>The single best contribution opportunity in the project.</strong> All inputs are already gathered per reconcile. See <a href="../08_disaggregatedset/">Module 8</a>, §10</td>
+<td style="text-align: center;">🟠</td>
+</tr>
+<tr>
+<td style="text-align: left;">F2</td>
+<td style="text-align: left;"><strong>No printcolumns on <code>DisaggregatedSet</code></strong>, so <code>kubectl get disaggregatedset</code> shows only NAME and AGE. Naturally pairs with F1</td>
+<td style="text-align: left;"><code>api/disaggregatedset/v1/disaggregatedset_types.go</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">F3</td>
+<td style="text-align: left;"><strong>No LWS-specific or DS-specific Prometheus metrics.</strong> KEP-766, KEP-846, and KEP-849 all list metrics as a Beta criterion</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">KEP-backed, well-motivated. See <a href="../10_operations_and_troubleshooting/">Module 10</a>, §4</td>
+<td style="text-align: center;">🟠</td>
+</tr>
+<tr>
+<td style="text-align: left;">F4</td>
+<td style="text-align: left;"><strong>Non-template spec changes on a DS role are silently dropped.</strong> <code>ComputeRevision</code> hashes only role name + <code>LeaderWorkerTemplate</code>, so changing <code>networkConfig</code>, <code>startupPolicy</code>, <code>rolloutStrategy</code>, or role <code>metadata</code> produces the same revision, creates no new LWS, and never patches the existing one</td>
+<td style="text-align: left;"><code>pkg/utils/disaggregatedset/utils.go</code></td>
+<td style="text-align: left;"><strong>The sharpest user-visible bug in the DS subsystem.</strong> Open an issue first — the fix has design choices</td>
+<td style="text-align: center;">🟠</td>
+</tr>
+<tr>
+<td style="text-align: left;">F5</td>
+<td style="text-align: left;"><strong>DS Services are create-only and never repaired.</strong> <code>ensureService</code> swallows <code>IsAlreadyExists</code>; a drifted selector is never reconciled back. The controller does not watch Services either</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/service_manager.go</code></td>
+<td style="text-align: left;">Fix: add <code>Owns(&amp;corev1.Service{})</code> plus a spec diff-and-patch</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F6</td>
+<td style="text-align: left;"><strong>No validation of <code>volumeClaimTemplates</code> at all</strong> — not the name/<code>volumeMount</code> cross-check the API doc comment promises, and not immutability. Since StatefulSet's own field is immutable, an edit surfaces as a <code>FailedUpdate</code> event rather than a clean admission error</td>
+<td style="text-align: left;"><code>pkg/webhooks/leaderworkerset_webhook.go</code></td>
+<td style="text-align: left;">See <a href="../07_scheduling_placement_and_networking/">Module 7</a>, §6.1</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F7</td>
+<td style="text-align: left;"><strong>PVC forwarding is lossy and silent</strong> — only <code>accessModes</code>, <code>storageClassName</code>, <code>volumeMode</code>, and <code>resources</code> are copied. <code>selector</code>, <code>dataSource</code>, <code>dataSourceRef</code>, and PVC labels/annotations are dropped without warning</td>
+<td style="text-align: left;"><code>pkg/utils/controller/controller_utils.go</code></td>
+<td style="text-align: left;">At minimum document it; better, forward the fields or reject them</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F8</td>
+<td style="text-align: left;"><strong>No name-length validation.</strong> The real limit is <code>51 - int(replicas/10)</code> characters, and exceeding it surfaces as a StatefulSet label error far from the LWS</td>
+<td style="text-align: left;"><code>pkg/webhooks/leaderworkerset_webhook.go</code></td>
+<td style="text-align: left;">See <a href="../10_operations_and_troubleshooting/">Module 10</a>, §5.2</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F9</td>
+<td style="text-align: left;"><strong>KAL does not lint <code>api/disaggregatedset/</code> or <code>api/config/</code>.</strong> The exclusion is <code>path-except: "api/leaderworkerset/*"</code>. DS is the newest and fastest-changing API</td>
+<td style="text-align: left;"><code>.golangci-kal.yml</code></td>
+<td style="text-align: left;">Expect <code>commentstart</code> violations. See <a href="../02_api_surface_anatomy/">Module 2</a>, §8.2</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F10</td>
+<td style="text-align: left;"><strong>No DisaggregatedSet controller integration tests.</strong> <code>test/integration/controllers/</code> has only <code>leaderworkerset_test.go</code>; DS coverage is unit tests plus e2e. KEP-766's integration test plan is unmet</td>
+<td style="text-align: left;"><code>test/integration/controllers/</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟠</td>
+</tr>
+<tr>
+<td style="text-align: left;">F11</td>
+<td style="text-align: left;"><strong>The experimental restart annotation ignores its value</strong> (presence check only), so setting <code>false</code> enables the feature. Now that <code>RecreateGroupAfterStart</code> is a first-class enum value, the clean fix is a loud deprecation</td>
+<td style="text-align: left;"><code>pkg/controllers/pod_controller.go:220</code></td>
+<td style="text-align: left;">See <a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §4.1</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F12</td>
+<td style="text-align: left;"><strong>Undeclared Helm values.</strong> <code>metrics.prometheusNamespace</code> and <code>metrics.serviceMonitor</code> are documented but absent from <code>charts/lws/values.yaml</code> and the chart README</td>
+<td style="text-align: left;"><code>charts/lws/</code></td>
+<td style="text-align: left;">See <a href="../10_operations_and_troubleshooting/">Module 10</a>, §4</td>
+<td style="text-align: center;">🟢</td>
+</tr>
+<tr>
+<td style="text-align: left;">F13</td>
+<td style="text-align: left;"><strong>Redundant cross-slice <code>List</code> calls</strong> — <code>updateScalerStatus</code> and <code>seedForRole</code> each issue one on top of the per-slice lists. Cache-backed, but wasteful at 100 slices</td>
+<td style="text-align: left;"><code>pkg/controllers/disaggregatedset/</code></td>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">🟡</td>
+</tr>
+<tr>
+<td style="text-align: left;">F14</td>
+<td style="text-align: left;"><strong>No immutability validation on DisaggregatedSet at all.</strong> <code>ValidateUpdate</code> is identical to <code>ValidateCreate</code> and <code>oldDisagg</code> is unused. Role names are mutable, and a rename silently recreates that role's entire fleet</td>
+<td style="text-align: left;"><code>pkg/webhooks/disaggregatedset/</code></td>
+<td style="text-align: left;">Decide what should be immutable, then enforce it</td>
+<td style="text-align: center;">🟡</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="tier-6-larger-work-kep-required">Tier 6 — Larger Work, KEP Required<a class="headerlink" href="#tier-6-larger-work-kep-required" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">#</th>
+<th style="text-align: left;">Opportunity</th>
+<th style="text-align: left;">Rationale</th>
+<th style="text-align: center;">⬤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">P1</td>
+<td style="text-align: left;"><strong>A <code>revisionHistoryLimit</code> field.</strong> LWS keeps exactly one revision, so <code>kubectl rollout undo</code> has nothing to work with and rollback means re-applying an old manifest by hand. Deployment and StatefulSet both have precedent</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P2</td>
+<td style="text-align: left;"><strong>Implement KEP-820's fail-fast restart budget.</strong> <code>maxGroupRestarts</code>, a <code>Failed</code> condition, and a group-restart counter. Currently <code>status: provisional</code> with zero implementation — and note its second half (the <code>publishNotReadyAddresses</code> knob) should be dropped, per K5</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P3</td>
+<td style="text-align: left;"><strong>A second <code>SchedulerProvider</code>.</strong> The interface is designed for more than one; <code>SupportedSchedulerProviders</code> has a single entry. The upstream coscheduling plugin needs only a label, not a CRD</td>
+<td style="text-align: left;">🟠</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P4</td>
+<td style="text-align: left;"><strong>A native "all workers ready" signal.</strong> The TensorRT-LLM example grants the pod RBAC so the leader can poll the API server — strong evidence of a missing primitive. KEP-135's <code>LeaderReady</code> solves the inverse direction only</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P5</td>
+<td style="text-align: left;"><strong>Real <code>component-base</code> feature gates.</strong> There is no feature-gate machinery at all; toggles are the <code>Configuration</code> CRD plus one <code>experimental-</code> annotation. Discuss in an issue first — this is architecture, not cleanup</td>
+<td style="text-align: left;">🟠</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P6</td>
+<td style="text-align: left;"><strong>Separate leader and worker <code>volumeClaimTemplates</code>.</strong> KEP-622 explicitly shares one field. A leader that needs different storage from its workers cannot be expressed</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P7</td>
+<td style="text-align: left;"><strong>Gang scheduling for DisaggregatedSet slices.</strong> KEP-848 acknowledges that hard-only placement can wedge a slice with no whole-slice look-ahead, and defers gang scheduling</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">P8</td>
+<td style="text-align: left;"><strong>Multi-slice External scaling.</strong> The webhook forbids <code>slices &gt; 1</code> with any External role, tagged <code>// Alpha:</code> and deferred to a follow-up KEP (issue #948)</td>
+<td style="text-align: left;">🔴</td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="suggested-sequence">Suggested Sequence<a class="headerlink" href="#suggested-sequence" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>One documentation fix</strong> from Tier 1 — D1 is the highest user impact. Learn the PR mechanics on something uncontroversial.</li>
+<li><strong>A KEP comment</strong>, not a PR — K5. Two greps, real value, low risk.</li>
+<li><strong>One contained code fix with a test</strong> from Tier 4 — C1, C4, or C6.</li>
+<li><strong><code>CONTRIBUTING.md</code></strong> (G1) once you have been through the workflow yourself. You are the right person to write it precisely because you just learned it the hard way.</li>
+<li><strong>Open an issue</strong> for a Tier 5 item you care about, and see how the maintainers respond before writing code.</li>
+<li><strong>F1 (DisaggregatedSet status)</strong> if you want something substantial. It is well-scoped, all the inputs already exist, and the API already declares the shape.</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Before starting anything</p>
+<p>Search the issue tracker and open PRs. This appendix was compiled by reading the tree at one commit, and the project moves quickly — several of these may already be fixed, claimed, or deliberately deferred. A PR that duplicates existing work wastes reviewer time, which in a project with four approvers is the scarcest resource there is.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

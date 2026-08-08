@@ -1,0 +1,2093 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/zh/04_lws_reconciler_internals/">
+      
+      
+        <link rel="prev" href="../03_group_lifecycle_and_identity/">
+      
+      
+        <link rel="next" href="../05_pod_controller_and_failure_handling/">
+      
+      
+        
+          <link rel="alternate" href="../../04_lws_reconciler_internals/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>模块 4 - LeaderWorkerSet 控制器内核 - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#4leaderworkerset" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              模块 4 - LeaderWorkerSet 控制器内核
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../04_lws_reconciler_internals/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    问题陈述与课程大纲
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 1 - 多机推理的问题域
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 2 - API 表面全解剖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 3 - 组的生命周期与 Pod 身份
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 4 - LeaderWorkerSet 控制器内核
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：Manager 装配
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：Manager 装配">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 注册了什么
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 证书管理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-watch-watch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Watch 与第二条 watch 路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-field-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 那个形同虚设的 field index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reconcile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：Reconcile 循环
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：Reconcile 循环">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 事件词汇表
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leader-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：构建 leader StatefulSet
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：构建 leader StatefulSet">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 往 Pod 模板上盖什么章
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 元数据合并
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-statefulset-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 StatefulSet spec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 PVC 透传
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-side-apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：Server-Side Apply
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controllerrevision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：ControllerRevision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：ControllerRevision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 哈希什么——以及不哈希什么
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 哈希与命名
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 变更检测与相等性缓存
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-operator-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 operator 升级时的 revision 收养
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 查找、恢复与截断
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#status-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：Status 与 Conditions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：Status 与 Conditions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 三个 status 字段
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-condition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Condition 的计数器
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-condition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Condition 的选择
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reconciler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：给 Reconciler 装上探针
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：给 Reconciler 装上探针">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-field-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 读 field manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 证明伸缩不会切 revision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 观察两套计数体系分岔
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-partition-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 用 partition 让一个 revision 滞留
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 5 — 触发序列化漂移路径（阅读练习）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 5 - Pod 控制器与故障处理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 6 - 滚动更新、版本与伸缩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 7 - 调度、放置与网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 9 - 推理引擎集成
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 10 - 运维与排障
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模块 11 - 贡献者工作流
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 A - 术语总表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 B - PR 机会清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    附录 C - 一手资料阅读清单
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一部分：Manager 装配
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一部分：Manager 装配">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 注册了什么
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 证书管理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-watch-watch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Watch 与第二条 watch 路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-field-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 那个形同虚设的 field index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reconcile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二部分：Reconcile 循环
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二部分：Reconcile 循环">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 事件词汇表
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leader-statefulset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三部分：构建 leader StatefulSet
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三部分：构建 leader StatefulSet">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 往 Pod 模板上盖什么章
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 元数据合并
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-statefulset-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 StatefulSet spec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 PVC 透传
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-side-apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四部分：Server-Side Apply
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controllerrevision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五部分：ControllerRevision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五部分：ControllerRevision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 哈希什么——以及不哈希什么
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 哈希与命名
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 变更检测与相等性缓存
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-operator-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 operator 升级时的 revision 收养
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 查找、恢复与截断
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#status-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六部分：Status 与 Conditions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六部分：Status 与 Conditions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 三个 status 字段
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-condition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Condition 的计数器
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-condition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Condition 的选择
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reconciler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实验：给 Reconciler 装上探针
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实验：给 Reconciler 装上探针">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-field-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 1 — 读 field manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 2 — 证明伸缩不会切 revision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 3 — 观察两套计数体系分岔
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-partition-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 4 — 用 partition 让一个 revision 滞留
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        步骤 5 — 触发序列化漂移路径（阅读练习）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="4leaderworkerset">模块 4：LeaderWorkerSet 控制器内核<a class="headerlink" href="#4leaderworkerset" title="Permanent link">&para;</a></h1>
+<p>到这一模块，抽象结束，代码开始。<code>pkg/controllers/leaderworkerset_controller.go</code> 约 970 行，只做五件事：维护 ControllerRevision 历史、计算滚动参数、server-side apply 一个 StatefulSet、协调一个 headless Service、计算 status。LWS 的其余一切都是这五件事的下游。</p>
+<p>本模块覆盖<strong>manager 如何装配</strong>、<strong>十二步 reconcile</strong>、<strong>leader StatefulSet 如何构建</strong>、<strong>Server-Side Apply 与 field manager</strong>、<strong>完整的 ControllerRevision</strong>，以及 <strong>status 与 condition 的算术</strong>——后者比看上去微妙，也是大部分「<code>kubectl get lws</code> 为什么显示这个数」问题的来源。</p>
+<p>滚动算术本身留到<a href="../06_rollout_and_revisions/">模块 6</a>；这里把 <code>rollingUpdateParameters()</code> 当成一个「返回 partition 和副本数」的函数就行。</p>
+<div class="admonition info">
+<p class="admonition-title">溯源信息</p>
+<p>对照 <code>kubernetes-sigs/lws</code> 的 <code>32a9c37</code>（2026-08-06）、v0.9.0 核实。主要来源：<code>cmd/main.go</code>、<code>pkg/controllers/leaderworkerset_controller.go</code>、<code>pkg/utils/revision/revision_utils.go</code>、<code>pkg/controllers/metadata.go</code>、<code>pkg/cert/cert.go</code>。</p>
+</div>
+<hr />
+<h2 id="manager">第一部分：Manager 装配<a class="headerlink" href="#manager" title="Permanent link">&para;</a></h2>
+<h3 id="11">1.1 注册了什么<a class="headerlink" href="#11" title="Permanent link">&para;</a></h3>
+<p><code>cmd/main.go</code> 无条件注册五个 scheme——client-go 的、<code>leaderworkerset/v1</code>、<code>disaggregatedset/v1</code>、<code>config</code> API，以及 <strong><code>scheduling.volcano.sh/v1beta1</code></strong>。即使 gang 调度关闭，Volcano 的类型也在 scheme 里；这意味着这个二进制无论如何都依赖 Volcano 的 API 模块，值得知道。</p>
+<p>启动顺序是刻意安排的：</p>
+<pre class="mermaid"><code>flowchart TD
+    A["解析 flag + 加载 --config&lt;br&gt;严格解码"] --&gt; B["ctrl.NewManager"]
+    B --&gt; C["SetupIndexes(fieldIndexer)&lt;br&gt;&lt;i&gt;出错只记日志，不致命&lt;/i&gt;"]
+    C --&gt; D{"internalCertManagement.enable？"}
+    D --&gt;|"true"| E["cert.CertsManager(...)&lt;br&gt;rotator 填充 certDir，&lt;br&gt;完成后 close(certsReady)"]
+    D --&gt;|"false"| F["立即 close(certsReady)&lt;br&gt;假定有外部签发者"]
+    E --&gt; G["go setupControllers()&lt;br&gt;&lt;b&gt;阻塞在 &amp;lt;-certsReady&lt;/b&gt;"]
+    F --&gt; G
+    G --&gt; H["LeaderWorkerSetReconciler"]
+    G --&gt; I["DisaggregatedSetReconciler"]
+    G --&gt; J["SchedulerProvider（若已配置）"]
+    G --&gt; K["PodReconciler(sp)"]
+    G --&gt; L["webhook&lt;br&gt;&lt;i&gt;ENABLE_WEBHOOKS=false 时跳过&lt;/i&gt;"]
+    B --&gt; M["healthz + readyz = healthz.Ping"]
+    M --&gt; N["mgr.Start(SetupSignalHandler())"]</code></pre>
+<p><code>&lt;-certsReady</code> 这道阻塞是关键：在服务证书就绪之前，任何控制器和 webhook 都不会注册。这就防止了 API server 把准入请求路由到一个还完不成 TLS 握手的 webhook 上。</p>
+<h3 id="12">1.2 证书管理<a class="headerlink" href="#12" title="Permanent link">&para;</a></h3>
+<p>「cert-manager 模式」在代码里并不是一个模式。它就是 <code>internalCertManagement.enable: false</code>——立即关闭 channel，并假定有外部的东西去填 <code>webhook.certDir</code>。</p>
+<p>内置模式用的是 <code>github.com/open-policy-agent/cert-controller</code> 的 rotator：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">设置</th>
+<th style="text-align: left;">值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">CA 名 / 组织</td>
+<td style="text-align: left;"><code>lws-ca</code> / <code>lws</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">DNS 名</td>
+<td style="text-align: left;"><code>&lt;webhookServiceName&gt;.&lt;namespace&gt;.svc</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">被打补丁的配置</td>
+<td style="text-align: left;"><code>lws-validating-webhook-configuration</code>、<code>lws-mutating-webhook-configuration</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">就绪检查</td>
+<td style="text-align: left;">启用</td>
+</tr>
+</tbody>
+</table>
+<p>rotator 按名字把 <code>caBundle</code> 打进这两个 webhook 配置。如果你在 fork 里重命名了某个 webhook 配置，这套机制会静默失效——rotator 找不到对象，而准入是 fail-closed（<code>failurePolicy: Fail</code>）。</p>
+<h3 id="13-watch-watch">1.3 Watch 与第二条 watch 路径<a class="headerlink" href="#13-watch-watch" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">r</span><span class="w"> </span><span class="o">*</span><span class="nx">LeaderWorkerSetReconciler</span><span class="p">)</span><span class="w"> </span><span class="nx">SetupWithManager</span><span class="p">(</span><span class="nx">mgr</span><span class="w"> </span><span class="nx">ctrl</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">ctrl</span><span class="p">.</span><span class="nx">NewControllerManagedBy</span><span class="p">(</span><span class="nx">mgr</span><span class="p">).</span>
+<span class="w">        </span><span class="nx">For</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">LeaderWorkerSet</span><span class="p">{}).</span>
+<span class="w">        </span><span class="nx">Owns</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">{}).</span>
+<span class="w">        </span><span class="nx">Owns</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">corev1</span><span class="p">.</span><span class="nx">Service</span><span class="p">{}).</span>
+<span class="w">        </span><span class="nx">Watches</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">{},</span><span class="w"> </span><span class="nx">handler</span><span class="p">.</span><span class="nx">EnqueueRequestsFromMapFunc</span><span class="p">(</span><span class="nx">enqueueLWSRequests</span><span class="p">)).</span>
+<span class="w">        </span><span class="nx">Complete</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>第四行是最容易绊人的。<code>Owns(&amp;appsv1.StatefulSet{})</code> 只对「controller 引用指向 LeaderWorkerSet」的 StatefulSet 触发——也就是只有 <strong>leader</strong> StatefulSet。worker StatefulSet 由 leader <strong>Pod</strong> 拥有（见<a href="../03_group_lifecycle_and_identity/">模块 3</a>），所以对 <code>Owns</code> 是不可见的。</p>
+<p><code>enqueueLWSRequests</code> 补上了这个缺口：把任何带 <code>leaderworkerset.sigs.k8s.io/name</code> label 的对象映射成同命名空间下对该 LWS 的 reconcile 请求。没有它，worker StatefulSet 变就绪时不会更新 <code>status.readyReplicas</code>，得等其他事件碰巧触发一次 reconcile。</p>
+<div class="admonition note">
+<p class="admonition-title">一个值得读的近期修复</p>
+<p>提交 <code>743f15f</code>——「fix: ignore unrelated StatefulSets in LeaderWorkerSet watch mapper (#957)」——加固了这个 mapper。想看看这个项目里「边界清晰的控制器 bug 修复」长什么样，这是一份很好的短篇材料。</p>
+</div>
+<h3 id="14-field-index">1.4 那个形同虚设的 field index<a class="headerlink" href="#14-field-index" title="Permanent link">&para;</a></h3>
+<p><code>SetupIndexes</code> 只注册了一个 index：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">indexer</span><span class="p">.</span><span class="nx">IndexField</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">{},</span><span class="w"> </span><span class="nx">lwsOwnerKey</span><span class="w"> </span><span class="cm">/* &quot;.metadata.controller&quot; */</span><span class="p">,</span>
+<span class="w">    </span><span class="kd">func</span><span class="p">(</span><span class="nx">rawObj</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">Object</span><span class="p">)</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">owner</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">GetControllerOf</span><span class="p">(</span><span class="nx">rawObj</span><span class="p">.(</span><span class="o">*</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">))</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">owner</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">owner</span><span class="p">.</span><span class="nx">APIVersion</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">apiGVStr</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">owner</span><span class="p">.</span><span class="nx">Kind</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;LeaderWorkerSet&quot;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">owner</span><span class="p">.</span><span class="nx">Name</span><span class="p">}</span>
+<span class="w">    </span><span class="p">})</span>
+</code></pre></div>
+<p><strong>核心控制面里，<code>lwsOwnerKey</code> 从未出现在任何 <code>client.MatchingFields</code> 查询中。</strong> 所有查找走的都是 label selector。这个 index 在 informer 缓存里占内存，却什么也没换来。把它接上、或者把它删掉，都是一个小而自足的贡献——见<a href="../appendix_pr_opportunities/">附录 B</a>。</p>
+<p>另外注意 <code>SetupIndexes</code> 的错误只记日志，<strong>不会</strong> <code>os.Exit</code>。index 注册失败会让 manager 在半初始化状态下继续跑，对一个启动期失败来说这多半是错误的选择。</p>
+<hr />
+<h2 id="reconcile">第二部分：Reconcile 循环<a class="headerlink" href="#reconcile" title="Permanent link">&para;</a></h2>
+<p><code>Reconcile</code> 是固定顺序的十二步。按顺序读一遍，是理解这个控制器最快的路径。</p>
+<pre class="mermaid"><code>flowchart TD
+    S1["1 · Get LWS（IgnoreNotFound）"]
+    S2{"2 · 有 DeletionTimestamp？"}
+    S3["3 · getLeaderStatefulSet"]
+    S4{"4 · leader STS 正在终止？"}
+    S5["5 · getOrCreateRevisionIfNonExist"]
+    S6["6 · getUpdatedRevision → CreateRevision"]
+    S7["7 · rollingUpdateParameters&lt;br&gt;→ (partition, replicas)"]
+    S8["8 · SSAWithStatefulset"]
+    S9["9 · 发出滚动事件"]
+    S10["10 · reconcileHeadlessServices"]
+    S11["11 · updateStatus"]
+    S12{"12 · updateDone？"}
+    S13["TruncateRevisions"]
+    DONE["返回"]
+
+    S1 --&gt; S2
+    S2 --&gt;|是| DONE
+    S2 --&gt;|否| S3 --&gt; S4
+    S4 --&gt;|是| RQ["5 秒后重排队"]
+    S4 --&gt;|否| S5 --&gt; S6 --&gt; S7 --&gt; S8 --&gt; S9 --&gt; S10 --&gt; S11 --&gt; S12
+    S12 --&gt;|是| S13 --&gt; DONE
+    S12 --&gt;|否| DONE</code></pre>
+<p>其中三步值得单独说。</p>
+<p><strong>第 2 步——没有 finalizer。</strong> <code>if lws.DeletionTimestamp != nil { return }</code>。完全没有清理逻辑；owner reference 和 Kubernetes 垃圾回收搞定一切。如果你想在 PR 里加 finalizer，请先准备好论证「为什么 GC 不够」。</p>
+<p><strong>第 4 步——排空退避。</strong> 如果 leader StatefulSet 自己正在终止，reconciler 返回 <code>ctrl.Result{RequeueAfter: 5 * time.Second}</code>，而不是试图重建它。对一个删除中的 StatefulSet 做 apply 会产生令人困惑的中间状态；退避更简单也更正确。</p>
+<p><strong>第 5 步——升级时的 revision 收养。</strong> <code>getOrCreateRevisionIfNonExist</code> 同时处理两种情况：全新、没有任何 revision 的 LWS；以及由<em>ControllerRevision 之前</em>的控制器版本创建、其 leader StatefulSet 上已经带着按旧方案算出的 <code>template-revision-hash</code> 的 LWS。第二种情况下新控制器必须收养已有 hash 而不是重算一个，否则集群里每个 LWS 都会在 operator 升级时滚一遍。机制见 §5.4。</p>
+<h3 id="21">2.1 事件词汇表<a class="headerlink" href="#21" title="Permanent link">&para;</a></h3>
+<p>读事件流常常比读日志快。reconciler 会发出：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Reason</th>
+<th style="text-align: left;">Action</th>
+<th style="text-align: left;">何时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>CreatingRevision</code></td>
+<td style="text-align: left;">Create</td>
+<td style="text-align: left;">切了一个新的 ControllerRevision</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>GroupsProgressing</code></td>
+<td style="text-align: left;">Create</td>
+<td style="text-align: left;">首次创建 leader StatefulSet</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>GroupsUpdating</code></td>
+<td style="text-align: left;">Update</td>
+<td style="text-align: left;">partition 移动了：<code>"Updating replica %d"</code> 或 <code>"Updating replicas %d to %d (inclusive)"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>FailedCreate</code> / <code>FailedUpdate</code></td>
+<td style="text-align: left;">Create / Update</td>
+<td style="text-align: left;">SSA patch 失败</td>
+</tr>
+</tbody>
+</table>
+<p><code>GroupsUpdating</code> 的消息区分了单组步进（<code>oldPartition-1 == partition</code>）和多组步进，这是快速判断 <code>maxUnavailable &gt; 1</code> 有没有真正生效的办法。</p>
+<hr />
+<h2 id="leader-statefulset">第三部分：构建 leader StatefulSet<a class="headerlink" href="#leader-statefulset" title="Permanent link">&para;</a></h2>
+<p><code>constructLeaderStatefulSetApplyConfiguration(lws, partition, replicas, revisionKey)</code> 构建的是一个 <strong>apply configuration</strong>，不是 StatefulSet 对象。模板取 <code>leaderWorkerTemplate.leaderTemplate</code>（非 nil 时），否则取 <code>workerTemplate</code> 的深拷贝，再经 <code>runtime.DefaultUnstructuredConverter</code> 往返转换成 <code>PodTemplateSpecApplyConfiguration</code>。</p>
+<h3 id="31-pod">3.1 往 Pod 模板上盖什么章<a class="headerlink" href="#31-pod" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">种类</th>
+<th style="text-align: left;">Key</th>
+<th style="text-align: left;">值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Label</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/worker-index</code></td>
+<td style="text-align: left;"><code>"0"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Label</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/name</code></td>
+<td style="text-align: left;"><code>lws.Name</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Label</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/template-revision-hash</code></td>
+<td style="text-align: left;"><code>revisionKey</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotation</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/size</code></td>
+<td style="text-align: left;"><code>strconv.Itoa(int(*Size))</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotation</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/exclusive-topology</code></td>
+<td style="text-align: left;">若 LWS 上非空则复制</td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotation</td>
+<td style="text-align: left;"><code>subgroup-policy-type</code>、<code>subgroup-size</code>、<code>subgroup-exclusive-topology</code></td>
+<td style="text-align: left;"><code>SubGroupPolicy != nil</code> 时</td>
+</tr>
+<tr>
+<td style="text-align: left;">Annotation</td>
+<td style="text-align: left;"><code>leaderworkerset.sigs.k8s.io/subdomainPolicy</code></td>
+<td style="text-align: left;">仅 <code>UniquePerReplica</code> 时</td>
+</tr>
+</tbody>
+</table>
+<p><code>worker-index: "0"</code> 这个 label 既让 leader StatefulSet 的 selector 生效，也是 Pod webhook 判断走 leader 分支的依据。</p>
+<h3 id="32">3.2 元数据合并<a class="headerlink" href="#32" title="Permanent link">&para;</a></h3>
+<p><code>pkg/controllers/metadata.go</code> 只有八行，但它的优先级规则很重要，值得引用：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">merged</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span>
+<span class="nx">maps</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">merged</span><span class="p">,</span><span class="w"> </span><span class="nx">userMetadata</span><span class="p">)</span>
+<span class="nx">maps</span><span class="p">.</span><span class="nx">Copy</span><span class="p">(</span><span class="nx">merged</span><span class="p">,</span><span class="w"> </span><span class="nx">controllerMetadata</span><span class="p">)</span><span class="w">   </span><span class="c1">// 控制器的 key 胜出</span>
+<span class="c1">// 两者都空时返回 nil</span>
+</code></pre></div>
+<p>STS 的 label 是 <code>lws.Labels</code> 加上 <code>{name, template-revision-hash}</code>；STS 的 annotation 是 <code>lws.Annotations</code> 加上 <code>{replicas}</code>。因为控制器的 key 后拷贝，用户在自己的 LWS 上设 <code>leaderworkerset.sigs.k8s.io/name</code> 也污染不了控制器自己的 label。空时返回 <code>nil</code> 避免把空 map 写进 apply configuration，否则 SSA 会去认领一个空字段的所有权。</p>
+<h3 id="33-statefulset-spec">3.3 StatefulSet spec<a class="headerlink" href="#33-statefulset-spec" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">StatefulSet</span><span class="p">(</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Namespace</span><span class="p">).</span><span class="nx">WithSpec</span><span class="p">(</span><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">StatefulSetSpec</span><span class="p">().</span>
+<span class="w">    </span><span class="nx">WithServiceName</span><span class="p">(</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Name</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">WithReplicas</span><span class="p">(</span><span class="nx">replicas</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">WithPodManagementPolicy</span><span class="p">(</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">ParallelPodManagement</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">WithTemplate</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">podTemplateApplyConfiguration</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">WithUpdateStrategy</span><span class="p">(</span><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">StatefulSetUpdateStrategy</span><span class="p">().</span>
+<span class="w">        </span><span class="nx">WithType</span><span class="p">(</span><span class="nx">appsv1</span><span class="p">.</span><span class="nx">StatefulSetUpdateStrategyType</span><span class="p">(</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">RolloutStrategy</span><span class="p">.</span><span class="nx">Type</span><span class="p">)).</span>
+<span class="w">        </span><span class="nx">WithRollingUpdate</span><span class="p">(</span><span class="nx">appsapplyv1</span><span class="p">.</span><span class="nx">RollingUpdateStatefulSetStrategy</span><span class="p">().</span>
+<span class="w">            </span><span class="nx">WithMaxUnavailable</span><span class="p">(</span><span class="nx">stsMaxUnavailable</span><span class="p">).</span><span class="nx">WithPartition</span><span class="p">(</span><span class="nx">partition</span><span class="p">))).</span>
+<span class="w">    </span><span class="nx">WithSelector</span><span class="p">(</span><span class="nx">metaapplyv1</span><span class="p">.</span><span class="nx">LabelSelector</span><span class="p">().</span><span class="nx">WithMatchLabels</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">SetNameLabelKey</span><span class="p">:</span><span class="w">     </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">WorkerIndexLabelKey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0&quot;</span><span class="p">})))</span>
+</code></pre></div>
+<p>有四点要注意：</p>
+<ol>
+<li><strong><code>replicas</code> 是经滚动调整后的值</strong>，不是 <code>*lws.Spec.Replicas</code>。<code>maxSurge</code> 滚动期间它是 <code>spec.replicas + surge</code>。这就是 <code>status.replicas</code>——直接从 StatefulSet 上读的——会超过 <code>spec.replicas</code> 的原因。</li>
+<li><strong><code>podManagementPolicy: Parallel</code>。</strong> leader Pod 是同时创建的，不按序号顺序。对应<a href="../01_multihost_inference_problem_space/">模块 1</a> 的需求 R1。</li>
+<li><strong>leader StatefulSet 刻意不设 <code>.spec.ordinals</code>。</strong> 它从 0 开始。只有 <em>worker</em> StatefulSet 设 <code>WithStart(1)</code>。</li>
+<li><strong>嵌套的 <code>maxUnavailable</code> 不是用户写的那个 <code>maxUnavailable</code>：</strong></li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="nx">stsMaxUnavailableInt</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">int32</span><span class="p">(</span><span class="nx">lwsMaxUnavailable</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">lwsMaxSurge</span><span class="p">)</span><span class="w">  </span><span class="c1">// maxSurge 已被钳到 &lt;= replicas</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">stsMaxUnavailableInt</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">stsMaxUnavailableInt</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>交给 StatefulSet 的值是 LWS 的 <code>maxUnavailable</code> 与 <code>maxSurge</code> 之<em>和</em>，下限为 1。组的顺序由 LWS 自己通过 partition 驱动；StatefulSet 自身的 <code>maxUnavailable</code> 只需要宽松到不成为约束即可。<code>&lt; 1</code> 的钳制防的是 <code>replicas: 0</code> 的情况，以及 webhook 本该拒绝的 <code>maxUnavailable=0 &amp;&amp; maxSurge=0</code> 组合。百分比在 <code>maxUnavailable</code> 上<strong>向下</strong>取整，在 <code>maxSurge</code> 上<strong>向上</strong>取整。</p>
+<h3 id="34-pvc">3.4 PVC 透传<a class="headerlink" href="#34-pvc" title="Permanent link">&para;</a></h3>
+<p><code>controllerutils.GetPVCApplyConfiguration(lws)</code> 把 <code>volumeClaimTemplates</code> 转成 apply configuration，只透传：</p>
+<ul>
+<li><code>accessModes</code></li>
+<li><code>storageClassName</code></li>
+<li><code>volumeMode</code></li>
+<li><code>resources.{requests,limits}</code></li>
+</ul>
+<p><strong>被静默丢弃的</strong>：<code>selector</code>、<code>dataSource</code>、<code>dataSourceRef</code>，以及 PVC 模板上的任何 label 和 annotation。<code>persistentVolumeClaimRetentionPolicy</code> 原样透传。如果你在从快照克隆卷，你的 <code>dataSource</code> 就是在这里消失的。</p>
+<hr />
+<h2 id="server-side-apply">第四部分：Server-Side Apply<a class="headerlink" href="#server-side-apply" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nx">obj</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">runtime</span><span class="p">.</span><span class="nx">DefaultUnstructuredConverter</span><span class="p">.</span><span class="nx">ToUnstructured</span><span class="p">(</span><span class="nx">leaderStatefulSetApplyConfig</span><span class="p">)</span>
+<span class="nx">patch</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">unstructured</span><span class="p">.</span><span class="nx">Unstructured</span><span class="p">{</span><span class="nx">Object</span><span class="p">:</span><span class="w"> </span><span class="nx">obj</span><span class="p">}</span>
+<span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">Patch</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">patch</span><span class="p">,</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">Apply</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">client</span><span class="p">.</span><span class="nx">PatchOptions</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">FieldManager</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;lws&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">Force</span><span class="p">:</span><span class="w">        </span><span class="nx">ptr</span><span class="p">.</span><span class="nx">To</span><span class="p">[</span><span class="kt">bool</span><span class="p">](</span><span class="kc">true</span><span class="p">),</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>由此得出三条性质：</p>
+<ul>
+<li><strong>field manager 是 <code>"lws"</code>。</strong> 控制器设的每个字段都在 <code>metadata.managedFields</code> 里归属这个 manager。<code>kubectl get sts my-lws -o yaml --show-managed-fields</code> 能确切看到控制器拥有哪些字段、把哪些留给了你。</li>
+<li><strong><code>Force: true</code>。</strong> 冲突一律按控制器的意思解决。你 <code>kubectl edit</code> 改了 leader StatefulSet 的副本数，下一次 reconcile 会不声不响地改回去。这是对的——LWS 才是真相来源——但也意味着「手改 StatefulSet」不是一种受支持的调试手段。</li>
+<li><strong>声明式移除。</strong> 因为这是 apply 而不是 patch，控制器<em>不再</em>设置的字段会从对象上被移除。这也是 <code>mergeMetadata</code> 空时返回 <code>nil</code> 这件事之所以重要的原因。</li>
+</ul>
+<p><code>setControllerReferenceWithStatefulSet</code>（虽然在这里用，却定义在 <code>pod_controller.go</code>）把 owner reference 注入 apply configuration，带 <code>BlockOwnerDeletion(true)</code> 和 <code>Controller(true)</code>。</p>
+<p>代码里有一处 <code>//nolint</code> 和 TODO，说 <code>client.Apply()</code> 是这种 patch 类型的现代替代。迁移它是个说得过去的小 PR，但先确认 <code>go.mod</code> 里的 controller-runtime 版本是否支持新 API。</p>
+<hr />
+<h2 id="controllerrevision">第五部分：ControllerRevision<a class="headerlink" href="#controllerrevision" title="Permanent link">&para;</a></h2>
+<p>KEP-238 引入 ControllerRevision，是为了让滚动更新有一个稳定的「旧模板」概念，也为了让一个组的 worker 即便在 LWS spec 已经往前走之后，仍能用与其 leader 相同的模板构建。<code>pkg/utils/revision/revision_utils.go</code> 改编自上游的 <code>pkg/controller/history</code>。</p>
+<h3 id="51">5.1 哈希什么——以及不哈希什么<a class="headerlink" href="#51" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">clone</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">DeepCopy</span><span class="p">()</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">clone</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">NetworkConfig</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w">          </span><span class="c1">// 升级兼容</span>
+<span class="w">    </span><span class="nx">subdomainPolicy</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">SubdomainShared</span>
+<span class="w">    </span><span class="nx">clone</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">NetworkConfig</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">leaderworkerset</span><span class="p">.</span><span class="nx">NetworkConfig</span><span class="p">{</span><span class="nx">SubdomainPolicy</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">subdomainPolicy</span><span class="p">}</span>
+<span class="p">}</span>
+<span class="nx">specCopy</span><span class="p">[</span><span class="s">&quot;networkConfig&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">networkConfig</span>
+<span class="nx">specCopy</span><span class="p">[</span><span class="s">&quot;leaderWorkerTemplate&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">template</span>
+<span class="nx">networkConfig</span><span class="p">[</span><span class="s">&quot;$patch&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;replace&quot;</span>
+<span class="nx">template</span><span class="p">[</span><span class="s">&quot;$patch&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;replace&quot;</span>
+<span class="nx">objCopy</span><span class="p">[</span><span class="s">&quot;spec&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">specCopy</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">json</span><span class="p">.</span><span class="nx">Marshal</span><span class="p">(</span><span class="nx">objCopy</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">计入 revision</th>
+<th style="text-align: left;">不计入</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>spec.leaderWorkerTemplate</code>（两个模板、<code>size</code>、<code>restartPolicy</code>、<code>subGroupPolicy</code>、<code>volumeClaimTemplates</code>）</td>
+<td style="text-align: left;"><code>spec.replicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.networkConfig</code></td>
+<td style="text-align: left;"><code>spec.rolloutStrategy</code>——包括 <code>partition</code>、<code>maxSurge</code>、<code>maxUnavailable</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>spec.startupPolicy</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>所有元数据</strong>——label 和 annotation，所以改 <code>exclusive-topology</code> <strong>不会</strong>切新 revision</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><code>status</code></td>
+</tr>
+</tbody>
+</table>
+<p>这份排除清单回答了一个很常见的问题：<strong>伸缩和调整滚动旋钮永远不会创建 revision，也永远不会触发滚动更新。</strong> 把 <code>replicas</code> 从 2 改成 5，是在当前 revision 上加三个组。改 <code>maxSurge</code> 影响的是<em>下一次</em>滚动的行为，当下什么也不做。</p>
+<p>它也意味着 <code>exclusive-topology</code> annotation 是不受版本管理的。改它只影响之后创建的 Pod，没有滚动去传播它——在你排查「为什么一半的组放置方式不一样」之前，值得先知道这个尖角。</p>
+<p><code>"$patch": "replace"</code> 标记保证恢复 revision 时是<strong>替换</strong>那些子树而不是 strategic merge 进去。没有它，从模板里删掉一个容器的操作是无法通过回滚撤销的。</p>
+<h3 id="52">5.2 哈希与命名<a class="headerlink" href="#52" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">hf</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">fnv</span><span class="p">.</span><span class="nx">New32</span><span class="p">()</span>
+<span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">revision</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Raw</span><span class="p">)</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">hf</span><span class="p">.</span><span class="nx">Write</span><span class="p">(</span><span class="nx">revision</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Raw</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">revision</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Object</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">deepHashObject</span><span class="p">(</span><span class="nx">hf</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Object</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">rand</span><span class="p">.</span><span class="nx">SafeEncodeString</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprint</span><span class="p">(</span><span class="nx">hf</span><span class="p">.</span><span class="nx">Sum32</span><span class="p">()))</span>
+</code></pre></div>
+<p>对序列化后的补丁做 FNV-32，再用 <code>rand.SafeEncodeString</code> 映射到一个不会意外拼出冒犯性子串的字母表。名字是 <code>fmt.Sprintf("%s-%s-%v", prefix, hash, revisionNumber)</code>，prefix 被截到 220 字节以保证总名字不超过 253 字节。结尾的 revision 序号防的是「同样的 <code>prefix-hash</code> 在历史上再次出现」时的冲突——比如你回滚到一个用过的模板。</p>
+<div class="admonition note">
+<p class="admonition-title"><code>hashRevision</code> 里潜伏的 bug</p>
+<p><code>deepHashObject</code> 在写入前调用了 <code>hasher.Reset()</code>，所以如果 <code>Data.Raw</code> 和 <code>Data.Object</code> 同时有值，<code>Raw</code> 的字节会被静默丢弃。实践中只有 <code>Raw</code> 会被设置，因此这条路径不可达——但这正是那种「哪天有人加了个 <code>Object</code> 的生产者就会变成真 bug」的东西。</p>
+</div>
+<h3 id="53">5.3 变更检测与相等性缓存<a class="headerlink" href="#53" title="Permanent link">&para;</a></h3>
+<p><code>getUpdatedRevision</code> 从活的 spec 切一个候选 revision 出来比对：</p>
+<div class="highlight"><pre><span></span><code><span class="k">return</span><span class="w"> </span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Equal</span><span class="p">(</span><span class="nx">lhs</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Raw</span><span class="p">,</span><span class="w"> </span><span class="nx">rhs</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Raw</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">       </span><span class="nx">apiequality</span><span class="p">.</span><span class="nx">Semantic</span><span class="p">.</span><span class="nx">DeepEqual</span><span class="p">(</span><span class="nx">lhs</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Object</span><span class="p">,</span><span class="w"> </span><span class="nx">rhs</span><span class="p">.</span><span class="nx">Data</span><span class="p">.</span><span class="nx">Object</span><span class="p">)</span>
+</code></pre></div>
+<p>字节不同时它<strong>不会</strong>立刻宣布有更新。它会先调用 <code>SetMatchesRevision(lws, currentRevision, revision, r.revisionEqualityCache)</code>：把<em>现有</em> revision 重新 apply 到 LWS 上，用<em>当前</em>序列化器重新导出补丁，再比一次。</p>
+<p>这是为了对付<strong>序列化漂移</strong>。升级 operator 可能改变 client-go 序列化 Pod 模板的方式——最经典的例子是 <code>"creationTimestamp": null</code> 的出现或消失——产生字节不同但语义相同的补丁。没有这道检查，集群里每个 LWS 都会在每次 operator 升级时滚一遍。代码里引用了 <code>kubernetes/kubernetes#135017</code>。</p>
+<p>结果被记忆化到一个 10000 条目的 LRU 里，key 是：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">revisionEqualityCacheKey</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">lwsUID</span><span class="w">                  </span><span class="nx">types</span><span class="p">.</span><span class="nx">UID</span>
+<span class="w">    </span><span class="nx">lwsGeneration</span><span class="w">           </span><span class="kt">int64</span>
+<span class="w">    </span><span class="nx">revisionResourceVersion</span><span class="w"> </span><span class="kt">string</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>只缓存<strong>正向</strong>结果，所以真正的模板变更绝不会被陈旧缓存条目掩盖。</p>
+<h3 id="54-operator-revision">5.4 operator 升级时的 revision 收养<a class="headerlink" href="#54-operator-revision" title="Permanent link">&para;</a></h3>
+<p><code>NewRevision</code> 里有个很容易读漏的微妙点：</p>
+<blockquote>
+<p><code>cr.Name</code> 总是用新算出的 hash，但 <code>cr.Labels[RevisionKey]</code> 在传入的 <code>revisionKey</code> 非空时用<strong>传入的那个</strong>。</p>
+</blockquote>
+<p>这就是升级路径。由 ControllerRevision 之前的 operator 创建的 LWS，其 leader StatefulSet 上已经盖了一个按旧方案算出的 <code>template-revision-hash</code>。<code>getOrCreateRevisionIfNonExist</code> 把这个遗留 hash 传进来，于是新的 ControllerRevision 被<em>打上</em>活 Pod 已经带着的那个 hash。结果就是：升级 operator 不会把整个集群滚一遍。</p>
+<h3 id="55">5.5 查找、恢复与截断<a class="headerlink" href="#55" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">函数</th>
+<th style="text-align: left;">行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>GetRevisionKey(obj)</code></td>
+<td style="text-align: left;">读 <code>labels["leaderworkerset.sigs.k8s.io/template-revision-hash"]</code>；label 为 nil 时返回 <code>""</code>。对 Pod、StatefulSet、ControllerRevision 一视同仁</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>GetRevision(ctx, c, lws, key)</code></td>
+<td style="text-align: left;">按 <code>{name, template-revision-hash}</code> 列举；<code>""</code> 返回 <code>(nil, nil)</code>；多于一个匹配时记错误日志并返回最高 revision</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ListRevisions</code></td>
+<td style="text-align: left;">包含 controller ref 为 nil <strong>或</strong>匹配父 UID 的对象——孤儿会被收养</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ApplyRevision(lws, rev)</code></td>
+<td style="text-align: left;">把 revision <code>strategicpatch.StrategicMergePatch</code> 到编码后的 LWS 上；Pod 控制器就是这样按 Pod 的 revision 构建 worker StatefulSet 的</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TruncateRevisions(ctx, c, lws, key)</code></td>
+<td style="text-align: left;">删掉所有 key 与当前不同的 revision</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">没有 <code>revisionHistoryLimit</code></p>
+<p>LWS 只保留<strong>一个</strong> revision。<code>TruncateRevisions</code> 只在 <code>updateDone</code> 为真时运行——partition 为 0 且每个期望副本都已更新并就绪——但一旦运行，它会把其余全删掉。</p>
+<p>实际后果：<strong><code>kubectl rollout undo</code> 没有可回退的东西。</strong> 滚动一旦完成，前一个模板就从集群里消失了。回滚意味着你自己把旧 manifest 重新 apply 一遍。加一个 <code>revisionHistoryLimit</code> 字段会是一个真正有用的 API 贡献，而且 Deployment 和 StatefulSet 都有先例——但那是 API 变更，因此需要 KEP。</p>
+</div>
+<hr />
+<h2 id="status-conditions">第六部分：Status 与 Conditions<a class="headerlink" href="#status-conditions" title="Permanent link">&para;</a></h2>
+<p><code>updateStatus(ctx, lws, revisionKey)</code> 是大部分用户困惑的源头，因为它<strong>同时维护两套计数体系</strong>。</p>
+<h3 id="61-status">6.1 三个 status 字段<a class="headerlink" href="#61-status" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Replicas</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">sts</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span><span class="w">          </span><span class="c1">// 来自对 leader STS 的一次新 Get</span>
+<span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ObservedGeneration</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Generation</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">HPAPodSelector</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span><span class="w">                     </span><span class="c1">// 只算一次</span>
+<span class="w">    </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">HPAPodSelector</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="cm">/* name=&lt;lws&gt;,worker-index=0 */</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>status.replicas</code> 直接从 leader StatefulSet 上读，所以它<strong>包含 surge 副本</strong>。<code>HPAPodSelector</code> 的那道判断意味着它在第一次 status 更新时计算、之后再不重算——便宜，而且只因为 LWS 名字不可变才安全。</p>
+<h3 id="62-condition">6.2 Condition 的计数器<a class="headerlink" href="#62-condition" title="Permanent link">&para;</a></h3>
+<p><code>updateConditions</code> 按 <code>{name, worker-index: "0"}</code> 列出 leader Pod，并对每一个 <code>Get</code> 同名的 worker StatefulSet。当 <code>noWorkerSts := *Size == 1</code> 时这个 <code>Get</code> 整个跳过。</p>
+<p>维护了六个计数器：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">计数器</th>
+<th style="text-align: left;">判定条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>readyCount</code></td>
+<td style="text-align: left;"><code>(noWorkerSts \|\| StatefulsetReady(sts)) &amp;&amp; PodRunningAndReady(pod)</code> → <code>status.readyReplicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>updatedCount</code></td>
+<td style="text-align: left;"><code>(noWorkerSts \|\| GetRevisionKey(sts) == revisionKey) &amp;&amp; GetRevisionKey(pod) == revisionKey</code> → <code>status.updatedReplicas</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>partitionedCurrentNonBurstCount</code></td>
+<td style="text-align: left;">满足 <code>lwsPartition &lt;= index &lt; *spec.Replicas</code> 的组</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>partitionedUpdatedNonBurstCount</code></td>
+<td style="text-align: left;">同一窗口，且已更新</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>partitionedUpdatedAndReadyCount</code></td>
+<td style="text-align: left;">同一窗口，且已更新<strong>并</strong>就绪</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>readyNonBurstWorkerCount</code></td>
+<td style="text-align: left;">同一窗口，且已就绪</td>
+</tr>
+</tbody>
+</table>
+<p>前两个喂给 status 字段，<strong>计入 burst 副本</strong>。后四个被窗口限制在 <code>[partition, spec.replicas)</code>，因此<strong>排除</strong> burst 副本。这就是那个差异：<code>status.readyReplicas</code> 报出来的数，condition 逻辑并不认。</p>
+<h3 id="63-condition">6.3 Condition 的选择<a class="headerlink" href="#63-condition" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">partitionedUpdatedNonBurstCount</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">partitionedCurrentNonBurstCount</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">conditions</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="nx">UpdateInProgress</span><span class="p">,</span><span class="w"> </span><span class="nx">Progressing</span><span class="p">}</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nx">readyNonBurstWorkerCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">          </span><span class="nx">partitionedUpdatedAndReadyCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">partitionedCurrentNonBurstCount</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">conditions</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="nx">Available</span><span class="p">}</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">conditions</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="nx">Progressing</span><span class="p">}</span>
+<span class="p">}</span>
+<span class="nx">updateDone</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">(</span><span class="nx">lwsPartition</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">partitionedUpdatedAndReadyCount</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="o">*</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Condition</th>
+<th style="text-align: left;">Reason</th>
+<th style="text-align: left;">消息</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Available</code></td>
+<td style="text-align: left;"><code>AllGroupsReady</code></td>
+<td style="text-align: left;">"All replicas are ready"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>UpdateInProgress</code></td>
+<td style="text-align: left;"><code>GroupsUpdating</code></td>
+<td style="text-align: left;">"Rolling Upgrade is in progress"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Progressing</code></td>
+<td style="text-align: left;"><code>GroupsProgressing</code></td>
+<td style="text-align: left;">"Replicas are progressing"</td>
+</tr>
+</tbody>
+</table>
+<p><code>setCondition</code> 通过一张 <code>exclusiveConditionTypes</code> 表强制互斥：只要 <code>Progressing</code> 或 <code>UpdateInProgress</code> 变为 <code>True</code>，<code>Available</code> 就被翻成 <code>False</code>。注意 <code>Progressing</code> 与 <code>UpdateInProgress</code> <strong>不</strong>互斥，滚动期间会同时存在。<code>setConditions</code> 还会给每条存下来的 condition 盖上 <code>observedGeneration</code>。</p>
+<p><code>updateDone</code> 是第 12 步 revision 截断的触发条件。注意它要求 <code>lwsPartition == 0</code>——所以如果你把 <code>partition</code> 停在某个非零的灰度边界，旧 revision 永远不会被回收。这是有意为之而且很有用：暂停的灰度保留了它的回滚目标。</p>
+<div class="admonition tip">
+<p class="admonition-title">排查 <code>Available</code> 一直不为真</p>
+<p>倒着推这个判定式。<code>Available</code> 需要<em>同时</em>满足 <code>readyNonBurstWorkerCount == spec.replicas</code> <strong>和</strong> <code>partitionedUpdatedAndReadyCount == partitionedCurrentNonBurstCount</code>。前者说的是整个 LWS，后者说的是 partition 窗口。非零 <code>partition</code> 收窄了后者但不收窄前者——所以一个窗口内已成功更新、但<em>被冻结</em>的那些组不健康的灰度，会永远停在 <code>Progressing</code>。这是正确答案，但不是显然的答案。</p>
+</div>
+<hr />
+<h2 id="reconciler">实验：给 Reconciler 装上探针<a class="headerlink" href="#reconciler" title="Permanent link">&para;</a></h2>
+<p>本实验完全在 <code>kind</code> 上跑。目标是直接看到第四到第六部分的每个机制，并复现两个最令人困惑的行为。</p>
+<h3 id="1-field-manager">步骤 1 — 读 field manager<a class="headerlink" href="#1-field-manager" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span>--show-managed-fields<span class="w"> </span><span class="p">|</span><span class="w"> </span>yq<span class="w"> </span><span class="s1">&#39;.metadata.managedFields&#39;</span>
+</code></pre></div>
+<p>找出 <code>manager: lws</code> 的那一条，列举它拥有的字段。然后挑一个它<strong>不</strong>拥有的，手动设一下：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;minReadySeconds&quot;:30}}&#39;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.minReadySeconds}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>它会保留下来，因为 <code>lws</code> 从不认领这个字段。再挑一个它拥有的：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>scale<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>--replicas<span class="o">=</span><span class="m">99</span>
+sleep<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.replicas}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p><code>Force: true</code> 会直接改回去。两个结果都来自第四部分的 SSA 语义。</p>
+<h3 id="2-revision">步骤 2 — 证明伸缩不会切 revision<a class="headerlink" href="#2-revision" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws
+<span class="nv">REV_BEFORE</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws<span class="w"> </span>-o<span class="w"> </span>name<span class="k">)</span>
+
+kubectl<span class="w"> </span>scale<span class="w"> </span>lws/my-lws<span class="w"> </span>--replicas<span class="o">=</span><span class="m">4</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;rolloutStrategy&quot;:{&quot;rollingUpdateConfiguration&quot;:{&quot;maxSurge&quot;:1}}}}&#39;</span>
+kubectl<span class="w"> </span>annotate<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>leaderworkerset.sigs.k8s.io/exclusive-topology<span class="o">=</span>kubernetes.io/hostname<span class="w"> </span>--overwrite
+
+kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws<span class="w"> </span>-o<span class="w"> </span>name
+</code></pre></div>
+<p>三次修改之后，revision 列表应当<strong>没有变化</strong>，也不应有 Pod 重启。对照 §5.1 的排除清单逐条确认。然后改一下容器镜像，看新 revision 出现。</p>
+<h3 id="3">步骤 3 — 观察两套计数体系分岔<a class="headerlink" href="#3" title="Permanent link">&para;</a></h3>
+<p>设 <code>maxSurge: 1</code> 并触发一次滚动，然后轮询：</p>
+<div class="highlight"><pre><span></span><code><span class="k">while</span><span class="w"> </span>true<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;{.spec.replicas}{&quot;\t&quot;}{.status.replicas}{&quot;\t&quot;}{.status.readyReplicas}{&quot;\t&quot;}{.status.updatedReplicas}{&quot;\n&quot;}&#39;</span>
+<span class="w">  </span>sleep<span class="w"> </span><span class="m">2</span>
+<span class="k">done</span>
+</code></pre></div>
+<p>滚动中途你应该看到 <code>status.replicas</code> 超过 <code>spec.replicas</code>。同时盯着 condition：</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .status.conditions[*]}{.type}={.status} {end}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>确认 <code>Progressing</code> 和 <code>UpdateInProgress</code> 同时为 <code>True</code>，而 <code>Available</code> 为 <code>False</code>。把每个观察对应到 §6.2 和 §6.3 的具体某一行。</p>
+<h3 id="4-partition-revision">步骤 4 — 用 <code>partition</code> 让一个 revision 滞留<a class="headerlink" href="#4-partition-revision" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;rolloutStrategy&quot;:{&quot;rollingUpdateConfiguration&quot;:{&quot;partition&quot;:2}}}}&#39;</span>
+<span class="c1"># 然后改镜像</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>lws<span class="w"> </span>my-lws<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;replace&quot;,&quot;path&quot;:&quot;/spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/image&quot;,&quot;value&quot;:&quot;nginxinc/nginx-unprivileged:1.28&quot;}]&#39;</span>
+
+kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>my-lws
+</code></pre></div>
+<p>现在应该有<strong>两个</strong> revision，并且会一直保持，因为 <code>updateDone</code> 要求 <code>partition == 0</code>。把 <code>partition</code> 设回 0，等滚动完成，看着 <code>TruncateRevisions</code> 删掉旧的那个。然后确认 §5.5 的论断：现在从集群内部已经没有办法回滚了。</p>
+<h3 id="5">步骤 5 — 触发序列化漂移路径（阅读练习）<a class="headerlink" href="#5" title="Permanent link">&para;</a></h3>
+<p>没有两个 operator 版本，这个不太好复现。改为阅读 <code>pkg/utils/revision/revision_utils.go</code> 里的 <code>SetMatchesRevision</code> 并回答：</p>
+<ul>
+<li>到底比较的是什么？为什么只比 <code>Data.Raw</code> 的字节不够？</li>
+<li>为什么 LRU 里只缓存<em>正向</em>结果？如果负向结果也缓存，会坏在哪？</li>
+<li>缓存 key 里包含 <code>lwsGeneration</code> 和 <code>revisionResourceVersion</code>。如果只包含 LWS UID，你会得到什么错误行为？</li>
+</ul>
+<p>继续阅读<a href="../05_pod_controller_and_failure_handling/">模块 5：Pod 控制器与故障处理</a>。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,3027 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/08_disaggregatedset/">
+      
+      
+        <link rel="prev" href="../07_scheduling_placement_and_networking/">
+      
+      
+        <link rel="next" href="../09_inference_engine_integration/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/08_disaggregatedset/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 8 - DisaggregatedSet - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-8-disaggregatedset" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 8 - DisaggregatedSet
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/08_disaggregatedset/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-why-a-new-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Why a New API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: Why a New API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-the-four-failure-modes-of-hand-rolling-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 The four failure modes of hand-rolling it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-goals-and-non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Goals and non-goals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-the-rejected-alternative-that-explains-everything" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 The rejected alternative that explains everything
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-object-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Object Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: The Object Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Naming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-what-defines-a-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 What defines a revision
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-controller-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Controller Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: Controller Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-reconcile-skeleton" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The reconcile skeleton
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-the-plannerexecutor-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 The planner/executor split
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-n-dimensional-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The N-Dimensional Rollout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: The N-Dimensional Rollout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-it-does-not-use-lws-partition-at-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 It does not use LWS partition at all
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-ideal-trajectory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The ideal trajectory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-min-for-up-max-for-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Min for up, max for down
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-the-decision-cascade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 The decision cascade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-orphan-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Orphan prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-the-initial-replicas-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 The initial-replicas annotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-the-stability-gate-and-teardown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 The stability gate and teardown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-role-changes-mid-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 Role changes mid-rollout
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-slices-kep-846" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Slices (KEP-846)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: Slices (KEP-846)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-what-a-slice-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 What a slice is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-why-the-planner-is-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Why the planner is unchanged
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-scaling-slices-does-not-roll" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Scaling slices does not roll
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-legacy-slice-0-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Legacy slice-0 migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-placement-policy-kep-848" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Placement Policy (KEP-848)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: Placement Policy (KEP-848)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-exclusiveslice-two-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 ExclusiveSlice — two terms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-exclusivetopology-a-third-term" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 ExclusiveTopology — a third term
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-lazy-application-and-the-lws-conflict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Lazy application, and the LWS conflict
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-per-role-autoscaling-kep-849" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: Per-Role Autoscaling (KEP-849)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: Per-Role Autoscaling (KEP-849)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-the-scaler-cr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 The scaler CR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-seeding-and-the-two-deadlocks-it-avoids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Seeding, and the two deadlocks it avoids
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-replica-resolution-and-the-no-shrink-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Replica resolution and the no-shrink guard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-the-leader-only-selector-and-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 The leader-only selector, and why
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76-the-pitfalls-the-code-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 The pitfalls the code documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-services-and-revision-aware-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Services and Revision-Aware Routing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-9-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 9: Validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 9: Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-what-is-rejected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 What is rejected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-the-all-or-nothing-cel-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 The all-or-nothing CEL rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-10-the-status-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 10: The Status Gap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 10: The Status Gap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-other-known-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Other known gaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-drive-a-coordinated-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Drive a Coordinated Rollout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Drive a Coordinated Rollout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-watch-the-n-dimensional-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A — Watch the N-dimensional algorithm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a2-find-the-initial-replicas-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A2 — Find the initial-replicas annotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a3-prove-orphan-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A3 — Prove orphan prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a4-reproduce-the-non-template-spec-change-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A4 — Reproduce the non-template-spec-change bug
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-slices-and-placement-unverified-needs-2-topology-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B — Slices and placement (unverified, needs 2+ topology domains)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-c-per-role-hpa-unverified-needs-metrics-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part C — Per-role HPA (unverified, needs metrics-server)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_operations_and_troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-why-a-new-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Why a New API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: Why a New API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-the-four-failure-modes-of-hand-rolling-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 The four failure modes of hand-rolling it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-goals-and-non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Goals and non-goals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-the-rejected-alternative-that-explains-everything" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 The rejected alternative that explains everything
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-the-object-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: The Object Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: The Object Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Naming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-what-defines-a-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 What defines a revision
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-controller-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Controller Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: Controller Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-reconcile-skeleton" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The reconcile skeleton
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-the-plannerexecutor-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 The planner/executor split
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-n-dimensional-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The N-Dimensional Rollout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 4: The N-Dimensional Rollout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-it-does-not-use-lws-partition-at-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 It does not use LWS partition at all
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-ideal-trajectory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The ideal trajectory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-min-for-up-max-for-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Min for up, max for down
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-the-decision-cascade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 The decision cascade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-orphan-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Orphan prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-the-initial-replicas-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 The initial-replicas annotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-the-stability-gate-and-teardown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 The stability gate and teardown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-role-changes-mid-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 Role changes mid-rollout
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-slices-kep-846" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: Slices (KEP-846)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: Slices (KEP-846)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-what-a-slice-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 What a slice is
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-why-the-planner-is-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Why the planner is unchanged
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-scaling-slices-does-not-roll" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Scaling slices does not roll
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-legacy-slice-0-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Legacy slice-0 migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-placement-policy-kep-848" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Placement Policy (KEP-848)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: Placement Policy (KEP-848)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-exclusiveslice-two-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 ExclusiveSlice — two terms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-exclusivetopology-a-third-term" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 ExclusiveTopology — a third term
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-lazy-application-and-the-lws-conflict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Lazy application, and the LWS conflict
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-per-role-autoscaling-kep-849" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: Per-Role Autoscaling (KEP-849)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: Per-Role Autoscaling (KEP-849)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-the-scaler-cr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 The scaler CR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-seeding-and-the-two-deadlocks-it-avoids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Seeding, and the two deadlocks it avoids
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-replica-resolution-and-the-no-shrink-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Replica resolution and the no-shrink guard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-the-leader-only-selector-and-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 The leader-only selector, and why
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76-the-pitfalls-the-code-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 The pitfalls the code documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-services-and-revision-aware-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Services and Revision-Aware Routing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-9-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 9: Validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 9: Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-what-is-rejected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 What is rejected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-the-all-or-nothing-cel-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 The all-or-nothing CEL rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-10-the-status-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 10: The Status Gap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 10: The Status Gap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-other-known-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Other known gaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-drive-a-coordinated-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Drive a Coordinated Rollout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Drive a Coordinated Rollout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-watch-the-n-dimensional-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A — Watch the N-dimensional algorithm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a2-find-the-initial-replicas-annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A2 — Find the initial-replicas annotation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a3-prove-orphan-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A3 — Prove orphan prevention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a4-reproduce-the-non-template-spec-change-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A4 — Reproduce the non-template-spec-change bug
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-slices-and-placement-unverified-needs-2-topology-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B — Slices and placement (unverified, needs 2+ topology domains)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-c-per-role-hpa-unverified-needs-metrics-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part C — Per-role HPA (unverified, needs metrics-server)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-8-disaggregatedset">Module 8: DisaggregatedSet<a class="headerlink" href="#module-8-disaggregatedset" title="Permanent link">&para;</a></h1>
+<p>Prefill and decode are the same model doing two different jobs on two different hardware profiles (<a href="../01_multihost_inference_problem_space/">Module 1</a>, §1.3). Splitting them into separate pools is now standard practice in vLLM and SGLang. Orchestrating that split is a genuinely harder problem than orchestrating one pool, and <code>DisaggregatedSet</code> is the API that does it.</p>
+<p>The hard part is not running two LeaderWorkerSets. It is <strong>rolling them out together</strong>. Prefill hands a KV cache to decode; the two must agree on layout, quantization, and model revision. Update all the prefill first and you have new-version prefill servers handing caches to old-version decode servers — a correctness bug, not a performance regression. And because the optimal prefill:decode ratio shifts with traffic, the two must also scale <em>independently</em> while remaining version-coupled.</p>
+<p>This module covers <strong>why the API exists</strong>, <strong>the object model</strong>, <strong>the planner/executor split</strong>, <strong>the N-dimensional rollout algorithm in full</strong>, <strong>slices</strong>, <strong>placement policy</strong>, <strong>per-role autoscaling</strong>, <strong>revision-aware Services</strong>, <strong>validation</strong>, and <strong>the status gap that is currently the best contribution opportunity in the project</strong>.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance and maturity</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06). DisaggregatedSet shipped in <strong>v0.9.0</strong> and every part of it is <strong>alpha</strong>. KEPs 766, 846, 848, 849. Because it is the newest and fastest-moving subsystem, it is also where a contributor has the most room — and where the KEP text and the code have already drifted apart in several places, each of which is flagged below.</p>
+</div>
+<hr />
+<h2 id="part-1-why-a-new-api">Part 1: Why a New API<a class="headerlink" href="#part-1-why-a-new-api" title="Permanent link">&para;</a></h2>
+<h3 id="11-the-four-failure-modes-of-hand-rolling-it">1.1 The four failure modes of hand-rolling it<a class="headerlink" href="#11-the-four-failure-modes-of-hand-rolling-it" title="Permanent link">&para;</a></h3>
+<p>KEP-766's motivation is a list of what breaks when you deploy prefill and decode as two independent LeaderWorkerSets:</p>
+<ol>
+<li><strong>Operational complexity</strong> — you must manually ensure all roles update together.</li>
+<li><strong>Rolling update coordination</strong> — "There is no built-in mechanism to coordinate rolling updates across roles, risking service disruption if one role is updated without the others."</li>
+<li><strong>Service lifecycle</strong> — you must manually ensure Services "only route traffic when all roles are ready."</li>
+<li><strong>Configuration drift</strong> — "Without a unified resource, role configurations can drift apart."</li>
+</ol>
+<p>The underlying domain fact is that sibling roles are <strong>coupled by version</strong>, which two independent LWSes simply cannot express.</p>
+<h3 id="12-goals-and-non-goals">1.2 Goals and non-goals<a class="headerlink" href="#12-goals-and-non-goals" title="Permanent link">&para;</a></h3>
+<p><strong>Goals</strong>: unified management of 2–10 roles; coordinated rolling updates via "an N-dimensional rolling update algorithm that updates all roles in lockstep, respecting per-role surge constraints"; and — the one that shapes the whole implementation — a <strong>stateless controller</strong> that "derives all state from observed resources, enabling safe restarts at any point."</p>
+<p><strong>Non-goals</strong>: multi-cluster federation; backends other than LWS; traffic management during rollouts. Autoscaling was originally a non-goal and was <strong>superseded by KEP-849</strong>.</p>
+<h3 id="13-the-rejected-alternative-that-explains-everything">1.3 The rejected alternative that explains everything<a class="headerlink" href="#13-the-rejected-alternative-that-explains-everything" title="Permanent link">&para;</a></h3>
+<p>Four alternatives were considered. Three are easy — extending LWS with multi-template support (changes LWS semantics too much), Helm/Kustomize (no runtime coordination), and an external label-watching controller with no CRD (bad UX).</p>
+<p>The fourth is the load-bearing one, and understanding why it was rejected is the key to reading the entire planner.</p>
+<blockquote>
+<p><strong>Alternative 4: use LWS <code>partition</code> instead of one LWS per revision.</strong></p>
+</blockquote>
+<p>Rejected for three reasons:</p>
+<ol>
+<li><strong>Revision-aware traffic routing.</strong> "A load balancer must route requests to backends whose counterparts are on the <strong>same revision</strong>." With one LWS and one Service per revision, each pod's revision is explicit via the <code>disaggregatedset.x-k8s.io/revision</code> label, so a load balancer can count backends per revision <em>across all role pools</em> and split traffic proportionally. With <code>partition</code>, pods within one LWS differ only by ordinal, which makes revision-aware routing far harder.</li>
+<li><strong>LWS as a read-only resource</strong> — "similar to how Deployment treats ReplicaSet." A coordinated rollout wants to move roles at <em>different paces per step</em>; <code>partition</code> operates on a single LWS independently.</li>
+<li><strong>Operational observability</strong> — you can see <code>old-prefill: 2, new-prefill: 3</code> directly rather than inferring it from partition boundaries.</li>
+</ol>
+<p>Accepted trade-offs: up to <strong><code>2 × roles × slices</code></strong> LWS objects during a rollout (pod count is unchanged), and a more complex algorithm encapsulated in the controller.</p>
+<div class="admonition tip">
+<p class="admonition-title">The one-sentence summary</p>
+<p><strong>DisaggregatedSet treats LeaderWorkerSet the way Deployment treats ReplicaSet</strong>: it creates a new immutable child per revision and shifts replicas from old to new. Every design decision in this module follows from that sentence.</p>
+</div>
+<hr />
+<h2 id="part-2-the-object-model">Part 2: The Object Model<a class="headerlink" href="#part-2-the-object-model" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    DS["&lt;b&gt;DisaggregatedSet&lt;/b&gt; my-inference&lt;br&gt;roles: [prefill, decode]&lt;br&gt;slices: 2"]
+
+    DS --&gt;|owns| S0R0P["&lt;b&gt;LWS&lt;/b&gt; my-inference-0-58f79fdb-prefill&lt;br&gt;slice 0 · rev 58f79fdb · prefill"]
+    DS --&gt;|owns| S0R0D["&lt;b&gt;LWS&lt;/b&gt; my-inference-0-58f79fdb-decode&lt;br&gt;slice 0 · rev 58f79fdb · decode"]
+    DS --&gt;|owns| S1R0P["&lt;b&gt;LWS&lt;/b&gt; my-inference-1-58f79fdb-prefill&lt;br&gt;slice 1"]
+    DS --&gt;|owns| S1R0D["&lt;b&gt;LWS&lt;/b&gt; my-inference-1-58f79fdb-decode&lt;br&gt;slice 1"]
+    DS --&gt;|owns| SC1["&lt;b&gt;DisaggregatedSetRoleScaler&lt;/b&gt;&lt;br&gt;my-inference-prefill&lt;br&gt;&lt;i&gt;only if scaling.mode: External&lt;/i&gt;"]
+
+    S0R0P --&gt;|"Service, once all roles ready"| SVC1["my-inference-0-58f79fdb-prefill-prv&lt;br&gt;headless · selector includes revision"]
+    S0R0D --&gt; SVC2["my-inference-0-58f79fdb-decode-prv"]
+
+    S0R0P --&gt; P1["leader + worker Pods&lt;br&gt;(ordinary LWS groups)"]</code></pre>
+<h3 id="21-naming">2.1 Naming<a class="headerlink" href="#21-naming" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GenerateName</span><span class="p">(</span><span class="nx">baseName</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s-%d-%s-%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">baseName</span><span class="p">,</span><span class="w"> </span><span class="nx">slice</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="kd">func</span><span class="w"> </span><span class="nx">GenerateLegacyName</span><span class="p">(</span><span class="nx">baseName</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s-%s-%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">baseName</span><span class="p">,</span><span class="w"> </span><span class="nx">revision</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Object</th>
+<th style="text-align: left;">Format</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">LWS</td>
+<td style="text-align: left;"><code>&lt;ds&gt;-&lt;slice&gt;-&lt;revision&gt;-&lt;role&gt;</code></td>
+<td style="text-align: left;"><code>my-inference-0-58f79fdb-prefill</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Service</td>
+<td style="text-align: left;"><code>&lt;lws name&gt;-prv</code></td>
+<td style="text-align: left;"><code>my-inference-0-58f79fdb-prefill-prv</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Scaler</td>
+<td style="text-align: left;"><code>&lt;ds&gt;-&lt;role&gt;</code> — <strong>no slice, no revision</strong></td>
+<td style="text-align: left;"><code>my-inference-prefill</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Legacy LWS (pre-slices)</td>
+<td style="text-align: left;"><code>&lt;ds&gt;-&lt;revision&gt;-&lt;role&gt;</code></td>
+<td style="text-align: left;"><code>my-inference-58f79fdb-prefill</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Slice comes before revision</strong> in the name, and that ordering is deliberate: the slice is the durable identity that maps to a placement domain and survives rollouts; the revision is ephemeral. As KEP-846 puts it, "a slice cycles through revisions, not the reverse." All controller logic keys off <em>labels</em>, never off parsed names.</p>
+<p>The revision hash is <strong>8 hex characters</strong> (<code>revisionLength = 8</code>), although the site docs and KEP examples show 10-character strings like <code>58f79fdb78</code> — a cosmetic documentation inconsistency.</p>
+<h3 id="22-labels">2.2 Labels<a class="headerlink" href="#22-labels" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">    </span><span class="s">&quot;app&quot;</span><span class="p">:</span><span class="w">                                    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s-%d-%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">baseName</span><span class="p">,</span><span class="w"> </span><span class="nx">slice</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="p">),</span>
+<span class="w">    </span><span class="s">&quot;disaggregatedset.x-k8s.io/role&quot;</span><span class="p">:</span><span class="w">         </span><span class="nx">role</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;disaggregatedset.x-k8s.io/slice&quot;</span><span class="p">:</span><span class="w">        </span><span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">slice</span><span class="p">),</span>
+<span class="w">    </span><span class="s">&quot;disaggregatedset.x-k8s.io/name&quot;</span><span class="p">:</span><span class="w">         </span><span class="nx">baseName</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;disaggregatedset.x-k8s.io/revision&quot;</span><span class="p">:</span><span class="w">     </span><span class="nx">revision</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>These go on the LWS <code>ObjectMeta</code> <strong>and both pod templates</strong>, merged over user labels with system labels winning.</p>
+<div class="admonition warning">
+<p class="admonition-title">The <code>app</code> label is a trap</p>
+<p><code>app</code> is slice+role scoped but <strong>revision-agnostic</strong>. It is a convenience label for humans and must <strong>not</strong> be used as a Service selector — during a rollout it matches both revisions, which is exactly the cross-revision routing the design exists to prevent.</p>
+</div>
+<h3 id="23-what-defines-a-revision">2.3 What defines a revision<a class="headerlink" href="#23-what-defines-a-revision" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">roleTemplate</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Name</span><span class="w">     </span><span class="kt">string</span><span class="w">                                 </span><span class="s">`json:&quot;name&quot;`</span>
+<span class="w">    </span><span class="nx">Template</span><span class="w"> </span><span class="nx">leaderworkersetv1</span><span class="p">.</span><span class="nx">LeaderWorkerTemplate</span><span class="w"> </span><span class="s">`json:&quot;template&quot;`</span>
+<span class="p">}</span>
+<span class="nx">hash</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">sha256</span><span class="p">.</span><span class="nx">Sum256</span><span class="p">(</span><span class="nx">jsonData</span><span class="p">)</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">hex</span><span class="p">.</span><span class="nx">EncodeToString</span><span class="p">(</span><span class="nx">hash</span><span class="p">[:])[:</span><span class="mi">8</span><span class="p">]</span>
+</code></pre></div>
+<p><strong>Only role name and <code>LeaderWorkerTemplate</code>.</strong> Everything else — <code>slices</code>, <code>placementPolicy</code>, <code>scaling</code>, <code>replicas</code>, <code>rolloutStrategy</code>, <code>networkConfig</code>, <code>startupPolicy</code>, role <code>metadata</code> — is outside the hash.</p>
+<p>This is what makes slice scaling and autoscaling free of rollouts. It is also the source of limitation §10.3 below, so keep it in mind.</p>
+<hr />
+<h2 id="part-3-controller-architecture">Part 3: Controller Architecture<a class="headerlink" href="#part-3-controller-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="31-the-reconcile-skeleton">3.1 The reconcile skeleton<a class="headerlink" href="#31-the-reconcile-skeleton" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">revision</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">disaggregatedsetutils</span><span class="p">.</span><span class="nx">ComputeRevision</span><span class="p">(</span><span class="nx">disaggregatedSet</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Roles</span><span class="p">)</span>
+<span class="nx">sliceCount</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">disaggregatedsetutils</span><span class="p">.</span><span class="nx">GetSlices</span><span class="p">(</span><span class="nx">disaggregatedSet</span><span class="p">))</span>
+<span class="nx">r</span><span class="p">.</span><span class="nx">cleanupRemovedSlices</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">disaggregatedSet</span><span class="p">,</span><span class="w"> </span><span class="nx">sliceCount</span><span class="p">)</span>
+<span class="nx">seedFor</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">seedForRole</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">disaggregatedSet</span><span class="p">)</span>
+<span class="nx">scalers</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">ScalerManager</span><span class="p">.</span><span class="nx">Reconcile</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">disaggregatedSet</span><span class="p">,</span><span class="w"> </span><span class="nx">seedFor</span><span class="p">)</span>
+<span class="nx">executor</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">createRollingUpdateExecutor</span><span class="p">()</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">sliceCount</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">recreateLegacySlice0</span><span class="p">(</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">sliceCount</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">reconcileSlice</span><span class="p">(</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">r</span><span class="p">.</span><span class="nx">updateScalerStatus</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">disaggregatedSet</span><span class="p">,</span><span class="w"> </span><span class="nx">scalers</span><span class="p">)</span>
+</code></pre></div>
+<p>Two properties worth noting:</p>
+<ul>
+<li><strong>The revision is computed once for the whole DS</strong>, then the slice loop runs the same logic per slice. Slices can legitimately sit on different revisions mid-rollout.</li>
+<li><strong>Per-slice errors are collected</strong>, not returned early: <code>errors.Join(errs...)</code> means one bad slice does not skip the others, and <code>earliestRequeue</code> keeps the soonest non-zero <code>RequeueAfter</code>.</li>
+</ul>
+<p><code>SetupWithManager</code> is <code>For(&amp;DisaggregatedSet{}).Owns(&amp;LeaderWorkerSet{}).Owns(&amp;DisaggregatedSetRoleScaler{})</code>. The <code>Owns(scaler)</code> is the KEP-849 write path: an HPA <code>/scale</code> write bumps the scaler, which enqueues the parent DS in one controller hop.</p>
+<h3 id="32-the-plannerexecutor-split">3.2 The planner/executor split<a class="headerlink" href="#32-the-plannerexecutor-split" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>flowchart LR
+    subgraph EX ["&lt;b&gt;Executor&lt;/b&gt; — the only half that touches the API server"]
+        E1["GetRevisionRolesList&lt;br&gt;List LWSes"]
+        E2["buildPlannerState&lt;br&gt;→ 4 integer vectors"]
+        E3["extractRollingUpdateConfig&lt;br&gt;resolve surge/unavailable %"]
+        E6["isRevisionStable&lt;br&gt;gate"]
+        E7["scaleUpNew / scaleDownOld&lt;br&gt;apply"]
+        E8["Record.Eventf"]
+    end
+    subgraph PL ["&lt;b&gt;Planner&lt;/b&gt; — pure, client-free, side-effect-free"]
+        P1["ComputeNextStep(&lt;br&gt;  initialOld, currentOld,&lt;br&gt;  currentNew, targetNew,&lt;br&gt;  config) *UpdateStep"]
+    end
+    E2 --&gt; P1
+    E3 --&gt; P1
+    P1 --&gt; E7
+    E6 -.-&gt;|"unstable → requeue 1s"| E6</code></pre>
+<p>The planner's entire vocabulary:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">UpdateStep</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Past</span><span class="w"> </span><span class="p">[]</span><span class="kt">int</span><span class="w">   </span><span class="c1">// desired old-revision replicas, per role index</span>
+<span class="w">    </span><span class="nx">New</span><span class="w">  </span><span class="p">[]</span><span class="kt">int</span><span class="w">   </span><span class="c1">// desired new-revision replicas, per role index</span>
+<span class="p">}</span>
+<span class="kd">type</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[]</span><span class="kt">int</span><span class="w">              </span><span class="c1">// a type ALIAS, not a defined type</span>
+<span class="kd">type</span><span class="w"> </span><span class="nx">RollingUpdateConfig</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">MaxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">MaxUnavailable</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">ComputeNextStep</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="p">,</span>
+<span class="w">                     </span><span class="nx">config</span><span class="w"> </span><span class="p">[]</span><span class="nx">RollingUpdateConfig</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">UpdateStep</span><span class="w">    </span><span class="c1">// nil == done</span>
+</code></pre></div>
+<p>Every vector is indexed by position in <code>allRoleNames</code>. <strong><code>UpdateStep</code> is absolute, not deltas</strong> — re-applying a step is idempotent, which is what makes a stateless controller safe to restart mid-rollout.</p>
+<p><strong>Why the split exists.</strong> The planner is a pure function of four integer vectors plus config, so the entire N-dimensional algorithm can be unit-tested exhaustively without envtest — <code>planner_test.go</code> is 38 KB of table tests including <code>TestComputeAllSteps_ExactSequence</code>. It also makes KEP-766's stateless-controller goal tractable: there is no in-memory rollout state machine. Every reconcile re-derives <code>currentOld</code> and <code>currentNew</code> from listed LWS objects and <code>initialOld</code> from an annotation, then asks the planner for exactly one step.</p>
+<p>If you contribute to the rollout algorithm, <strong>you almost certainly want to change only <code>planner.go</code> and add table tests.</strong> That is the cheapest, safest, most reviewable kind of change in this subsystem.</p>
+<hr />
+<h2 id="part-4-the-n-dimensional-rollout">Part 4: The N-Dimensional Rollout<a class="headerlink" href="#part-4-the-n-dimensional-rollout" title="Permanent link">&para;</a></h2>
+<h3 id="41-it-does-not-use-lws-partition-at-all">4.1 It does not use LWS <code>partition</code> at all<a class="headerlink" href="#41-it-does-not-use-lws-partition-at-all" title="Permanent link">&para;</a></h3>
+<p>This is the most common misconception, so it is worth stating flatly.</p>
+<ul>
+<li><code>partition</code> is <strong>forbidden</strong> by the DS webhook: <code>field.Forbidden(..., "partition is not supported by DisaggregatedSet; rolling updates are managed across roles by the DisaggregatedSet controller")</code>.</li>
+<li>The DS controller never writes <code>Partition</code> on a child LWS. <code>grep -rn "Partition" pkg/controllers/disaggregatedset</code> returns nothing.</li>
+<li><code>maxSurge</code> and <code>maxUnavailable</code> from a role's <code>rolloutStrategy</code> are read <strong>only to parameterize the DS planner</strong>.</li>
+</ul>
+<p>The mechanism is instead: <strong>create a second LWS at the new revision hash, ratchet its <code>spec.replicas</code> up while ratcheting the old LWS's <code>spec.replicas</code> down, then delete the old LWS when all roles reach 0.</strong> A child LWS's pod template is written once at creation and never patched, so the child's own rolling-update machinery is never exercised.</p>
+<div class="admonition bug">
+<p class="admonition-title">KEP-766 and the code disagree here</p>
+<p>KEP-766 says DisaggregatedSet "does not propagate <code>RolloutStrategy</code> to the underlying LWS resources." The code <strong>does</strong>: <code>lws_manager.go</code> copies the whole spec (<code>lwsSpec := config.Spec</code>) and only overrides <code>Replicas</code>, so <code>RolloutStrategy</code> lands on the child verbatim. It is inert in practice — no template patch ever occurs — but the text and the code should be reconciled.</p>
+</div>
+<h3 id="42-the-ideal-trajectory">4.2 The ideal trajectory<a class="headerlink" href="#42-the-ideal-trajectory" title="Permanent link">&para;</a></h3>
+<p>The planner's package doc states the target:</p>
+<div class="arithmatex">\[
+\text{newAtStep}(i) = \left\lceil \frac{i \cdot \text{target}}{\text{totalSteps}} \right\rceil
+\qquad
+\text{oldAtStep}(i) = \text{initialOld} - \left\lfloor \frac{i \cdot \text{initialOld}}{\text{totalSteps}} \right\rfloor
+\]</div>
+<p>Because the controller is stateless it never stores <span class="arithmatex">\(i\)</span>. It <strong>inverts</strong> the formula from observed replica counts, then evaluates at <span class="arithmatex">\(i+1\)</span>.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">batchSize</span><span class="p">(</span><span class="nx">maxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">maxUnavailable</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">maxSurge</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nx">maxUnavailable</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">computeTotalSteps</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="p">[]</span><span class="nx">RollingUpdateConfig</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">totalSteps</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">);</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">maxReplicas</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="nx">target</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">roleBatchSize</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">batchSize</span><span class="p">(</span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxSurge</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxUnavailable</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">roleSteps</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">(</span><span class="nx">maxReplicas</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">roleBatchSize</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nx">roleBatchSize</span><span class="w">   </span><span class="c1">// ceil-div</span>
+<span class="w">        </span><span class="nx">totalSteps</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">totalSteps</span><span class="p">,</span><span class="w"> </span><span class="nx">roleSteps</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">totalSteps</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong><code>totalSteps</code> is the max over roles, and that is what enforces lockstep.</strong> The role with the most replicas — or the smallest batch — sets the clock. Smaller roles get a <em>fractional</em> trajectory that ceil/floor discretizes, so a 3-replica decode pool moves only every other step of a 6-replica prefill pool. The ratio is preserved by construction.</p>
+<div class="admonition note">
+<p class="admonition-title"><code>totalSteps</code> counts batches, not reconciles</p>
+<p>KEP-766 stresses this. Its worked example has <code>totalSteps = 3</code> but takes <strong>7 reconcile iterations</strong>, because scale-up and scale-down are separate steps and the stability gate inserts waits.</p>
+</div>
+<h3 id="43-min-for-up-max-for-down">4.3 Min for up, max for down<a class="headerlink" href="#43-min-for-up-max-for-down" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// scale-up</span>
+<span class="nx">stepIndex</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">current</span><span class="p">,</span><span class="w"> </span><span class="nx">targetVal</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">targetVal</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">totalSteps</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nb">float64</span><span class="p">(</span><span class="nx">current</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">totalSteps</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">targetVal</span><span class="p">))</span><span class="w">   </span><span class="c1">// floor</span>
+<span class="p">}</span>
+<span class="nx">minStepIdx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">totalSteps</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">target</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">minStepIdx</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">minStepIdx</span><span class="p">,</span><span class="w"> </span><span class="nx">stepIndex</span><span class="p">(</span><span class="nx">currentNew</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="nx">target</span><span class="p">[</span><span class="nx">i</span><span class="p">]))</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">nextStepIdx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">minStepIdx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span>
+
+<span class="nx">computeNew</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">targetVal</span><span class="p">,</span><span class="w"> </span><span class="nx">currentVal</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">progress</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">nextStepIdx</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">targetVal</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">totalSteps</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">computed</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nx">math</span><span class="p">.</span><span class="nx">Ceil</span><span class="p">(</span><span class="nx">progress</span><span class="p">)),</span><span class="w"> </span><span class="nx">targetVal</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">computed</span><span class="p">,</span><span class="w"> </span><span class="nx">currentVal</span><span class="p">)</span><span class="w">      </span><span class="c1">// monotone: never shrink new</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1">// scale-down</span>
+<span class="nx">maxStepIdx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">initialOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">removed</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">currentOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">maxStepIdx</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">maxStepIdx</span><span class="p">,</span><span class="w"> </span><span class="nx">stepIndex</span><span class="p">(</span><span class="nx">removed</span><span class="p">,</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]))</span>
+<span class="p">}</span>
+<span class="nx">computeOld</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">sourceVal</span><span class="p">,</span><span class="w"> </span><span class="nx">currentVal</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">progress</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">nextStepIdx</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">sourceVal</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">float64</span><span class="p">(</span><span class="nx">totalSteps</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">computed</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">sourceVal</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="nx">math</span><span class="p">.</span><span class="nx">Floor</span><span class="p">(</span><span class="nx">progress</span><span class="p">)))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">computed</span><span class="p">,</span><span class="w"> </span><span class="nx">currentVal</span><span class="p">)</span><span class="w">      </span><span class="c1">// monotone: never grow old</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Min for up, max for down.</strong> The asymmetry is intentional and is KEP-766's Property 2. Taking the <em>min</em> on scale-up means the <strong>laggard role sets the step</strong> — no role races ahead. Taking the <em>max</em> on scale-down means the old fleet drains no faster than the <strong>most-drained</strong> role justifies. Together they squeeze the total footprint toward the surge budget from both sides.</p>
+<h3 id="44-the-decision-cascade">4.4 The decision cascade<a class="headerlink" href="#44-the-decision-cascade" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">ComputeNextStep</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="p">,</span>
+<span class="w">                     </span><span class="nx">config</span><span class="w"> </span><span class="p">[]</span><span class="nx">RollingUpdateConfig</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">UpdateStep</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">isComplete</span><span class="p">(</span><span class="nx">currentOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">}</span><span class="w">                    </span><span class="c1">// (1)</span>
+<span class="w">    </span><span class="nx">totalSteps</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">computeTotalSteps</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">totalSteps</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">}</span><span class="w">                                                  </span><span class="c1">// (2)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">correctAbnormalState</span><span class="p">(</span><span class="nx">currentOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">);</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1">// (3)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">isNewAtTarget</span><span class="p">(</span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">                                          </span><span class="c1">// (4)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">UpdateStep</span><span class="p">{</span><span class="nx">Past</span><span class="p">:</span><span class="w"> </span><span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">)),</span><span class="w"> </span><span class="nx">New</span><span class="p">:</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">nextNew</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">computeNextNewReplicas</span><span class="p">(</span><span class="nx">targetNew</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">totalSteps</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">minOld</span><span class="w">  </span><span class="o">:=</span><span class="w"> </span><span class="nx">computeMinOld</span><span class="p">(</span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tryScaleUp</span><span class="p">(</span><span class="o">...</span><span class="p">);</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="p">}</span><span class="w">                            </span><span class="c1">// (5)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tryProportionalDrain</span><span class="p">(</span><span class="o">...</span><span class="p">);</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="p">}</span><span class="w">                  </span><span class="c1">// (6)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tryForceDrain</span><span class="p">(</span><span class="o">...</span><span class="p">);</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="p">}</span><span class="w">                         </span><span class="c1">// (7)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Each of (5), (6), (7) changes either <code>Past</code> or <code>New</code>, never both.</strong> That is KEP-766's Property 1, "Decoupled Steps," and it is what makes each step independently observable and each failure independently diagnosable.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Gate</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>(1) <code>isComplete</code></strong></td>
+<td style="text-align: left;">Every role has <code>currentOld[i] == 0 &amp;&amp; currentNew[i] &gt;= targetNew[i]</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(3) <code>correctAbnormalState</code></strong></td>
+<td style="text-align: left;">Clamps <code>currentOld[i]</code> down to <code>min(initialOld[i], currentOld[i])</code>. Handles a stale annotation or manual meddling</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(4) <code>isNewAtTarget</code></strong></td>
+<td style="text-align: left;">Once every role's new fleet is at target, skip the machinery and zero the entire old side in one shot</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(5) <code>tryScaleUp</code></strong></td>
+<td style="text-align: left;">Fires only if some <code>nextNew[i] &gt; currentNew[i]</code> <strong>and</strong> <code>canScaleUp</code> holds</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(6) <code>tryProportionalDrain</code></strong></td>
+<td style="text-align: left;">The on-trajectory drain, floored per role by <code>minOld</code> and filtered through orphan prevention</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>(7) <code>tryForceDrain</code></strong></td>
+<td style="text-align: left;">The unblocker, when surge budget blocks the next scale-up</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>canScaleUp</code> is the surge invariant</strong>, KEP-766 Property 4:</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">currentOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">currentOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">+</span><span class="nx">nextNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">+</span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxSurge</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Checked <strong>per role, for all roles, before any role scales up</strong>. The surge budget is global in the vector sense: one role over budget blocks the whole step.</p>
+<p><strong><code>computeMinOld</code> is the availability invariant:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">initialOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">minOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">-</span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxUnavailable</span><span class="o">-</span><span class="nx">currentNew</span><span class="p">[</span><span class="nx">i</span><span class="p">])</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Keep enough old replicas that <code>old + new &gt;= target - maxUnavailable</code>. Roles scaling <em>up</em> across revisions (<code>initialOld &lt; targetNew</code>) get <code>minOld[i] = 0</code> — they have nothing to protect.</p>
+<p><strong><code>tryForceDrain</code> is the deadlock breaker.</strong> When surge blocks the next scale-up, drain old down to exactly what the surge budget requires:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">maxOld</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxSurge</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">nextNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+<span class="nx">drainedOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="nx">currentOld</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="nx">maxOld</span><span class="p">))</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">minOldForRole</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">-</span><span class="nx">config</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">MaxUnavailable</span><span class="o">-</span><span class="nx">nextNew</span><span class="p">[</span><span class="nx">i</span><span class="p">])</span>
+<span class="w">    </span><span class="nx">drainedOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nx">drainedOld</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="w"> </span><span class="nx">minOldForRole</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>It computes against <code>nextNew</code>, not <code>currentNew</code>, so it drains <em>just enough</em> to admit the next scale-up. It is deliberately off-trajectory — the KEP says "force-drain bypasses the step-index machinery."</p>
+<h3 id="45-orphan-prevention">4.5 Orphan prevention<a class="headerlink" href="#45-orphan-prevention" title="Permanent link">&para;</a></h3>
+<p>This is the safety net that makes the whole thing correct rather than merely convergent.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">applyOrphanPrevention</span><span class="p">(</span><span class="nx">nextOld</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="w"> </span><span class="nx">RoleReplicaState</span><span class="p">,</span>
+<span class="w">                           </span><span class="nx">config</span><span class="w"> </span><span class="p">[]</span><span class="nx">RollingUpdateConfig</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">anyDrainsToZero</span><span class="p">,</span><span class="w"> </span><span class="nx">allDrainToZero</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">nextOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">nextOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">anyDrainsToZero</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">allDrainToZero</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">anyDrainsToZero</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">allDrainToZero</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">canDrainAllToZero</span><span class="p">(</span><span class="nx">currentNew</span><span class="p">,</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">nextOld</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">nextOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">}</span><span class="w">        </span><span class="c1">// all-or-nothing: finish the drain</span>
+<span class="w">        </span><span class="k">return</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">nextOld</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">nextOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">initialOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">nextOld</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// hold one back</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>KEP-766's Property 3 is "if any role reaches 0 replicas, all roles are forced to 0," and the implementation makes it two-sided:</p>
+<ul>
+<li>If the <strong>new</strong> fleet can already absorb the load (<code>canDrainAllToZero</code>), zero out the entire old revision at once.</li>
+<li>Otherwise <strong>refuse to let any role hit 0</strong>, and pin it at 1.</li>
+</ul>
+<p>Without this, a rollout could leave an old revision with 0 prefill and 3 decode — a revision that can serve nothing but still occupies GPUs. Given the cost of an 8-GPU decode group, that is not a theoretical concern.</p>
+<p>The executor has a twin of this in <code>scaleDownOld</code>: if <em>any</em> role of an old revision would reach 0, <strong>all</strong> roles of that revision are zeroed in the same pass, and the extra pods zeroed by the coordination are not charged against the drain budget.</p>
+<h3 id="46-the-initial-replicas-annotation">4.6 The <code>initial-replicas</code> annotation<a class="headerlink" href="#46-the-initial-replicas-annotation" title="Permanent link">&para;</a></h3>
+<p><code>disaggregatedset.x-k8s.io/initial-replicas</code> exists because the planner needs <code>initialOld</code> — the old revision's replica count <strong>at rollout start</strong> — as the denominator of the drain interpolation. In a stateless controller the only durable place to keep it is the object itself, and <code>spec.replicas</code> mutates as the rollout progresses.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Written</strong></td>
+<td style="text-align: left;">Exactly once, in <code>initRollingUpdate</code>, <strong>before</strong> any new-revision LWS is created. Addressed by the LWS's <em>actual</em> name so a legacy slice-0 object is updated rather than missed</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Then</strong></td>
+<td style="text-align: left;">New-revision LWSes are created at <strong>0 replicas</strong> and the reconcile returns <code>RequeueAfter: 1s</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Read</strong></td>
+<td style="text-align: left;"><code>GetTotalInitialReplicasPerRole</code> sums it across old revisions, falling back to <code>spec.replicas</code> (or 1) when absent</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Overwrite</strong></td>
+<td style="text-align: left;">Logs <code>"WARNING: Overwriting initial-replicas annotation with different value"</code>; a no-op if unchanged</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition bug">
+<p class="admonition-title">Write failures are swallowed</p>
+<p><code>initRollingUpdate</code> only <code>log.Error</code>s a failed annotation patch. A failed write silently degrades that role's drain baseline to <code>spec.Replicas</code>, which is the <em>current</em> count rather than the <em>initial</em> count — producing a subtly wrong drain trajectory with no error surfaced. Propagating this error is a small, well-scoped fix.</p>
+</div>
+<h3 id="47-the-stability-gate-and-teardown">4.7 The stability gate and teardown<a class="headerlink" href="#47-the-stability-gate-and-teardown" title="Permanent link">&para;</a></h3>
+<p>Two distinct gates, both in the executor.</p>
+<p><strong>Per-step</strong>, <code>isRevisionStable</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">roleNames</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">lws</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">rev</span><span class="p">.</span><span class="nx">Roles</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">lws</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">getLWSReplicas</span><span class="p">(</span><span class="nx">lws</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ReadyReplicas</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Called on the <strong>new</strong> revision only. If unstable, the reconcile returns <code>RequeueAfter: 1s</code> without touching anything. This is KEP-766's Property 6.</p>
+<p>Note the strictness: <code>Spec.Replicas != Status.ReadyReplicas</code> blocks even when readiness <em>exceeds</em> the target, and it never looks at the old revision's readiness at all.</p>
+<p><strong>Revision teardown</strong> happens separately, in <code>cleanupDrainedLWS</code> at the <em>top</em> of the next <code>reconcileSlice</code>. It groups non-target-revision LWSes by revision and deletes a revision's objects only when <strong>every</strong> role in that group has <code>spec.replicas == 0</code>. It also logs <code>"WARNING: multiple LWS found for same role and revision"</code> on a key collision — a state the code detects but does not resolve.</p>
+<h3 id="48-role-changes-mid-rollout">4.8 Role changes mid-rollout<a class="headerlink" href="#48-role-changes-mid-rollout" title="Permanent link">&para;</a></h3>
+<p><code>detectRoleChanges</code> diffs spec roles against roles present in old revisions. Removed roles <strong>keep an index</strong> in the planner vectors so their old replicas drain, but <code>buildPlannerState</code> leaves their <code>currentNew</code>/<code>targetNew</code> at 0 and <code>scaleUpNew</code> skips them. Since role names are mutable (§9), a rename is handled as remove-plus-add.</p>
+<hr />
+<h2 id="part-5-slices-kep-846">Part 5: Slices (KEP-846)<a class="headerlink" href="#part-5-slices-kep-846" title="Permanent link">&para;</a></h2>
+<h3 id="51-what-a-slice-is">5.1 What a slice is<a class="headerlink" href="#51-what-a-slice-is" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:default=1</span>
+<span class="c1">// +kubebuilder:validation:Minimum=1</span>
+<span class="c1">// +kubebuilder:validation:Maximum=100</span>
+<span class="nx">Slices</span><span class="w"> </span><span class="o">*</span><span class="kt">int32</span><span class="w"> </span><span class="s">`json:&quot;slices,omitempty&quot;`</span>
+</code></pre></div>
+<p>"The number of independent copies of the whole role topology. Each slice is a complete set of all roles that rolls out independently."</p>
+<p>Per-role <code>spec.replicas</code> is <strong>per-slice</strong>, so total groups for a role is <code>replicas × slices</code>.</p>
+<p>The mental model from KEP-846: "A slice is the durable, outer identity; a revision is ephemeral. Within a slice, normally one revision is live, and two coexist transiently while that slice rolls."</p>
+<h3 id="52-why-the-planner-is-unchanged">5.2 Why the planner is unchanged<a class="headerlink" href="#52-why-the-planner-is-unchanged" title="Permanent link">&para;</a></h3>
+<p><code>Reconcile</code> computes the revision once, then loops <code>for slice := range sliceCount { r.reconcileSlice(...) }</code>. Everything inside is slice-scoped. <strong>Running the same N-dimensional algorithm once per slice yields per-slice independent rollouts for free</strong> — the planner did not have to change at all.</p>
+<p>Slice filtering is <strong>client-side</strong>, because "slice label == 0 OR absent" is not expressible as a label selector:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">SliceLabelMatches</span><span class="p">(</span><span class="nx">labels</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span><span class="w">                 </span><span class="c1">// -1 == all slices</span>
+<span class="w">    </span><span class="nx">value</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">labels</span><span class="p">[</span><span class="nx">SliceLabelKey</span><span class="p">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">ok</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">value</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1">// legacy object → slice 0</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">value</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">slice</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="53-scaling-slices-does-not-roll">5.3 Scaling slices does not roll<a class="headerlink" href="#53-scaling-slices-does-not-roll" title="Permanent link">&para;</a></h3>
+<p>Because <code>slices</code> is outside <code>ComputeRevision</code>, changing <code>slices: 2 → 3</code> changes no revision. The slice loop simply reaches index 2, finds no LWS, and takes the <code>reconcileSimple</code> path, creating slice 2 at the current revision.</p>
+<p>Scale-down (<code>cleanupRemovedSlices</code>) is a plain delete of every LWS whose <code>slice</code> label is <code>&gt;= desiredSlices</code>, plus the corresponding Services. KEP-846 justifies the absence of an orchestrated drain: "Slice removal has no cross-slice invariant to protect (slices are independent), so it is a plain scale operation."</p>
+<h3 id="54-legacy-slice-0-migration">5.4 Legacy slice-0 migration<a class="headerlink" href="#54-legacy-slice-0-migration" title="Permanent link">&para;</a></h3>
+<p>Slices were added after the initial DisaggregatedSet release, so there is a compat layer, explicitly tagged for removal:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// TODO(0.11.0): remove legacy slice-0 handling once pre-slices DisaggregatedSets are no</span>
+<span class="c1">// longer supported. The related legacy-compat code to remove with it: GenerateLegacyName,</span>
+<span class="c1">// GetForRole&#39;s legacy-name fallback, DeleteLegacyService, and the label-less branch in</span>
+<span class="c1">// SliceLabelMatches.</span>
+</code></pre></div>
+<p>Three behaviours:</p>
+<ol>
+<li><strong>Adoption in place.</strong> <code>GetForRole</code> tries the slice-aware name and, for <code>slice == 0</code> only, falls back to <code>GenerateLegacyName</code>. A plain upgrade recreates nothing.</li>
+<li><strong>Migration on next rollout</strong> — free. The new revision's slice-0 LWS is created slice-aware, the legacy LWS drains through the normal rolling update, and Services are revision-scoped so they never cross-select.</li>
+<li><strong>Migration when <code>slices</code> rises above 1</strong> — <code>recreateLegacySlice0</code>, called <em>before</em> the slice loop. The problem: the legacy Service's selector is <code>{name, role, revision}</code> with <strong>no slice key</strong>, so a new slice-1 pod at the same revision is a superset match and gets selected by slice 0's Service. The fix deletes the legacy Service <strong>first</strong>, then the legacy LWS. This restarts slice 0 once — an accepted trade against an in-place migration.</li>
+</ol>
+<p>That TODO block is a well-scoped future contribution with the removal set already enumerated for you.</p>
+<hr />
+<h2 id="part-6-placement-policy-kep-848">Part 6: Placement Policy (KEP-848)<a class="headerlink" href="#part-6-placement-policy-kep-848" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">PlacementPolicy</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Type</span><span class="w">     </span><span class="nx">PlacementType</span><span class="w"> </span><span class="s">`json:&quot;type,omitempty&quot;`</span><span class="w">     </span><span class="c1">// None | ExclusiveSlice | ExclusiveTopology</span>
+<span class="w">    </span><span class="nx">Topology</span><span class="w"> </span><span class="kt">string</span><span class="w">        </span><span class="s">`json:&quot;topology,omitempty&quot;`</span><span class="w"> </span><span class="c1">// node-label key → affinity topologyKey</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>None</code> (default)</td>
+<td style="text-align: left;">No affinity injected</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ExclusiveSlice</code></td>
+<td style="text-align: left;">A slice's roles are co-located in one domain, and this DS's slices are spread across domains. <strong>Other DisaggregatedSets may share a domain</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ExclusiveTopology</code></td>
+<td style="text-align: left;"><code>ExclusiveSlice</code> plus domain exclusivity: a domain holds at most one slice <strong>across all DisaggregatedSets</strong> — a 1:1 domain-to-slice mapping</td>
+</tr>
+</tbody>
+</table>
+<p>Injection is at <strong>LWS creation only</strong>, in <code>LeaderWorkerSetManager.Create</code>, into both pod templates. There is no mutating webhook; KEP-848 rejected one because "the DisaggregatedSet controller already constructs and mutates the LeaderWorkerSet pod templates." Existing affinity is deep-copied and terms are <strong>appended</strong>, never replaced.</p>
+<h3 id="61-exclusiveslice-two-terms">6.1 <code>ExclusiveSlice</code> — two terms<a class="headerlink" href="#61-exclusiveslice-two-terms" title="Permanent link">&para;</a></h3>
+<p><strong>Term 1, podAffinity</strong> — co-locate the slice's roles:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;disaggregatedset.x-k8s.io/name&quot;</span><span class="p">,</span><span class="w">  </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">In</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nx">dsName</span><span class="p">]},</span>
+<span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;disaggregatedset.x-k8s.io/slice&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">In</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">slice</span><span class="p">)]},</span>
+</code></pre></div>
+<p>Self-referential, so the first pod of a slice is unpinned (a required podAffinity with no matching pods is satisfied) and later pods are drawn to it.</p>
+<p><strong>Term 2, podAntiAffinity</strong> — spread this DS's slices:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">spreadExprs</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorRequirement</span><span class="p">{</span>
+<span class="w">    </span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SetNameLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">In</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">dsName</span><span class="p">}},</span>
+<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">slice</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">spreadExprs</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="nx">spreadExprs</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorRequirement</span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SliceLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorOpExists</span><span class="p">})</span>
+<span class="p">}</span>
+<span class="nx">spreadExprs</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="nx">spreadExprs</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorRequirement</span><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SliceLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">metav1</span><span class="p">.</span><span class="nx">LabelSelectorOpNotIn</span><span class="p">,</span>
+<span class="w">                                    </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">sliceStr</span><span class="p">}})</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">The <code>slice == 0</code> special case is the subtlest code in the subsystem</p>
+<p>Kubernetes label selectors treat <code>NotIn</code> as <strong>also matching objects missing the key entirely</strong>. For slices ≠ 0 that is exactly right: a pre-slices, label-less pod is semantically slice 0 — a <em>different</em> slice — and should repel.</p>
+<p>But for slice 0 itself, the label-less legacy pod is the <em>same</em> slice. Without the extra <code>Exists</code> requirement, "a slice-0 pod with placement enabled is repelled by its own legacy predecessor and never schedules during upgrade."</p>
+<p>If you ever touch selector construction here, read the comment at <code>affinity.go:74-80</code> first.</p>
+</div>
+<h3 id="62-exclusivetopology-a-third-term">6.2 <code>ExclusiveTopology</code> — a third term<a class="headerlink" href="#62-exclusivetopology-a-third-term" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SetNameLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">Exists</span><span class="p">},</span>
+<span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SetNameLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">NotIn</span><span class="p">,</span><span class="w"> </span><span class="nx">Values</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">dsName</span><span class="p">}},</span>
+<span class="p">{</span><span class="nx">Key</span><span class="p">:</span><span class="w"> </span><span class="nx">SliceLabelKey</span><span class="p">,</span><span class="w">   </span><span class="nx">Operator</span><span class="p">:</span><span class="w"> </span><span class="nx">Exists</span><span class="p">},</span>
+</code></pre></div>
+<p>The redundant-looking <code>name Exists</code> alongside <code>name NotIn [ds]</code> is deliberate, for the same reason: <code>NotIn</code> alone would also match pods with <strong>no</strong> name label — every unrelated workload in the cluster — turning <code>ExclusiveTopology</code> into "exclusive against everything." The <code>Exists</code> pairs scope the exclusion to DisaggregatedSet-managed pods.</p>
+<p>Since required podAntiAffinity terms are ANDed, terms 2 and 3 together mean the domain is free of <em>any</em> other slice, same-DS or not.</p>
+<h3 id="63-lazy-application-and-the-lws-conflict">6.3 Lazy application, and the LWS conflict<a class="headerlink" href="#63-lazy-application-and-the-lws-conflict" title="Permanent link">&para;</a></h3>
+<p><code>placementPolicy</code> is outside <code>ComputeRevision</code>, and the controller deliberately does <strong>not</strong> patch existing LWSes. KEP-848: "mutating a running LeaderWorkerSet's pod template would itself force an LWS-level rolling update, turning a placement tweak into an implicit, uncoordinated restart of every slice at once."</p>
+<p>So new slices get the policy immediately; existing slices pick it up on their next rollout.</p>
+<p>The webhook rejects a non-<code>None</code> policy combined with LWS's own exclusive-topology annotations, checked in <strong>three</strong> places per role — the role's <code>metadata.annotations</code>, the leader template's, and the worker template's — because the LWS pod webhook reads them from the pod. The rationale: LWS exclusivity is <em>group</em>-granular ("one leader-worker group per domain"), DS placement is <em>slice</em>-granular; both at the same topology level means "the slice never schedules."</p>
+<div class="admonition warning">
+<p class="admonition-title">Hard-only placement can wedge a slice</p>
+<p>All terms are <code>RequiredDuringSchedulingIgnoredDuringExecution</code>. KEP-848's own Risks section notes that without whole-slice look-ahead, a slice's first pod can land in a domain lacking room for the rest, pinning the remainder Pending forever. There is no soft/<code>Preferred</code> variant, and gang scheduling for DisaggregatedSet is deferred. This is the same failure mode as <a href="../07_scheduling_placement_and_networking/">Module 7</a>, §2.3, one level up.</p>
+</div>
+<hr />
+<h2 id="part-7-per-role-autoscaling-kep-849">Part 7: Per-Role Autoscaling (KEP-849)<a class="headerlink" href="#part-7-per-role-autoscaling-kep-849" title="Permanent link">&para;</a></h2>
+<p>Autoscaling was a KEP-766 non-goal, superseded by KEP-849. The design problem is that a <code>DisaggregatedSet</code> has N roles that each need independent scaling, but the <code>/scale</code> subresource can only target one field per object. The answer is a <strong>separate CR per role</strong>.</p>
+<h3 id="71-the-scaler-cr">7.1 The scaler CR<a class="headerlink" href="#71-the-scaler-cr" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector</span>
+<span class="c1">// +kubebuilder:resource:shortName=dsrs</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">DisaggregatedSetRoleScalerSpec</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:default=0</span>
+<span class="w">    </span><span class="c1">// +kubebuilder:validation:Minimum=0</span>
+<span class="w">    </span><span class="nx">Replicas</span><span class="w"> </span><span class="kt">int32</span><span class="w"> </span><span class="s">`json:&quot;replicas&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">The non-pointer with a default is load-bearing</p>
+<p>The comment in the source spells out why: "kube-apiserver's CRD <code>/scale</code> handler extracts <code>.spec.replicas</code> at read time and errors (<code>the spec replicas field does not exist</code>) when the JSONPath resolves to nothing. HPA reads <code>/scale</code> before its first write; a missing field would deadlock the loop."</p>
+<p>KEP-849's draft API had <code>Replicas *int32</code> with <code>omitempty</code>. The implementation deliberately diverged, and the reason is worth knowing before you "fix" it to match Kubernetes convention.</p>
+</div>
+<h3 id="72-lifecycle">7.2 Lifecycle<a class="headerlink" href="#72-lifecycle" title="Permanent link">&para;</a></h3>
+<p><code>ScalerManager.Reconcile</code> runs <strong>before</strong> any LWS work, so replica resolution downstream sees a settled scaler map:</p>
+<ol>
+<li>Build the set of roles with <code>scaling.mode: External</code>.</li>
+<li>List all scalers in the namespace labelled with this DS's name.</li>
+<li>For each: skip unless controlled by this DS; if its role is no longer External, <strong>delete it</strong> (<code>ScalerDeleted</code>); otherwise record it.</li>
+<li>For each External role with no scaler, create one.</li>
+</ol>
+<p>One pass handles both External→Static teardown and Static→External creation. On <code>IsAlreadyExists</code>, if the existing object is not controlled by this DS, it emits a <strong>Warning</strong> <code>ScalerConflict</code> and returns without adopting — it refuses to take over a hand-created object.</p>
+<h3 id="73-seeding-and-the-two-deadlocks-it-avoids">7.3 Seeding, and the two deadlocks it avoids<a class="headerlink" href="#73-seeding-and-the-two-deadlocks-it-avoids" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// seedForRole</span>
+<span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">seen</span><span class="p">[</span><span class="nx">role</span><span class="p">]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span><span class="w">      </span><span class="c1">// fresh role</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">sums</span><span class="p">[</span><span class="nx">role</span><span class="p">]</span><span class="w">                 </span><span class="c1">// aggregate current LWS replicas across all slices</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Case</th>
+<th style="text-align: left;">Seed</th>
+<th style="text-align: left;">Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Fresh role, no LWS yet</td>
+<td style="text-align: left;"><strong>1</strong>, not 0</td>
+<td style="text-align: left;">"HPA parks in <code>ScalingDisabled</code> when it reads current=0 from <code>/scale</code>, regardless of <code>minReplicas</code>, unless the <code>HPAScaleToZero</code> feature gate is enabled"</td>
+</tr>
+<tr>
+<td style="text-align: left;">Static→External flip on a running role</td>
+<td style="text-align: left;">Current aggregate LWS replica count</td>
+<td style="text-align: left;">So the flip "does not drain to zero"</td>
+</tr>
+</tbody>
+</table>
+<p>Autoscalers that support scale-from-zero (KEDA, or HPA with the gate) can still take the role to 0 after attaching.</p>
+<h3 id="74-replica-resolution-and-the-no-shrink-guard">7.4 Replica resolution and the no-shrink guard<a class="headerlink" href="#74-replica-resolution-and-the-no-shrink-guard" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">getTargetReplicas</span><span class="p">(</span><span class="nx">ds</span><span class="p">,</span><span class="w"> </span><span class="nx">roleName</span><span class="p">,</span><span class="w"> </span><span class="nx">scalers</span><span class="p">,</span><span class="w"> </span><span class="nx">currentNew</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">p</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">ds</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Roles</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">Name</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">roleName</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">Scaling</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">Scaling</span><span class="p">.</span><span class="nx">Mode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">RoleScalingExternal</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scalers</span><span class="p">[</span><span class="nx">roleName</span><span class="p">];</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nx">currentNew</span><span class="w">                     </span><span class="c1">// no scaler → hold current</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">p</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="o">*</span><span class="nx">p</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">Replicas</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>And in <code>buildPlannerState</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// No-shrink guard: an External role mid-rollout must not shrink the new-revision</span>
+<span class="c1">// fleet if HPA writes a smaller value while the old revision is still draining.</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">isExternal</span><span class="p">(</span><span class="nx">ds</span><span class="p">,</span><span class="w"> </span><span class="nx">roleName</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">oldRevisions</span><span class="p">)</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">targetNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">currentNew</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>len(oldRevisions) &gt; 0</code> is the release condition: once the old revision is gone, the target tracks the scaler exactly. The steady-state path has no such guard, correctly — no rollout is in flight.</p>
+<h3 id="75-the-leader-only-selector-and-why">7.5 The leader-only selector, and why<a class="headerlink" href="#75-the-leader-only-selector-and-why" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">desired</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Selector</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;%s=%s,%s=%s,%s=0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">SetNameLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">ds</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span><span class="w"> </span><span class="nx">RoleLabelKey</span><span class="p">,</span><span class="w"> </span><span class="nx">role</span><span class="p">,</span><span class="w"> </span><span class="nx">leaderworkersetv1</span><span class="p">.</span><span class="nx">WorkerIndexLabelKey</span><span class="p">)</span>
+</code></pre></div>
+<p>Producing:</p>
+<div class="highlight"><pre><span></span><code>disaggregatedset.x-k8s.io/name=&lt;ds&gt;,disaggregatedset.x-k8s.io/role=&lt;role&gt;,leaderworkerset.sigs.k8s.io/worker-index=0
+</code></pre></div>
+<p>The <strong>unit-consistency argument</strong> is the same one from <a href="../02_api_surface_anatomy/">Module 2</a>, §4, and it is worth being able to reproduce: HPA divides its per-pod metric sum by the count of pods matching <code>status.selector</code>, and that divisor must equal <code>status.replicas</code>. Since <code>spec.replicas</code> (which HPA writes) and <code>status.replicas</code> (which HPA reads) are both <strong>LWS groups</strong>, the selector must match exactly <strong>one pod per group</strong> — the leader. Otherwise, with <code>size: 4</code>, HPA would divide by <code>4 × groups</code> while comparing against <code>groups</code>, and the ratio would be wrong by a factor of 4.</p>
+<p>The selector is revision-<strong>agnostic</strong>, so HPA observes the whole serving fleet during a rollout.</p>
+<p><code>status.replicas</code> is aggregated across <strong>all slices and all revisions</strong> by summing each child LWS's <code>Status.Replicas</code> (which is its group count).</p>
+<h3 id="76-the-pitfalls-the-code-documents">7.6 The pitfalls the code documents<a class="headerlink" href="#76-the-pitfalls-the-code-documents" title="Permanent link">&para;</a></h3>
+<p>This list is unusually valuable, because each item is a bug someone already hit:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Pitfall</th>
+<th style="text-align: left;">Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;"><code>current=0</code> puts HPA in <code>ScalingDisabled</code> regardless of <code>minReplicas</code></td>
+<td style="text-align: left;">Seed 1</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">A missing <code>.spec.replicas</code> field makes the apiserver <code>/scale</code> handler error</td>
+<td style="text-align: left;">Non-pointer + <code>default=0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">Static→External silently drains the role</td>
+<td style="text-align: left;">Seed from current aggregate</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">HPA scaling down mid-rollout flip-flops the target</td>
+<td style="text-align: left;">No-shrink guard</td>
+</tr>
+<tr>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">Group-count vs pod-count divisor mismatch</td>
+<td style="text-align: left;">Leader-only selector</td>
+</tr>
+<tr>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;"><strong>CEL defaulting trap</strong> — <code>LeaderWorkerSetSpec.Replicas</code> has <code>+kubebuilder:default=1</code>, and defaulting runs <em>before</em> CEL, so a rule forbidding <code>replicas &gt; 0</code> on External roles "would reject every External role"</td>
+<td style="text-align: left;">Emit a <strong>warning</strong> for <code>&gt; 1</code>, and scope the all-or-nothing CEL rule to non-External roles</td>
+</tr>
+<tr>
+<td style="text-align: left;">7</td>
+<td style="text-align: left;">Deleting the scaler does not opt out — the controller recreates it</td>
+<td style="text-align: left;">Flip <code>scaling.mode</code> back to <code>Static</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">Mixed-revision metric baseline during a rollout</td>
+<td style="text-align: left;">Documented as a drawback</td>
+</tr>
+</tbody>
+</table>
+<p>Pitfall 6 is the most instructive. It is a genuine Kubernetes API design constraint — CRD structural defaulting runs before CEL validation — and the workaround (warn instead of reject, and scope the CEL rule with <code>filter</code>) is a pattern worth remembering for any API PR.</p>
+<hr />
+<h2 id="part-8-services-and-revision-aware-routing">Part 8: Services and Revision-Aware Routing<a class="headerlink" href="#part-8-services-and-revision-aware-routing" title="Permanent link">&para;</a></h2>
+<p><code>ReconcileServices</code> finds the <code>RevisionRoles</code> group matching the target revision and <strong>bails out entirely</strong> unless every role has at least one ready replica:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">revisionReadyOnAllRoles</span><span class="p">(</span><span class="nx">group</span><span class="w"> </span><span class="nx">RevisionRoles</span><span class="p">,</span><span class="w"> </span><span class="nx">roleNames</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">roleName</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">roleNames</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">lws</span><span class="p">,</span><span class="w"> </span><span class="nx">hasRole</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">group</span><span class="p">.</span><span class="nx">Roles</span><span class="p">[</span><span class="nx">roleName</span><span class="p">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">hasRole</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ReadyReplicas</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>That is KEP-766's "Services must not route traffic until all roles are ready," implemented as a precondition on Service <em>creation</em>.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">selector</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">SetNameLabelKey</span><span class="p">:</span><span class="w">  </span><span class="nx">ds</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">RoleLabelKey</span><span class="p">:</span><span class="w">     </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Labels</span><span class="p">[</span><span class="nx">RoleLabelKey</span><span class="p">],</span>
+<span class="w">    </span><span class="nx">RevisionLabelKey</span><span class="p">:</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Labels</span><span class="p">[</span><span class="nx">RevisionLabelKey</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">HasSliceLabel</span><span class="p">(</span><span class="nx">lws</span><span class="p">.</span><span class="nx">Labels</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">selector</span><span class="p">[</span><span class="nx">SliceLabelKey</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">lws</span><span class="p">.</span><span class="nx">Labels</span><span class="p">[</span><span class="nx">SliceLabelKey</span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<span class="c1">// Name: lws.Name + &quot;-prv&quot;; ClusterIP: None; owner: the DisaggregatedSet</span>
+</code></pre></div>
+<p>One headless Service per <code>(slice, revision, role)</code>. <strong>This is the payoff for Alternative 4.</strong> Because each Service is revision-scoped, a prefill pod at revision <code>r</code> resolves <em>only</em> decode pods at revision <code>r</code> in the same slice. During a rollout both <code>…-&lt;oldrev&gt;-decode-prv</code> and <code>…-&lt;newrev&gt;-decode-prv</code> exist, and an external load balancer can count backends per revision across role pools and split traffic proportionally.</p>
+<p>The Service name derives from the <strong>observed</strong> LWS name, so a legacy slice-0 LWS yields a legacy <code>-prv</code> name automatically.</p>
+<div class="admonition bug">
+<p class="admonition-title">Services are create-only and never repaired</p>
+<p><code>ensureService</code> calls <code>Create</code> and treats <code>IsAlreadyExists</code> as success. A Service whose selector has drifted — hand-edited, or left over from an older controller version — is <strong>never reconciled back</strong>. Combined with the controller not watching Services at all (<code>Owns(&amp;LeaderWorkerSet{})</code> and <code>Owns(&amp;scaler)</code> only), a manually deleted Service is recreated only on the next DS-triggered reconcile.</p>
+<p>Adding <code>Owns(&amp;corev1.Service{})</code> plus a spec-diff-and-patch in <code>ensureService</code> is a contained, clearly-motivated PR.</p>
+</div>
+<p>Cleanup: <code>cleanupDrainedServices</code> builds the set of revisions ready on all roles, force-adds the target revision, and deletes any Service whose revision label is not in the set. <code>DeleteLegacyService</code> exists separately because "the legacy Service shares the target revision, so per-revision drained cleanup never removes it."</p>
+<hr />
+<h2 id="part-9-validation">Part 9: Validation<a class="headerlink" href="#part-9-validation" title="Permanent link">&para;</a></h2>
+<p>The webhook is <strong>validating only</strong> — <code>SetupDisaggregatedSetWebhook</code> registers <code>WithValidator</code> and no <code>WithDefaulter</code>, unlike the LWS and pod webhooks. All DisaggregatedSet defaulting is declarative CRD defaulting:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>spec.slices</code></td>
+<td style="text-align: left;"><code>1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.placementPolicy.type</code></td>
+<td style="text-align: left;"><code>None</code> (only when the sub-struct is present)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.roles[].scaling.mode</code></td>
+<td style="text-align: left;"><code>Static</code> (only when <code>scaling</code> is present)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.roles[].spec.replicas</code></td>
+<td style="text-align: left;"><code>1</code> (inherited from <code>LeaderWorkerSetSpec</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>DisaggregatedSetRoleScaler.spec.replicas</code></td>
+<td style="text-align: left;"><code>0</code></td>
+</tr>
+</tbody>
+</table>
+<p>Because the <code>scaling</code> sub-struct is not materialised when omitted, <strong><code>Scaling == nil</code> and <code>Scaling.Mode == Static</code> must be treated identically</strong> — every call site does.</p>
+<h3 id="91-what-is-rejected">9.1 What is rejected<a class="headerlink" href="#91-what-is-rejected" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Rule</th>
+<th style="text-align: left;">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>rolloutStrategy.type</code> other than <code>RollingUpdate</code> or <code>""</code></td>
+<td style="text-align: left;"><code>Recreate</code> would break the cross-role same-version invariant</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rollingUpdateConfiguration.partition != 0</code></td>
+<td style="text-align: left;">The DS owns the rollout; a per-LWS partition would be a second, uncoordinated driver</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>maxSurge == 0 &amp;&amp; maxUnavailable == 0</code> with <code>replicas &gt; 0</code></td>
+<td style="text-align: left;">Mirrors the LWS check. Roles with <code>replicas == 0</code> are exempt — "an all-zero DisaggregatedSet is legitimate"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>spec.slices &gt; 1</code> with any External role</td>
+<td style="text-align: left;">Tagged <code>// Alpha:</code> — "the scaler design for multi-slice is deferred to a follow-up KEP" (issue #948)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Non-<code>None</code> <code>placementPolicy</code> with empty <code>topology</code></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">Non-<code>None</code> <code>placementPolicy</code> + an LWS exclusive-topology annotation</td>
+<td style="text-align: left;">§6.3</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>len(dsName + "-" + roleName) &gt; 253</code> for External roles</td>
+<td style="text-align: left;">The scaler name must be a valid object name. With roles capped at 63, this leaves 189 characters for the DS name</td>
+</tr>
+</tbody>
+</table>
+<p>Plus one <strong>warning</strong>, not an error: an External role with <code>spec.replicas &gt; 1</code> gets "<code>spec.replicas</code> is ignored; drive replicas via <code>DisaggregatedSetRoleScaler</code>."</p>
+<h3 id="92-the-all-or-nothing-cel-rule">9.2 The all-or-nothing CEL rule<a class="headerlink" href="#92-the-all-or-nothing-cel-rule" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>self.roles.filter(r, !has(r.scaling) || r.scaling.mode != &#39;External&#39;)
+          .all(r, !has(r.spec.replicas) || r.spec.replicas == 0)
+||
+self.roles.filter(r, !has(r.scaling) || r.scaling.mode != &#39;External&#39;)
+          .all(r, has(r.spec.replicas) &amp;&amp; r.spec.replicas &gt; 0)
+</code></pre></div>
+<p>You may have a fully-scaled-down DisaggregatedSet or a fully-scaled-up one, but <strong>not a half-and-half one</strong> — which would be a revision that cannot serve. The <code>filter(...)</code> prefix is the KEP-849 change exempting External roles, "because their effective replicas live outside the DS spec."</p>
+<p>Role uniqueness is enforced by <code>+listType=map +listMapKey=name</code> rather than a CEL rule — KEP-766's proposed <code>filter(s, s.name == r.name).size() == 1</code> was replaced by the more efficient listMap declaration. Role names are RFC 1123 labels, 2–10 roles, <code>slices</code> 1–100.</p>
+<div class="admonition warning">
+<p class="admonition-title">There is no immutability validation at all</p>
+<p><code>ValidateUpdate</code> does exactly what <code>ValidateCreate</code> does. There are no <code>ValidateImmutableField</code> calls and <code>oldDisagg</code> is an unused parameter. Contrast with the LWS webhook, which pins <code>subGroupSize</code>.</p>
+<p>Notably <strong>role names are mutable</strong>, which the controller handles by treating a rename as remove-plus-add — the old role's LWSes drain, the new role's are created. That is arguably correct behaviour, but it is emergent rather than designed, and nothing in the API tells a user that renaming a role will recreate its entire fleet.</p>
+</div>
+<hr />
+<h2 id="part-10-the-status-gap">Part 10: The Status Gap<a class="headerlink" href="#part-10-the-status-gap" title="Permanent link">&para;</a></h2>
+<p><strong>This is the single best contribution opportunity in the project right now.</strong></p>
+<p>The API declares a complete status:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">RoleStatus</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Name</span><span class="w">            </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;name&quot;`</span>
+<span class="w">    </span><span class="nx">Replicas</span><span class="w">        </span><span class="kt">int32</span><span class="w">  </span><span class="s">`json:&quot;replicas,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">ReadyReplicas</span><span class="w">   </span><span class="kt">int32</span><span class="w">  </span><span class="s">`json:&quot;readyReplicas,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">UpdatedReplicas</span><span class="w"> </span><span class="kt">int32</span><span class="w">  </span><span class="s">`json:&quot;updatedReplicas,omitempty&quot;`</span>
+<span class="p">}</span>
+<span class="kd">type</span><span class="w"> </span><span class="nx">DisaggregatedSetStatus</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">RoleStatuses</span><span class="w"> </span><span class="p">[]</span><span class="nx">RoleStatus</span><span class="w">       </span><span class="s">`json:&quot;roleStatuses,omitempty&quot;`</span>
+<span class="w">    </span><span class="nx">Conditions</span><span class="w">   </span><span class="p">[]</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">Condition</span><span class="w"> </span><span class="s">`json:&quot;conditions,omitempty&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>with doc comments naming the intended condition types — <code>Available</code>, <code>Progressing</code>, <code>Degraded</code>. The CRD has <code>+kubebuilder:subresource:status</code>. RBAC for <code>disaggregatedsets/status</code> with <code>get;update;patch</code> is already granted.</p>
+<p><strong>Nothing writes it.</strong> There is no <code>Status().Update</code> or <code>Status().Patch</code> on a <code>DisaggregatedSet</code> anywhere in the controller. <code>grep -rn "RoleStatuses"</code> outside the generated deepcopy matches only the type declaration. <code>Reconcile</code> ends with <code>return result, errors.Join(errs...)</code> — no status pass at all. The only status writeback in the subsystem is <code>ScalerManager.WriteStatus</code>, which writes the <em>scaler's</em> status.</p>
+<p>The consequences are user-visible:</p>
+<ul>
+<li><code>kubectl describe disaggregatedset</code> — which the upstream examples page explicitly tells users to run to "Check the DisaggregatedSet overall status" — shows an empty status. The docs then immediately pivot to "check the status of child LWSes by label," which is the actual working workflow.</li>
+<li>There are <strong>no printcolumns</strong> on <code>DisaggregatedSet</code>, so <code>kubectl get disaggregatedset</code> shows only NAME and AGE. (<code>DisaggregatedSetRoleScaler</code> does have <code>Desired</code>/<code>Current</code>/<code>Age</code>.)</li>
+</ul>
+<p>Everything needed to compute it is <strong>already gathered every reconcile</strong>. <code>LWSManager.List(ctx, ns, name, -1, "")</code> returns every child, each carrying <code>Status.Replicas</code>, <code>Status.ReadyReplicas</code>, <code>Status.UpdatedReplicas</code>, and the revision label. A <code>RoleStatus</code> is a sum grouped by role label, with <code>UpdatedReplicas</code> filtered to the target revision. The conditions map naturally:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Condition</th>
+<th style="text-align: left;">Derivation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Progressing</code></td>
+<td style="text-align: left;">Any slice has <code>len(oldRevisions) &gt; 0</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Available</code></td>
+<td style="text-align: left;"><code>revisionReadyOnAllRoles</code> across all slices at the target revision</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Degraded</code></td>
+<td style="text-align: left;">Accumulated <code>errs</code></td>
+</tr>
+</tbody>
+</table>
+<p>Every readiness decision in the subsystem today reads child LWS status directly — <code>isRevisionStable</code>, <code>revisionReadyOnAllRoles</code>, <code>updateScalerStatus</code>, <code>cleanupDrainedLWS</code> — so the aggregation logic is well-precedented.</p>
+<p>Also missing against KEP-766's Beta criterion "metrics for observability": <strong>there are no Prometheus metrics for the DisaggregatedSet subsystem at all.</strong> KEP-846 wants per-slice rollout state metrics and KEP-849 wants a <code>WaitingForScaler</code> count. That is a second, larger contribution with clear KEP backing.</p>
+<h3 id="101-other-known-gaps">10.1 Other known gaps<a class="headerlink" href="#101-other-known-gaps" title="Permanent link">&para;</a></h3>
+<p>Beyond status and metrics, collected from code comments and KEP-versus-code comparison:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;">Gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Non-template spec changes are silently dropped</strong></td>
+<td style="text-align: left;"><code>ComputeRevision</code> hashes only role name + <code>LeaderWorkerTemplate</code>. Changing a role's <code>networkConfig</code>, <code>startupPolicy</code>, <code>rolloutStrategy</code>, or <code>metadata</code> produces the same hash — so no new LWS is created and the existing one is never patched (<code>reconcileRoleSimple</code> only calls <code>Scale</code>). The edit is dropped until an unrelated template change forces a new revision. <strong>This is the sharpest user-visible bug in the subsystem.</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">No controller integration tests</td>
+<td style="text-align: left;"><code>test/integration/</code> has <code>webhooks/disaggregatedset_test.go</code>, but <code>test/integration/controllers/</code> contains only <code>leaderworkerset_test.go</code>. Coverage is unit tests plus e2e</td>
+</tr>
+<tr>
+<td style="text-align: left;">Float arithmetic in the planner</td>
+<td style="text-align: left;"><code>int(float64(a) * float64(b) / float64(c))</code> truncation, where integer math would be exactly equivalent and immune to FP edge cases</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>extractRollingUpdateConfig</code> asymmetry</td>
+<td style="text-align: left;">When <code>unavail &gt; 0</code> it sets both fields; when only <code>surge &gt; 0</code> it sets only surge. If both resolve to 0 the role silently reverts to <code>MaxSurge=1</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Redundant listing</td>
+<td style="text-align: left;"><code>updateScalerStatus</code> and <code>seedForRole</code> each issue a full cross-slice <code>List</code> on top of the per-slice lists. Cache-backed, but wasteful at 100 slices</td>
+</tr>
+<tr>
+<td style="text-align: left;">Dead code</td>
+<td style="text-align: left;"><code>NumRequiredRoles</code> (zero references), <code>ComputeInitialReplicaState</code> (tests only), the free <code>SetInitialReplicas</code>, <code>ServiceManager.scheme</code>, <code>sortByNewestTimestamp</code>'s <code>roleNames</code> parameter, <code>ValidateUpdate</code>'s <code>oldDisagg</code> parameter</td>
+</tr>
+</tbody>
+</table>
+<p>Pick from that table by appetite: dead-code removal and the float-to-integer conversion are afternoon PRs; status aggregation is a week and needs a design discussion; the non-template-spec-change bug probably needs an issue first, because the fix has design choices in it.</p>
+<hr />
+<h2 id="lab-drive-a-coordinated-rollout">Lab: Drive a Coordinated Rollout<a class="headerlink" href="#lab-drive-a-coordinated-rollout" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Scale</p>
+<p>Part A runs on <code>kind</code> with a trivial container — the planner is completely orthogonal to accelerators, and a fast-starting image makes the step sequence observable. Parts B and C need a real cluster with topology labels and metrics; they are marked unverified.</p>
+</div>
+<h3 id="part-a-watch-the-n-dimensional-algorithm">Part A — Watch the N-dimensional algorithm<a class="headerlink" href="#part-a-watch-the-n-dimensional-algorithm" title="Permanent link">&para;</a></h3>
+<p>Deploy a two-role DisaggregatedSet with deliberately asymmetric replica counts, so the ratio preservation is visible:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disaggregatedset.x-k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DisaggregatedSet</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pd</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">slices</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">roles</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prefill</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6</span>
+<span class="w">        </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">          </span><span class="nt">workerTemplate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> spec</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> containers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">c</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">nginxinc/nginx-unprivileged</span><span class="p p-Indicator">:</span><span class="nv">1.27</span><span class="w"> </span><span class="p p-Indicator">}]</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">        </span><span class="nt">rolloutStrategy</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">rollingUpdateConfiguration</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> maxSurge</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="nt"> maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">decode</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">        </span><span class="nt">leaderWorkerTemplate</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">          </span><span class="nt">workerTemplate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> spec</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> containers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">c</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">nginxinc/nginx-unprivileged</span><span class="p p-Indicator">:</span><span class="nv">1.27</span><span class="w"> </span><span class="p p-Indicator">}]</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">        </span><span class="nt">rolloutStrategy</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">rollingUpdateConfiguration</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> maxSurge</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="nt"> maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="nv">0</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<p>Before triggering anything, compute <code>totalSteps</code> by hand from §4.2:</p>
+<ul>
+<li>prefill: <code>max(6, 6) = 6</code>, batch = <code>maxSurge</code> = 2 → <code>ceil(6/2)</code> = <strong>3</strong> steps</li>
+<li>decode: <code>max(3, 3) = 3</code>, batch = 1 → <code>ceil(3/1)</code> = <strong>3</strong> steps</li>
+<li><code>totalSteps = max(3, 3) = 3</code></li>
+</ul>
+<p>Now watch, in one terminal:</p>
+<div class="highlight"><pre><span></span><code>watch<span class="w"> </span>-n1<span class="w"> </span><span class="s1">&#39;kubectl get lws -L disaggregatedset.x-k8s.io/role,disaggregatedset.x-k8s.io/revision,disaggregatedset.x-k8s.io/slice&#39;</span>
+</code></pre></div>
+<p>and trigger a rollout in another by changing the image on <strong>both</strong> roles. Record the <code>(prefill_old, prefill_new, decode_old, decode_new)</code> vector at each transition and check three claims:</p>
+<ol>
+<li><strong>Ratio preservation</strong> — the ratio of serving prefill to serving decode never departs far from 2:1.</li>
+<li><strong>Decoupled steps</strong> — every transition changes either the old side or the new side, never both (§4.4, Property 1).</li>
+<li><strong>The surge invariant</strong> — <code>old + new &lt;= target + maxSurge</code> holds per role at every point (§4.4, <code>canScaleUp</code>).</li>
+</ol>
+<h3 id="part-a2-find-the-initial-replicas-annotation">Part A2 — Find the <code>initial-replicas</code> annotation<a class="headerlink" href="#part-a2-find-the-initial-replicas-annotation" title="Permanent link">&para;</a></h3>
+<p>At the very start of the rollout:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;NAME:.metadata.name,REPLICAS:.spec.replicas,INITIAL:.metadata.annotations.disaggregatedset\.x-k8s\.io/initial-replicas&#39;</span>
+</code></pre></div>
+<p>The old LWSes should carry <code>initial-replicas</code> matching their pre-rollout counts, and the new ones should have been created at <strong>0 replicas</strong>. Reason through §4.6: why can the planner not simply use the old LWS's current <code>spec.replicas</code> as the drain denominator?</p>
+<h3 id="part-a3-prove-orphan-prevention">Part A3 — Prove orphan prevention<a class="headerlink" href="#part-a3-prove-orphan-prevention" title="Permanent link">&para;</a></h3>
+<p>Force the interesting branch. Set <code>maxUnavailable: 0</code> on both roles (as above) so <code>canDrainAllToZero</code> is hard to satisfy, then start a rollout and kill the new-revision prefill pods repeatedly so the new fleet cannot absorb the load:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>disaggregatedset.x-k8s.io/role<span class="o">=</span>prefill,disaggregatedset.x-k8s.io/revision<span class="o">=</span>&lt;newrev&gt;
+</code></pre></div>
+<p>The old revision should <strong>never</strong> drop either role to 0 while the other is non-zero. If you can produce a state with <code>old-prefill: 0, old-decode: 2</code>, you have found a real bug — write it up.</p>
+<h3 id="part-a4-reproduce-the-non-template-spec-change-bug">Part A4 — Reproduce the non-template-spec-change bug<a class="headerlink" href="#part-a4-reproduce-the-non-template-spec-change-bug" title="Permanent link">&para;</a></h3>
+<p>This is §10.1's first row, and reproducing it gives you a complete issue report:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[*].metadata.labels.disaggregatedset\.x-k8s\.io/revision}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+<span class="c1"># Change something outside LeaderWorkerTemplate:</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>disaggregatedset<span class="w"> </span>pd<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;add&quot;,&quot;path&quot;:&quot;/spec/roles/0/spec/startupPolicy&quot;,&quot;value&quot;:&quot;LeaderReady&quot;}]&#39;</span>
+sleep<span class="w"> </span><span class="m">10</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[*].metadata.labels.disaggregatedset\.x-k8s\.io/revision}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>&lt;prefill-lws&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.spec.startupPolicy}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>The revision is unchanged and the child LWS still has the <strong>old</strong> <code>startupPolicy</code>. Your edit was accepted by the API server and silently dropped. Now change the image too, and watch both changes land at once.</p>
+<h3 id="part-b-slices-and-placement-unverified-needs-2-topology-domains">Part B — Slices and placement (unverified, needs 2+ topology domains)<a class="headerlink" href="#part-b-slices-and-placement-unverified-needs-2-topology-domains" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;n1&gt;<span class="w"> </span>&lt;n2&gt;<span class="w"> </span>topology.example.com/zone<span class="o">=</span>z1
+kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;n3&gt;<span class="w"> </span>&lt;n4&gt;<span class="w"> </span>topology.example.com/zone<span class="o">=</span>z2
+</code></pre></div>
+<p>Set <code>slices: 2</code> with:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">placementPolicy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ExclusiveSlice</span>
+<span class="w">  </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology.example.com/zone</span>
+</code></pre></div>
+<p>Verify:</p>
+<ul>
+<li>Four LWSes, named <code>pd-0-&lt;rev&gt;-prefill</code>, <code>pd-0-&lt;rev&gt;-decode</code>, <code>pd-1-&lt;rev&gt;-…</code>.</li>
+<li>Slice 0's pods are all in one zone, slice 1's in the other.</li>
+<li><code>kubectl get pod &lt;slice-0-pod&gt; -o jsonpath='{.spec.affinity}' | jq</code> shows <strong>two</strong> terms for <code>ExclusiveSlice</code>, and the slice-0 anti-affinity carries the extra <code>slice Exists</code> requirement from §6.1.</li>
+</ul>
+<p>Then switch to <code>ExclusiveTopology</code> and confirm a <strong>third</strong> anti-affinity term appears. Note that the existing slices keep their old affinity — §6.3's lazy application — and you must trigger a rollout to propagate it. Confirm that too.</p>
+<p>Finally, roll one slice and confirm the other is unaffected: slices roll independently, and they can sit on different revisions.</p>
+<h3 id="part-c-per-role-hpa-unverified-needs-metrics-server">Part C — Per-role HPA (unverified, needs metrics-server)<a class="headerlink" href="#part-c-per-role-hpa-unverified-needs-metrics-server" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>disaggregatedset<span class="w"> </span>pd<span class="w"> </span>--type<span class="o">=</span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;[{&quot;op&quot;:&quot;add&quot;,&quot;path&quot;:&quot;/spec/roles/0/scaling&quot;,&quot;value&quot;:{&quot;mode&quot;:&quot;External&quot;}}]&#39;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>dsrs
+</code></pre></div>
+<p>Verify against §7:</p>
+<ul>
+<li>A scaler named <code>pd-prefill</code> exists, owned by the DisaggregatedSet.</li>
+<li>Its <code>spec.replicas</code> was <strong>seeded from the current aggregate</strong>, not 0 (§7.3).</li>
+<li><code>kubectl get --raw "/apis/disaggregatedset.x-k8s.io/v1/namespaces/default/disaggregatedsetrolescalers/pd-prefill/scale"</code> returns a valid Scale object <em>before</em> anything writes to it. That is pitfall 2.</li>
+<li><code>status.selector</code> ends in <code>worker-index=0</code>.</li>
+</ul>
+<p>Now count the pods the selector matches versus <code>status.replicas</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">SEL</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>dsrs<span class="w"> </span>pd-prefill<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.selector}&#39;</span><span class="k">)</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SEL</span><span class="s2">&quot;</span><span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
+kubectl<span class="w"> </span>get<span class="w"> </span>dsrs<span class="w"> </span>pd-prefill<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.replicas}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</code></pre></div>
+<p>They must be equal. Set <code>size: 4</code> on the prefill role and confirm they <em>stay</em> equal — that is the entire argument in §7.5, demonstrated.</p>
+<p>Then attach an HPA and trigger a rollout while it is actively scaling. Watch the no-shrink guard (§7.4) hold the new-revision fleet steady even if HPA writes a smaller value, and confirm it releases the moment the old revision is gone.</p>
+<h3 id="checkpoint-questions">Checkpoint questions<a class="headerlink" href="#checkpoint-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>totalSteps</code> is the max over roles. Construct a two-role configuration where taking the <em>min</em> instead would break the capacity ratio, and say by how much.</li>
+<li>Scale-up takes <code>min(stepIndex)</code> and scale-down takes <code>max(stepIndex)</code>. Swap them and describe the resulting failure — which invariant breaks first, surge or availability?</li>
+<li>The slice-0 anti-affinity has an extra <code>slice Exists</code> term. Write out the exact upgrade scenario that fails without it, naming which pod repels which.</li>
+<li>The DisaggregatedSet status is never written. Sketch the <code>updateStatus</code> function you would add: what does it list, what does it group by, and where in <code>Reconcile</code> does it go?</li>
+</ul>
+<p>Continue to <a href="../09_inference_engine_integration/">Module 9: Inference Engine Integration</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2068 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes">
+      
+      
+        <meta name="author" content="linghuanym">
+      
+      
+        <link rel="canonical" href="https://marinette101.github.io/lws-deep-dive/10_operations_and_troubleshooting/">
+      
+      
+        <link rel="prev" href="../09_inference_engine_integration/">
+      
+      
+        <link rel="next" href="../11_contributor_workflow/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/10_operations_and_troubleshooting/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Module 10 - Operations and Troubleshooting - LeaderWorkerSet Deep Dive</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-10-operations-and-troubleshooting" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-header__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeaderWorkerSet Deep Dive
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Module 10 - Operations and Troubleshooting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/10_operations_and_troubleshooting/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeaderWorkerSet Deep Dive" class="md-nav__button md-logo" aria-label="LeaderWorkerSet Deep Dive" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeaderWorkerSet Deep Dive
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kubernetes-sigs/lws" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kubernetes-sigs/lws
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Problem Statement & Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_multihost_inference_problem_space/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 1 - The Multi-Host Inference Problem Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_api_surface_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 2 - API Surface Anatomy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_group_lifecycle_and_identity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 3 - Group Lifecycle and Pod Identity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_lws_reconciler_internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 4 - The LeaderWorkerSet Reconciler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_pod_controller_and_failure_handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 5 - Pod Controller and Failure Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_rollout_and_revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 6 - Rollouts, Revisions, and Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_scheduling_placement_and_networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 7 - Scheduling, Placement, and Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_disaggregatedset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 8 - DisaggregatedSet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_inference_engine_integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 9 - Inference Engine Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 10 - Operations and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-the-four-install-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 The four install paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-disaggregatedset-is-bundled-but-gated-differently-per-install-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 DisaggregatedSet is bundled, but gated differently per install path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-upgrades-where-the-real-danger-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: Upgrades — Where the Real Danger Is
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: Upgrades — Where the Real Danger Is">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-helm-crd-hazard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The Helm CRD hazard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-general-rule-crds-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The general rule: CRDs first
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-the-operator-upgrade-does-not-roll-your-fleet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 The operator upgrade does not roll your fleet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-the-050-060-subgroup-annotation-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 The 0.5.0 → 0.6.0+ subgroup annotation change
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Certificates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-the-known-failure-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: The Known Failure Modes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: The Known Failure Modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-infinite-statefulset-creation-pods-named-0-0-0-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Infinite StatefulSet creation — pods named …-0-0-0-0
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-lws-name-longer-than-51-characters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 LWS name longer than ~51 characters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-maxunavailable-silently-behaving-as-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 maxUnavailable silently behaving as 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-a-group-restarting-every-30-seconds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 A group restarting every ~30 seconds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-a-group-pending-forever-with-exclusive-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 A group Pending forever with exclusive topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-a-rollout-that-never-completes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 A rollout that never completes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-webhook-failures-after-a-rename-or-a-cert-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.7 Webhook failures after a rename or a cert problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-a-diagnostic-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: A Diagnostic Decision Tree
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: A Diagnostic Decision Tree">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-the-commands-worth-memorising" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The commands worth memorising
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-reading-managedfields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Reading managedFields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-the-compatibility-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: The Compatibility Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-rehearse-the-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Rehearse the Failures
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Rehearse the Failures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-install-and-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A — Install and upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a2-reproduce-the-crd-deletion-hazard-destructive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A2 — Reproduce the CRD deletion hazard (destructive)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-the-name-length-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B — The name-length limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-c-certificate-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part C — Certificate failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-d-build-a-monitoring-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part D — Build a monitoring baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_contributor_workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Module 11 - The Contributor Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix A - Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_pr_opportunities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix B - PR Opportunity Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../appendix_reading_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix C - Primary Source Reading List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-the-four-install-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 The four install paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-disaggregatedset-is-bundled-but-gated-differently-per-install-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 DisaggregatedSet is bundled, but gated differently per install path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-upgrades-where-the-real-danger-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: Upgrades — Where the Real Danger Is
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: Upgrades — Where the Real Danger Is">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-helm-crd-hazard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The Helm CRD hazard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-general-rule-crds-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The general rule: CRDs first
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-the-operator-upgrade-does-not-roll-your-fleet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 The operator upgrade does not roll your fleet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-the-050-060-subgroup-annotation-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 The 0.5.0 → 0.6.0+ subgroup annotation change
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: Certificates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-the-known-failure-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: The Known Failure Modes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 5: The Known Failure Modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-infinite-statefulset-creation-pods-named-0-0-0-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Infinite StatefulSet creation — pods named …-0-0-0-0
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-lws-name-longer-than-51-characters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 LWS name longer than ~51 characters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-maxunavailable-silently-behaving-as-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 maxUnavailable silently behaving as 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-a-group-restarting-every-30-seconds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 A group restarting every ~30 seconds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-a-group-pending-forever-with-exclusive-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 A group Pending forever with exclusive topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-a-rollout-that-never-completes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 A rollout that never completes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-webhook-failures-after-a-rename-or-a-cert-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.7 Webhook failures after a rename or a cert problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-a-diagnostic-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: A Diagnostic Decision Tree
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: A Diagnostic Decision Tree">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-the-commands-worth-memorising" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The commands worth memorising
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-reading-managedfields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Reading managedFields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-the-compatibility-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: The Compatibility Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab-rehearse-the-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab: Rehearse the Failures
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lab: Rehearse the Failures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-install-and-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A — Install and upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-a2-reproduce-the-crd-deletion-hazard-destructive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part A2 — Reproduce the CRD deletion hazard (destructive)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-the-name-length-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part B — The name-length limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-c-certificate-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part C — Certificate failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-d-build-a-monitoring-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part D — Build a monitoring baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpoint-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checkpoint questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="module-10-operations-and-troubleshooting">Module 10: Operations and Troubleshooting<a class="headerlink" href="#module-10-operations-and-troubleshooting" title="Permanent link">&para;</a></h1>
+<p>The failure modes that hurt in production are rarely the ones in the API reference. They are a Helm upgrade that deletes every LeaderWorkerSet in the cluster, an LWS name one character too long, a <code>maxUnavailable</code> that silently behaves as 1, and a group that restarts every thirty seconds for reasons no single log line explains.</p>
+<p>This module is the operational counterpart to the rest of these notes: <strong>installation and the upgrade hazards</strong>, <strong>certificate management</strong>, <strong>metrics</strong>, <strong>the version-compatibility matrix</strong>, <strong>a diagnostic decision tree</strong>, and <strong>the known failure modes with their root causes</strong>.</p>
+<div class="admonition info">
+<p class="admonition-title">Provenance</p>
+<p>Verified against <code>kubernetes-sigs/lws</code> at <code>32a9c37</code> (2026-08-06), release <strong>v0.9.0</strong>. Version strings below are pinned by <code>make prepare-release-branch</code>; check the current release before copying them.</p>
+</div>
+<hr />
+<h2 id="part-1-installation">Part 1: Installation<a class="headerlink" href="#part-1-installation" title="Permanent link">&para;</a></h2>
+<h3 id="11-prerequisites">1.1 Prerequisites<a class="headerlink" href="#11-prerequisites" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Requirement</th>
+<th style="text-align: left;">Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Kubernetes</td>
+<td style="text-align: left;"><strong>≥ 1.26</strong>. On exactly 1.26 you must manually enable the <code>StatefulSetStartOrdinal</code> feature gate</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>MaxUnavailableStatefulSet</code> gate</td>
+<td style="text-align: left;">Needed for <code>maxUnavailable &gt; 1</code>. <strong>Beta and on by default since Kubernetes 1.35</strong>; must be enabled manually before that. Without it, LWS rolls groups one at a time regardless of your setting</td>
+</tr>
+<tr>
+<td style="text-align: left;">Capacity</td>
+<td style="text-align: left;">At least one node with 1 CPU and 1 GiB for the controller-manager Deployment</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>StatefulSetStartOrdinal</code> dependency is not optional and not cosmetic — <a href="../03_group_lifecycle_and_identity/">Module 3</a>, §1.3 explains why, and §5.1 below covers what happens without it.</p>
+<h3 id="12-the-four-install-paths">1.2 The four install paths<a class="headerlink" href="#12-the-four-install-paths" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1 — kubectl, the simplest</span>
+<span class="nv">VERSION</span><span class="o">=</span>v0.9.0
+kubectl<span class="w"> </span>apply<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://github.com/kubernetes-sigs/lws/releases/download/<span class="nv">$VERSION</span>/manifests.yaml
+kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>available<span class="w"> </span>--timeout<span class="o">=</span>5m
+
+<span class="c1"># 2 — Helm from the OCI registry</span>
+<span class="nv">CHART_VERSION</span><span class="o">=</span><span class="m">0</span>.9.0
+helm<span class="w"> </span>install<span class="w"> </span>lws<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="o">=</span><span class="nv">$CHART_VERSION</span><span class="w"> </span>--namespace<span class="w"> </span>lws-system<span class="w"> </span>--create-namespace<span class="w"> </span>--wait<span class="w"> </span>--timeout<span class="w"> </span>300s
+
+<span class="c1"># 3 — latest development build</span>
+kubectl<span class="w"> </span>apply<span class="w"> </span>--server-side<span class="w"> </span>-k<span class="w"> </span>github.com/kubernetes-sigs/lws/config/default?ref<span class="o">=</span>main
+
+<span class="c1"># 4 — from source, with your own image</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/kubernetes-sigs/lws.git<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>lws
+<span class="nv">IMAGE_REGISTRY</span><span class="o">=</span>&lt;registry&gt;/&lt;project&gt;<span class="w"> </span>make<span class="w"> </span>image-push<span class="w"> </span>deploy
+</code></pre></div>
+<p><code>--server-side</code> is not optional for path 1. The CRDs are large enough to exceed the <code>kubectl.kubernetes.io/last-applied-configuration</code> annotation limit that client-side apply relies on.</p>
+<p>To install into a different namespace, edit <code>namespace:</code> in <code>config/default/kustomization.yaml</code> — there is no flag for it.</p>
+<h3 id="13-disaggregatedset-is-bundled-but-gated-differently-per-install-path">1.3 DisaggregatedSet is bundled, but gated differently per install path<a class="headerlink" href="#13-disaggregatedset-is-bundled-but-gated-differently-per-install-path" title="Permanent link">&para;</a></h3>
+<p>Since v0.9.0, DisaggregatedSet ships with LWS. The two install paths differ:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Path</th>
+<th style="text-align: center;">DS CRDs</th>
+<th style="text-align: center;">DS controller RBAC</th>
+<th style="text-align: center;">DS validating webhook</th>
+<th style="text-align: center;">Editor/viewer/admin ClusterRoles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">kubectl / kustomize</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr>
+<td style="text-align: left;">Helm</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">needs <code>--set enableDisaggregatedSet=true</code></td>
+<td style="text-align: center;">needs the same flag</td>
+</tr>
+</tbody>
+</table>
+<p>If you install with Helm and skip that flag, DisaggregatedSet objects are accepted <strong>without validation</strong> — the CRD's structural schema and CEL rules still apply, but everything in <a href="../08_disaggregatedset/">Module 8</a>, §9.1 (the <code>partition</code> prohibition, the placement-conflict check, the scaler-name length check) is silently absent. Verify:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>validatingwebhookconfiguration<span class="w"> </span>lws-validating-webhook-configuration<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .webhooks[*]}{.name}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<p>You should see <code>vdisaggregatedset.kb.io</code> alongside <code>vleaderworkerset.kb.io</code>.</p>
+<hr />
+<h2 id="part-2-upgrades-where-the-real-danger-is">Part 2: Upgrades — Where the Real Danger Is<a class="headerlink" href="#part-2-upgrades-where-the-real-danger-is" title="Permanent link">&para;</a></h2>
+<h3 id="21-the-helm-crd-hazard">2.1 The Helm CRD hazard<a class="headerlink" href="#21-the-helm-crd-hazard" title="Permanent link">&para;</a></h3>
+<div class="admonition danger">
+<p class="admonition-title">Upgrading from chart v0.7.0 or earlier can delete every LeaderWorkerSet in the cluster</p>
+<p>Charts up to v0.7.0 rendered the CRD from <code>templates/crds/</code>, making it part of the Helm release. v0.8.0 moved it to <code>crds/</code>. The first <code>helm upgrade</code> across that boundary sees the CRD as <strong>removed from the release</strong> and deletes it — <strong>cascading to the deletion of every LeaderWorkerSet object in the cluster</strong> (upstream issue #880).</p>
+<p>One-time mitigation, <strong>before</strong> upgrading:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>annotate<span class="w"> </span>crd<span class="w"> </span>leaderworkersets.leaderworkerset.x-k8s.io<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>helm.sh/resource-policy<span class="o">=</span>keep<span class="w"> </span>--overwrite
+</code></pre></div>
+<p>This is documented in the installation page and the chart README but <strong>not</strong> in the troubleshooting page — arguably the single most destructive known failure mode, filed under the wrong heading. Adding it there is a high-value documentation PR (<a href="../appendix_pr_opportunities/">Appendix B</a>).</p>
+</div>
+<h3 id="22-the-general-rule-crds-first">2.2 The general rule: CRDs first<a class="headerlink" href="#22-the-general-rule-crds-first" title="Permanent link">&para;</a></h3>
+<p>Helm installs <code>crds/</code> only on the <strong>first</strong> <code>helm install</code>. It never updates or deletes them on <code>helm upgrade</code> or <code>helm uninstall</code>. So CRD schema changes and newly-added CRDs do <strong>not</strong> reach the cluster through <code>helm upgrade</code> alone.</p>
+<p>The correct sequence, every time:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">CHART_VERSION</span><span class="o">=</span><span class="m">0</span>.9.0
+helm<span class="w"> </span>pull<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span>--version<span class="o">=</span><span class="nv">$CHART_VERSION</span><span class="w"> </span>--untar
+kubectl<span class="w"> </span>apply<span class="w"> </span>--server-side<span class="w"> </span>--force-conflicts<span class="w"> </span>-f<span class="w"> </span>lws/crds<span class="w">     </span><span class="c1"># ← CRDs first, always</span>
+helm<span class="w"> </span>upgrade<span class="w"> </span>lws<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="o">=</span><span class="nv">$CHART_VERSION</span><span class="w"> </span>--namespace<span class="w"> </span>lws-system<span class="w"> </span>--wait<span class="w"> </span>--timeout<span class="w"> </span>300s
+</code></pre></div>
+<p>Note that <code>lws/crds</code> in v0.9.0 contains <strong>three</strong> files. The upstream page's pre-v0.9.0 upgrade snippet applies only <code>disaggregatedset.x-k8s.io_disaggregatedsets.yaml</code> and omits <code>disaggregatedsetrolescalers</code> — which the chart also ships. Applying the whole directory avoids the problem.</p>
+<h3 id="23-the-operator-upgrade-does-not-roll-your-fleet">2.3 The operator upgrade does not roll your fleet<a class="headerlink" href="#23-the-operator-upgrade-does-not-roll-your-fleet" title="Permanent link">&para;</a></h3>
+<p>This is the reassuring half. As covered in <a href="../04_lws_reconciler_internals/">Module 4</a>, §5.3–5.4:</p>
+<ul>
+<li><code>SetMatchesRevision</code> defeats serialization drift, so a client-go version change in the operator does not produce a spurious new revision.</li>
+<li><code>NewRevision</code> adopts a legacy <code>template-revision-hash</code> when upgrading from a pre-ControllerRevision version, so the new ControllerRevision is <em>labelled</em> with the hash the live pods already carry.</li>
+</ul>
+<p>Both exist specifically so that upgrading the controller does not restart every model server in the cluster. Verify after any upgrade:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>controllerrevision<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>&lt;lws&gt;
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span>&lt;lws&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .items[*]}{.metadata.name}{&quot;\t&quot;}{.status.startTime}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<p>Unchanged start times means nothing rolled.</p>
+<h3 id="24-the-050-060-subgroup-annotation-change">2.4 The 0.5.0 → 0.6.0+ subgroup annotation change<a class="headerlink" href="#24-the-050-060-subgroup-annotation-change" title="Permanent link">&para;</a></h3>
+<p>Users of subgroups upgrading across that boundary get a rolling update of leader pods, because the annotation key changed from <code>leaderworkerset.gke.io/subgroup-size</code> to <code>leaderworkerset.sigs.k8s.io/subgroup-size</code> (PR #434). Expected, one-time, and documented — but plan for the capacity impact.</p>
+<hr />
+<h2 id="part-3-certificates">Part 3: Certificates<a class="headerlink" href="#part-3-certificates" title="Permanent link">&para;</a></h2>
+<p>The webhook needs a serving certificate. There are exactly two modes, and they are selected by one config field.</p>
+<pre class="mermaid"><code>flowchart TD
+    C{"internalCertManagement.enable"}
+    C --&gt;|"true (default)"| I["&lt;b&gt;Internal&lt;/b&gt;&lt;br&gt;cert-controller rotator&lt;br&gt;CA: lws-ca / org: lws&lt;br&gt;DNS: &amp;lt;svc&amp;gt;.&amp;lt;ns&amp;gt;.svc&lt;br&gt;patches caBundle into both&lt;br&gt;webhook configurations by name"]
+    C --&gt;|"false"| E["&lt;b&gt;External&lt;/b&gt;&lt;br&gt;certsReady closed immediately&lt;br&gt;something else must populate&lt;br&gt;webhook.certDir"]
+    E --&gt; CM["cert-manager&lt;br&gt;Certificate + Issuer&lt;br&gt;+ CA injection patches"]</code></pre>
+<p>Internal mode is the default and needs no extra components. It uses <code>github.com/open-policy-agent/cert-controller</code>'s rotator with CA name <code>lws-ca</code>, organization <code>lws</code>, DNS name <code>&lt;webhookServiceName&gt;.&lt;namespace&gt;.svc</code>, and readiness checking enabled (<a href="../04_lws_reconciler_internals/">Module 4</a>, §1.2).</p>
+<p>Switching to cert-manager requires, in both install paths, turning internal management <strong>off</strong>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Path</th>
+<th style="text-align: left;">Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Kustomize</td>
+<td style="text-align: left;">Set <code>internalCertManagement.enable: false</code>; comment out <code>../internalcert</code> in <code>config/default/kustomization.yaml</code>; uncomment <code>../certmanager</code>; uncomment all <code>CERTMANAGER</code> sections; <code>kubectl apply --server-side -k config/default</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Helm</td>
+<td style="text-align: left;">Set <code>internalCertManagement.enable: false</code> and <code>enableCertManager: true</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition bug">
+<p class="admonition-title">Three problems with the upstream cert-manager page</p>
+<ol>
+<li>The Helm section says to disable <strong><code>internalCertManager</code></strong>. The actual field is <strong><code>internalCertManagement.enable</code></strong> (<code>api/config/v1alpha1/configuration_types.go</code>, defaulted to <code>true</code>). Following the page literally does nothing.</li>
+<li>The opening sentence is ungrammatical: "This page shows how you can a third party certificate authority solution like Cert Manager."</li>
+<li>The kustomize steps omit <code>webhookcainjection_patch.yaml</code> and the <code>cainjection_in_leaderworkersets.yaml</code> CRD patch, both of which <code>hack/e2e-test.sh</code> adds when <code>USE_CERT_MANAGER=true</code>. The documented manual flow is <strong>less complete than the tested one</strong> — which is a strong hint about how to write the fix: copy what the e2e script does.</li>
+</ol>
+<p>All three are in <a href="../appendix_pr_opportunities/">Appendix B</a>.</p>
+</div>
+<p>The rotator patches <code>caBundle</code> into two webhook configurations <strong>by name</strong>: <code>lws-validating-webhook-configuration</code> and <code>lws-mutating-webhook-configuration</code>. If you rename either in a fork, admission fails closed (<code>failurePolicy: Fail</code>) with no obvious cause.</p>
+<hr />
+<h2 id="part-4-metrics">Part 4: Metrics<a class="headerlink" href="#part-4-metrics" title="Permanent link">&para;</a></h2>
+<p>The metrics endpoint is <code>:8443</code>, always with <code>SecureServing: true</code> and <code>filters.WithAuthenticationAndAuthorization</code>. HTTP/2 is unconditionally disabled via a TLS mutator citing GHSA-qppj-fm5r-hxr3 and GHSA-4374-p667-p6c8 — worth knowing if you are debugging a scraper that insists on h2.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Path</th>
+<th style="text-align: left;">Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Kustomize</td>
+<td style="text-align: left;">Enable prometheus in <code>config/default/kustomization.yaml</code> and uncomment the <code>PROMETHEUS</code> sections</td>
+</tr>
+<tr>
+<td style="text-align: left;">Helm</td>
+<td style="text-align: left;"><code>enablePrometheus: true</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">With TLS verification</td>
+<td style="text-align: left;">Additionally <code>internalCertManagement.enable: false</code> + cert-manager, and supply <code>metrics.prometheusNamespace</code> and <code>metrics.serviceMonitor.tlsConfig</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition bug">
+<p class="admonition-title">The documented Helm values do not exist in the chart</p>
+<p>Neither <code>metrics.prometheusNamespace</code> nor <code>metrics.serviceMonitor</code> appears in <code>charts/lws/values.yaml</code> or the chart README's parameter table. They are undeclared defaults — they may work by passing through, but they are unsupported and undocumented in the chart itself.</p>
+<p>The page also says to uncomment sections marked <code>PROMETHEUS-WITH-CERTS</code>, but that marker does not exist in <code>config/default/kustomization.yaml</code>; the real markers are <code>[WEBHOOK]</code>, <code>[CERTMANAGER]</code>, <code>[PROMETHEUS]</code>, <code>[METRICS]</code>, and <code>[VOLCANO]</code>. And the assets live in <strong><code>config/components/prometheus/</code></strong> with a separate <code>config/prometheus/</code>, which the page's "enable <code>prometheus</code>" instruction does not disambiguate.</p>
+<p>Declaring those values in <code>values.yaml</code> and the chart README is a concrete, contained chart-plus-docs PR.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">There are no DisaggregatedSet metrics at all</p>
+<p>What you get is controller-runtime's standard set — reconcile counts, durations, queue depth, error rates, per controller. There are <strong>no LWS-specific and no DisaggregatedSet-specific metrics</strong>. KEP-766, KEP-846, and KEP-849 all list metrics as a Beta graduation criterion, so this is well-motivated, KEP-backed work (<a href="../08_disaggregatedset/">Module 8</a>, §10).</p>
+</div>
+<p>Until then, monitor at the object level:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;NS:.metadata.namespace,NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas,UPTODATE:.status.updatedReplicas&#39;</span>
+</code></pre></div>
+<p>Alert on <code>readyReplicas &lt; spec.replicas</code> sustained beyond your cold-start budget, and on <code>Available=False</code> sustained beyond your rollout budget.</p>
+<hr />
+<h2 id="part-5-the-known-failure-modes">Part 5: The Known Failure Modes<a class="headerlink" href="#part-5-the-known-failure-modes" title="Permanent link">&para;</a></h2>
+<h3 id="51-infinite-statefulset-creation-pods-named-0-0-0-0">5.1 Infinite StatefulSet creation — pods named <code>…-0-0-0-0</code><a class="headerlink" href="#51-infinite-statefulset-creation-pods-named-0-0-0-0" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Symptom</strong></td>
+<td style="text-align: left;">Pods with runaway names; LWS controllers in infinite reconciliation loops, "potentially exhausting cluster resources"</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cause</strong></td>
+<td style="text-align: left;">A cluster that ignores <code>.spec.ordinals.start</code> — below 1.27 without the <code>StatefulSetStartOrdinal</code> gate. The worker StatefulSet produces an ordinal-0 pod that looks like a leader and spawns its own worker StatefulSet, recursively</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Fix</strong></td>
+<td style="text-align: left;">Kubernetes ≥ 1.26 with the gate enabled; ≥ 1.27 has it on by default</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Mitigation in code</strong></td>
+<td style="text-align: left;">The anti-recursion guard in <code>PodReconciler.Reconcile</code> step 6 (<a href="../03_group_lifecycle_and_identity/">Module 3</a>, §1.3), which emits <code>FailedCreate</code> rather than recursing</td>
+</tr>
+</tbody>
+</table>
+<p>Note the upstream troubleshooting page states the cause as "&lt; 1.27" and the fix as "≥ 1.26" — self-contradictory phrasing worth tightening.</p>
+<h3 id="52-lws-name-longer-than-51-characters">5.2 LWS name longer than ~51 characters<a class="headerlink" href="#52-lws-name-longer-than-51-characters" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Symptom</strong></td>
+<td style="text-align: left;"><code>metadata.labels: Invalid value: "&lt;worker-sts-name&gt;-&lt;10-char-hash&gt;": must be no more than 63 characters</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cause</strong></td>
+<td style="text-align: left;">The 57-character StatefulSet name limit (kubernetes/kubernetes#64023), compounded by LWS's two-level naming: <code>&lt;lws&gt;-&lt;groupIndex&gt;-&lt;workerIndex&gt;</code> plus StatefulSet's own hash suffix</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Real limit</strong></td>
+<td style="text-align: left;"><strong><code>51 - int(replicas / 10)</code></strong> characters</td>
+</tr>
+</tbody>
+</table>
+<p>That formula is worth internalising: <strong>the name budget shrinks as you scale</strong>, because higher group indices are longer strings. An LWS that works at <code>replicas: 5</code> can fail at <code>replicas: 100</code>. Nothing validates this at admission — the failure surfaces as a StatefulSet event, far from the LWS you created. Adding a webhook check would be a useful contribution.</p>
+<h3 id="53-maxunavailable-silently-behaving-as-1">5.3 <code>maxUnavailable</code> silently behaving as 1<a class="headerlink" href="#53-maxunavailable-silently-behaving-as-1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Symptom</strong></td>
+<td style="text-align: left;"><code>maxUnavailable: 4</code> set, but groups update strictly one at a time</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cause</strong></td>
+<td style="text-align: left;">The <code>MaxUnavailableStatefulSet</code> gate is off (pre-1.35 without manual enablement)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Diagnostic</strong></td>
+<td style="text-align: left;">The value <strong>does</strong> propagate to the StatefulSet regardless, so checking the StatefulSet spec proves nothing. Count actual concurrent group updates instead</td>
+</tr>
+</tbody>
+</table>
+<h3 id="54-a-group-restarting-every-30-seconds">5.4 A group restarting every ~30 seconds<a class="headerlink" href="#54-a-group-restarting-every-30-seconds" title="Permanent link">&para;</a></h3>
+<p>Almost always one of three things, in decreasing order of likelihood:</p>
+<ol>
+<li><strong>A liveness probe firing during model load.</strong> Add a <code>startupProbe</code> (<a href="../09_inference_engine_integration/">Module 9</a>, §3.2).</li>
+<li><strong>A worker process exiting cleanly.</strong> Under <code>RecreateGroupOnPodRestart</code> any container restart destroys the group. Workers must block forever.</li>
+<li><strong>A UID-mismatch loop.</strong> The <code>workerPodBelongsToLeader</code> guard (<a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §4.3) exists to prevent this, but if you see it, capture the controller logs — it would be a real bug.</li>
+</ol>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span><span class="nv">reason</span><span class="o">=</span>RecreateGroup<span class="w"> </span>--sort-by<span class="o">=</span>.lastTimestamp
+kubectl<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>&lt;pod&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .status.containerStatuses[*]}{.name}{&quot;\t&quot;}{.restartCount}{&quot;\t&quot;}{.lastState.terminated.reason}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<h3 id="55-a-group-pending-forever-with-exclusive-topology">5.5 A group Pending forever with exclusive topology<a class="headerlink" href="#55-a-group-pending-forever-with-exclusive-topology" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th style="text-align: left;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Symptom</strong></td>
+<td style="text-align: left;">Leader Running, one or more workers Pending indefinitely</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cause</strong></td>
+<td style="text-align: left;">The leader claimed a topology domain that cannot fit the whole group (<a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §6)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Fix</strong></td>
+<td style="text-align: left;">Gang scheduling (<a href="../07_scheduling_placement_and_networking/">Module 7</a>, §3), or a coarser <code>topologyKey</code>, or a smaller <code>size</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Diagnostic</strong></td>
+<td style="text-align: left;"><code>kubectl get sts &lt;group&gt; -o jsonpath='{.spec.template.spec.nodeSelector}'</code> shows the pinned domain value</td>
+</tr>
+</tbody>
+</table>
+<p>An empty value there means <code>topologyValueFromPod</code> swallowed a missing Node — see the two defects noted in <a href="../05_pod_controller_and_failure_handling/">Module 5</a>, §6.</p>
+<h3 id="56-a-rollout-that-never-completes">5.6 A rollout that never completes<a class="headerlink" href="#56-a-rollout-that-never-completes" title="Permanent link">&para;</a></h3>
+<p>Work the condition arithmetic backwards (<a href="../04_lws_reconciler_internals/">Module 4</a>, §6.3). <code>Available</code> requires <strong>both</strong> <code>readyNonBurstWorkerCount == spec.replicas</code> <strong>and</strong> <code>partitionedUpdatedAndReadyCount == partitionedCurrentNonBurstCount</code>. The usual causes:</p>
+<ul>
+<li><code>partition</code> left at a non-zero canary boundary. Check <code>spec.rolloutStrategy.rollingUpdateConfiguration.partition</code>.</li>
+<li>A high-index group not becoming ready, so the ready-and-updated tail never grows and the partition cannot descend (<a href="../06_rollout_and_revisions/">Module 6</a>, §4).</li>
+<li>A frozen group below the partition that is unhealthy — it fails the first clause without affecting the second.</li>
+</ul>
+<h3 id="57-webhook-failures-after-a-rename-or-a-cert-problem">5.7 Webhook failures after a rename or a cert problem<a class="headerlink" href="#57-webhook-failures-after-a-rename-or-a-cert-problem" title="Permanent link">&para;</a></h3>
+<p><code>failurePolicy: Fail</code> on all three webhooks means a broken webhook blocks <strong>all</strong> LWS and pod creation matching its object selector. Check:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>lws-webhook-server-cert
+kubectl<span class="w"> </span>get<span class="w"> </span>validatingwebhookconfiguration<span class="w"> </span>lws-validating-webhook-configuration<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.webhooks[0].clientConfig.caBundle}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">40</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>logs<span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;cert\|rotator&#39;</span>
+</code></pre></div>
+<p>An empty <code>caBundle</code> means the rotator has not patched it — usually a renamed webhook configuration or missing RBAC on <code>*webhookconfigurations</code>.</p>
+<hr />
+<h2 id="part-6-a-diagnostic-decision-tree">Part 6: A Diagnostic Decision Tree<a class="headerlink" href="#part-6-a-diagnostic-decision-tree" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TD
+    S["Something is wrong"] --&gt; Q1{"Do the pods exist?"}
+    Q1 --&gt;|"no pods at all"| A1["Check the LWS object:&lt;br&gt;events, conditions, observedGeneration.&lt;br&gt;Then the webhook — failurePolicy: Fail&lt;br&gt;blocks creation entirely"]
+    Q1 --&gt;|"leader only"| A2["Pod controller.&lt;br&gt;startupPolicy: LeaderReady?&lt;br&gt;Size == 1?&lt;br&gt;Revision not found → requeue?&lt;br&gt;Anti-recursion guard fired?"]
+    Q1 --&gt;|"runaway names ...-0-0-0"| A3["§5.1 — StatefulSetStartOrdinal"]
+    Q1 --&gt;|"some Pending"| A4{"exclusive-topology set?"}
+    A4 --&gt;|yes| A5["§5.5 — domain too small.&lt;br&gt;Check the worker STS nodeSelector"]
+    A4 --&gt;|no| A6["Ordinary scheduling:&lt;br&gt;quota, taints, resources"]
+    Q1 --&gt;|"all Running, not Ready"| A7["Probes and the engine.&lt;br&gt;Module 9 §3"]
+    Q1 --&gt;|"restarting repeatedly"| A8["§5.4 — restart policy blast radius"]
+    S --&gt; Q2{"Rollout stuck?"}
+    Q2 --&gt;|yes| A9["§5.6 — condition arithmetic,&lt;br&gt;partition, ready tail"]
+    S --&gt; Q3{"HPA not scaling?"}
+    Q3 --&gt;|yes| A10["hpaPodSelector matches leaders only.&lt;br&gt;Is the metric published by the leader?&lt;br&gt;Module 2 §4"]</code></pre>
+<h3 id="61-the-commands-worth-memorising">6.1 The commands worth memorising<a class="headerlink" href="#61-the-commands-worth-memorising" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># The object graph for one LWS, in one shot</span>
+<span class="nv">LWS</span><span class="o">=</span>my-lws
+kubectl<span class="w"> </span>get<span class="w"> </span>lws,sts,svc,controllerrevision,pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span><span class="nv">$LWS</span>
+
+<span class="c1"># Which revision is each group on?</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>leaderworkerset.sigs.k8s.io/name<span class="o">=</span><span class="nv">$LWS</span>,leaderworkerset.sigs.k8s.io/worker-index<span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="s1">&#39;NAME:.metadata.name,REV:.metadata.labels.leaderworkerset\.sigs\.k8s\.io/template-revision-hash,READY:.status.conditions[?(@.type==&quot;Ready&quot;)].status&#39;</span>
+
+<span class="c1"># Rollout position</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span><span class="nv">$LWS</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;partition={.spec.updateStrategy.rollingUpdate.partition} replicas={.spec.replicas} annotated={.metadata.annotations.leaderworkerset\.sigs\.k8s\.io/replicas}&#39;</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+
+<span class="c1"># Conditions</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span><span class="nv">$LWS</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .status.conditions[*]}{.type}={.status} ({.reason}){&quot;\n&quot;}{end}&#39;</span>
+
+<span class="c1"># Everything the controller has said about this LWS</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span>involvedObject.name<span class="o">=</span><span class="nv">$LWS</span><span class="w"> </span>--sort-by<span class="o">=</span>.lastTimestamp
+
+<span class="c1"># Controller logs, filtered to this object</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>logs<span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="nv">$LWS</span>
+</code></pre></div>
+<h3 id="62-reading-managedfields">6.2 Reading <code>managedFields</code><a class="headerlink" href="#62-reading-managedfields" title="Permanent link">&para;</a></h3>
+<p>Because the leader StatefulSet is written with Server-Side Apply under field manager <code>lws</code> and <code>Force: true</code> (<a href="../04_lws_reconciler_internals/">Module 4</a>, §4):</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span><span class="nv">$LWS</span><span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span>--show-managed-fields<span class="w"> </span><span class="p">|</span><span class="w"> </span>yq<span class="w"> </span><span class="s1">&#39;.metadata.managedFields&#39;</span>
+</code></pre></div>
+<p>Any field owned by <code>lws</code> will be reverted on the next reconcile. Any field <em>not</em> owned by it will persist. This is the definitive answer to "why did my manual edit disappear," and it takes ten seconds.</p>
+<hr />
+<h2 id="part-7-the-compatibility-matrix">Part 7: The Compatibility Matrix<a class="headerlink" href="#part-7-the-compatibility-matrix" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Component</th>
+<th style="text-align: left;">Version</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">LWS</td>
+<td style="text-align: left;">v0.9.0</td>
+<td style="text-align: left;">Latest release at time of writing</td>
+</tr>
+<tr>
+<td style="text-align: left;">Kubernetes</td>
+<td style="text-align: left;"><strong>≥ 1.26</strong></td>
+<td style="text-align: left;">Hard minimum; 1.26 needs <code>StatefulSetStartOrdinal</code> enabled manually</td>
+</tr>
+<tr>
+<td style="text-align: left;">Kubernetes for <code>maxUnavailable &gt; 1</code></td>
+<td style="text-align: left;">≥ 1.35 for default-on, earlier with the gate</td>
+<td style="text-align: left;"><code>MaxUnavailableStatefulSet</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Go</td>
+<td style="text-align: left;"><strong>1.26.0</strong></td>
+<td style="text-align: left;"><code>go.mod</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s.io/api</code></td>
+<td style="text-align: left;"><strong>v0.36.3</strong></td>
+<td style="text-align: left;"><code>go.mod</code>; also pins the code-generator</td>
+</tr>
+<tr>
+<td style="text-align: left;">Volcano (gang scheduling)</td>
+<td style="text-align: left;">v1.12.1</td>
+<td style="text-align: left;">e2e only; the tested version</td>
+</tr>
+<tr>
+<td style="text-align: left;">cert-manager</td>
+<td style="text-align: left;">v1.17.0</td>
+<td style="text-align: left;">e2e only; the tested version</td>
+</tr>
+<tr>
+<td style="text-align: left;">Kueue (TAS examples)</td>
+<td style="text-align: left;">0.16.1</td>
+<td style="text-align: left;">Upstream TAS example</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">The API reference docs are generated against Kubernetes 1.28</p>
+<p><code>hack/genref/config.yaml</code> maps <code>k8s.io/api...</code> types to the <strong>v1.28</strong> Kubernetes API reference, while the project builds against <code>k8s.io/api v0.36.3</code>. Every cross-link to a core type in <code>site/content/en/docs/reference/*.v1.md</code> therefore points at 1.28 documentation. Bumping that config value is a one-line PR.</p>
+</div>
+<hr />
+<h2 id="lab-rehearse-the-failures">Lab: Rehearse the Failures<a class="headerlink" href="#lab-rehearse-the-failures" title="Permanent link">&para;</a></h2>
+<p>The point of this lab is to see each failure mode once, deliberately, in a cluster you do not mind breaking — so that when you meet it in production you recognise it in seconds rather than hours.</p>
+<div class="admonition warning">
+<p class="admonition-title">Use a throwaway cluster</p>
+<p>Part A2 <strong>deliberately destroys LeaderWorkerSet objects</strong>. Do not run it anywhere you care about.</p>
+</div>
+<h3 id="part-a-install-and-upgrade">Part A — Install and upgrade<a class="headerlink" href="#part-a-install-and-upgrade" title="Permanent link">&para;</a></h3>
+<p>Install v0.9.0 by Helm, then verify the DisaggregatedSet gating from §1.3:</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>lws<span class="w"> </span>oci://registry.k8s.io/lws/charts/lws<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="o">=</span><span class="m">0</span>.9.0<span class="w"> </span>--namespace<span class="w"> </span>lws-system<span class="w"> </span>--create-namespace<span class="w"> </span>--wait
+kubectl<span class="w"> </span>get<span class="w"> </span>validatingwebhookconfiguration<span class="w"> </span>lws-validating-webhook-configuration<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .webhooks[*]}{.name}{&quot;\n&quot;}{end}&#39;</span>
+</code></pre></div>
+<p><code>vdisaggregatedset.kb.io</code> should be <strong>absent</strong>. Now create a DisaggregatedSet with <code>partition: 5</code> on a role — which §9.1 of <a href="../08_disaggregatedset/">Module 8</a> says must be rejected — and observe that it is <strong>accepted</strong>. Then reinstall with <code>--set enableDisaggregatedSet=true</code> and confirm the same object is now rejected.</p>
+<p>That is the whole argument for the flag, demonstrated in two commands.</p>
+<h3 id="part-a2-reproduce-the-crd-deletion-hazard-destructive">Part A2 — Reproduce the CRD deletion hazard (destructive)<a class="headerlink" href="#part-a2-reproduce-the-crd-deletion-hazard-destructive" title="Permanent link">&para;</a></h3>
+<p>On a throwaway cluster, install chart v0.7.0, create a LeaderWorkerSet, then upgrade to v0.8.0 <strong>without</strong> the resource-policy annotation. Watch the CRD and every LWS object disappear.</p>
+<p>Then repeat with the annotation applied first:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>annotate<span class="w"> </span>crd<span class="w"> </span>leaderworkersets.leaderworkerset.x-k8s.io<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>helm.sh/resource-policy<span class="o">=</span>keep<span class="w"> </span>--overwrite
+</code></pre></div>
+<p>Having seen it once, you will never skip that step again — and you will have the material for the troubleshooting-page PR from §2.1.</p>
+<h3 id="part-b-the-name-length-limit">Part B — The name-length limit<a class="headerlink" href="#part-b-the-name-length-limit" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 51 characters exactly</span>
+kubectl<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
+<span class="s">apiVersion: leaderworkerset.x-k8s.io/v1</span>
+<span class="s">kind: LeaderWorkerSet</span>
+<span class="s">metadata:</span>
+<span class="s">  name: aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeff</span>
+<span class="s">spec:</span>
+<span class="s">  replicas: 2</span>
+<span class="s">  leaderWorkerTemplate:</span>
+<span class="s">    size: 2</span>
+<span class="s">    workerTemplate: { spec: { containers: [{ name: c, image: nginxinc/nginx-unprivileged:1.27 }] } }</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<p>It should be accepted. Now scale it to 100 replicas and watch high-index groups fail, per the <code>51 - int(replicas/10)</code> formula. Find the error:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span>--field-selector<span class="w"> </span><span class="nv">reason</span><span class="o">=</span>FailedCreate<span class="w"> </span>--sort-by<span class="o">=</span>.lastTimestamp
+</code></pre></div>
+<p>Note how far the error surfaces from the object you created — a StatefulSet event about a label value, with no reference to the LWS. Then sketch the webhook validation you would add: what is the exact bound, and does it need to depend on <code>replicas</code>?</p>
+<h3 id="part-c-certificate-failure">Part C — Certificate failure<a class="headerlink" href="#part-c-certificate-failure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>delete<span class="w"> </span>secret<span class="w"> </span>lws-webhook-server-cert
+kubectl<span class="w"> </span>-n<span class="w"> </span>lws-system<span class="w"> </span>logs<span class="w"> </span>deploy/lws-controller-manager<span class="w"> </span>-f<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;cert\|rotator&#39;</span>
+</code></pre></div>
+<p>Watch the rotator regenerate it. Then break it properly by editing the webhook configuration's name, and observe that <strong>all</strong> LWS creation now fails with a webhook error — <code>failurePolicy: Fail</code> in action. Restore it.</p>
+<h3 id="part-d-build-a-monitoring-baseline">Part D — Build a monitoring baseline<a class="headerlink" href="#part-d-build-a-monitoring-baseline" title="Permanent link">&para;</a></h3>
+<p>Deploy three LWSes in different states: one healthy, one mid-rollout with <code>partition</code> set, one with a broken readiness probe. Then write a single command that distinguishes all three:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>lws<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="se">\</span>
+<span class="s1">&#39;NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas,UPTODATE:.status.updatedReplicas,AVAIL:.status.conditions[?(@.type==&quot;Available&quot;)].status,UPD:.status.conditions[?(@.type==&quot;UpdateInProgress&quot;)].status&#39;</span>
+</code></pre></div>
+<p>Confirm that <code>status.replicas</code> exceeds <code>spec.replicas</code> during a <code>maxSurge</code> rollout, that <code>Available</code> and <code>UpdateInProgress</code> behave as <a href="../04_lws_reconciler_internals/">Module 4</a>, §6.3 predicts, and that the frozen-canary case sits at <code>Progressing</code> indefinitely.</p>
+<p>That command, plus an alert on sustained <code>readyReplicas &lt; spec.replicas</code>, is a serviceable monitoring baseline until LWS-specific metrics exist.</p>
+<h3 id="checkpoint-questions">Checkpoint questions<a class="headerlink" href="#checkpoint-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The name limit is <code>51 - int(replicas/10)</code>. Derive it from the 57-character StatefulSet name limit and LWS's two-level naming scheme. Where does each character go?</li>
+<li><code>maxUnavailable</code> propagates to the StatefulSet whether or not the gate is enabled. Design a diagnostic that distinguishes "gate off" from "the rollout is legitimately going one group at a time because of the ready tail."</li>
+<li>Helm does not upgrade CRDs. Given that, what is the correct upgrade runbook for a cluster running 200 LeaderWorkerSets across 30 namespaces?</li>
+</ul>
+<p>Continue to <a href="../11_contributor_workflow/">Module 11: The Contributor Workflow</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
