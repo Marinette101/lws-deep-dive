@@ -1,0 +1,101 @@
+site_name: "LeaderWorkerSet Deep Dive"
+site_description: "A Contributor's Guide to the LeaderWorkerSet and DisaggregatedSet APIs for Multi-Host LLM Inference on Kubernetes"
+site_author: "linghuanym"
+site_url: "https://marinette101.github.io/lws-deep-dive/"
+
+repo_url: "https://github.com/kubernetes-sigs/lws"
+repo_name: "kubernetes-sigs/lws"
+
+nav:
+  - Problem Statement & Curriculum: index.md
+  - Module 1 - The Multi-Host Inference Problem Space: 01_multihost_inference_problem_space.md
+  - Module 2 - API Surface Anatomy: 02_api_surface_anatomy.md
+  - Module 3 - Group Lifecycle and Pod Identity: 03_group_lifecycle_and_identity.md
+  - Module 4 - The LeaderWorkerSet Reconciler: 04_lws_reconciler_internals.md
+  - Module 5 - Pod Controller and Failure Handling: 05_pod_controller_and_failure_handling.md
+  - Module 6 - Rollouts, Revisions, and Scaling: 06_rollout_and_revisions.md
+  - Module 7 - Scheduling, Placement, and Networking: 07_scheduling_placement_and_networking.md
+  - Module 8 - DisaggregatedSet: 08_disaggregatedset.md
+  - Module 9 - Inference Engine Integration: 09_inference_engine_integration.md
+  - Module 10 - Operations and Troubleshooting: 10_operations_and_troubleshooting.md
+  - Module 11 - The Contributor Workflow: 11_contributor_workflow.md
+  - Appendix A - Glossary: appendix_glossary.md
+  - Appendix B - PR Opportunity Backlog: appendix_pr_opportunities.md
+  - Appendix C - Primary Source Reading List: appendix_reading_list.md
+
+theme:
+  name: material
+  language: en
+  palette:
+    # Light mode toggle
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode toggle
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: zh
+          name: 简体中文
+          build: true
+          nav_translations:
+            Problem Statement & Curriculum: 问题陈述与课程大纲
+            Module 1 - The Multi-Host Inference Problem Space: 模块 1 - 多机推理的问题域
+            Module 2 - API Surface Anatomy: 模块 2 - API 表面全解剖
+            Module 3 - Group Lifecycle and Pod Identity: 模块 3 - 组的生命周期与 Pod 身份
+            Module 4 - The LeaderWorkerSet Reconciler: 模块 4 - LeaderWorkerSet 控制器内核
+            Module 5 - Pod Controller and Failure Handling: 模块 5 - Pod 控制器与故障处理
+            Module 6 - Rollouts, Revisions, and Scaling: 模块 6 - 滚动更新、版本与伸缩
+            Module 7 - Scheduling, Placement, and Networking: 模块 7 - 调度、放置与网络
+            Module 8 - DisaggregatedSet: 模块 8 - DisaggregatedSet
+            Module 9 - Inference Engine Integration: 模块 9 - 推理引擎集成
+            Module 10 - Operations and Troubleshooting: 模块 10 - 运维与排障
+            Module 11 - The Contributor Workflow: 模块 11 - 贡献者工作流
+            Appendix A - Glossary: 附录 A - 术语总表
+            Appendix B - PR Opportunity Backlog: 附录 B - PR 机会清单
+            Appendix C - Primary Source Reading List: 附录 C - 一手资料阅读清单
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - tables
+  - toc:
+      permalink: true
+
+extra_css:
+  - stylesheets/custom.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
